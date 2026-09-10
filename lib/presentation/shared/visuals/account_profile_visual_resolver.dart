@@ -1,4 +1,4 @@
-import 'package:belluga_now/domain/partners/account_profile_model.dart';
+import 'package:belluga_now/domain/partners/account_profile_complete.dart';
 import 'package:belluga_now/domain/partners/profile_type_registry.dart';
 import 'package:belluga_now/domain/partners/value_objects/profile_type_key_value.dart';
 import 'package:belluga_now/presentation/shared/visuals/profile_type_visual_resolver.dart';
@@ -8,15 +8,14 @@ class AccountProfileVisualResolver {
   const AccountProfileVisualResolver._();
 
   static ResolvedAccountProfileVisual resolve({
-    required AccountProfileModel accountProfile,
+    required AccountProfileComplete accountProfile,
     required ProfileTypeRegistry? registry,
-  }) =>
-      resolvePreview(
-        profileType: accountProfile.type,
-        avatarUrl: accountProfile.avatarUrl,
-        coverUrl: accountProfile.coverUrl,
-        registry: registry,
-      );
+  }) => resolvePreview(
+    profileType: accountProfile.type,
+    avatarUrl: accountProfile.avatarUrl,
+    coverUrl: accountProfile.coverUrl,
+    registry: registry,
+  );
 
   static ResolvedAccountProfileVisual resolvePreview({
     required ProfileTypeRegistry? registry,
@@ -36,14 +35,13 @@ class AccountProfileVisualResolver {
       avatarUrl: avatarUrl,
       coverUrl: coverUrl,
     );
-    final typeVisualImageUrl =
-        typeVisual?.isImage == true ? _normalize(typeVisual?.imageUrl) : null;
-    final surfaceImageUrl = _normalize(coverUrl) ??
-        _normalize(avatarUrl) ??
-        typeVisualImageUrl;
-    final compactImageUrl = _normalize(avatarUrl) ??
-        _normalize(coverUrl) ??
-        typeVisualImageUrl;
+    final typeVisualImageUrl = typeVisual?.isImage == true
+        ? _normalize(typeVisual?.imageUrl)
+        : null;
+    final surfaceImageUrl =
+        _normalize(coverUrl) ?? _normalize(avatarUrl) ?? typeVisualImageUrl;
+    final compactImageUrl =
+        _normalize(avatarUrl) ?? _normalize(coverUrl) ?? typeVisualImageUrl;
     final identityAvatarUrl = _normalize(avatarUrl);
 
     return ResolvedAccountProfileVisual(
@@ -52,8 +50,9 @@ class AccountProfileVisualResolver {
       surfaceImageUrl: surfaceImageUrl,
       compactImageUrl: compactImageUrl,
       identityAvatarUrl: identityAvatarUrl,
-      themeSeedColor:
-          surfaceImageUrl == null ? typeVisual?.backgroundColor : null,
+      themeSeedColor: surfaceImageUrl == null
+          ? typeVisual?.backgroundColor
+          : null,
     );
   }
 

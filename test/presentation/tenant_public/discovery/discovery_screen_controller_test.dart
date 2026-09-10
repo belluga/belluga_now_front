@@ -14,7 +14,7 @@ import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
-import 'package:belluga_now/domain/partners/account_profile_model.dart';
+import 'package:belluga_now/domain/partners/account_profile_complete.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
@@ -297,14 +297,14 @@ void main() {
           ),
         },
         nearbyProfiles: [
-          buildAccountProfileModelFromPrimitives(
+          buildAccountProfileCompleteFromPrimitives(
             id: _mongoId('re-nearby-remote-1'),
             name: 'Nearest Nearby',
             slug: 'nearest-nearby',
             type: 'artist',
             distanceMeters: 120,
           ),
-          buildAccountProfileModelFromPrimitives(
+          buildAccountProfileCompleteFromPrimitives(
             id: _mongoId('re-nearby-remote-2'),
             name: 'Second Nearby',
             slug: 'second-nearby',
@@ -338,7 +338,7 @@ void main() {
       final repository = _FakeAccountProfilesRepository(
         pages: const <int, PagedAccountProfilesResult>{},
         nearbyProfiles: [
-          buildAccountProfileModelFromPrimitives(
+          buildAccountProfileCompleteFromPrimitives(
             id: _mongoId('d2'),
             name: 'Nearby Venue',
             slug: 'nearby-venue',
@@ -625,7 +625,7 @@ void main() {
       final repository = _FakeAccountProfilesRepository(
         pages: {
           1: pagedAccountProfilesResultFromRaw(
-            profiles: <AccountProfileModel>[],
+            profiles: <AccountProfileComplete>[],
             hasMore: false,
           ),
         },
@@ -667,7 +667,7 @@ void main() {
       final repository = _FakeAccountProfilesRepository(
         pages: {
           1: pagedAccountProfilesResultFromRaw(
-            profiles: <AccountProfileModel>[],
+            profiles: <AccountProfileComplete>[],
             hasMore: false,
           ),
         },
@@ -714,7 +714,7 @@ void main() {
       final repository = _FakeAccountProfilesRepository(
         pages: {
           1: pagedAccountProfilesResultFromRaw(
-            profiles: <AccountProfileModel>[],
+            profiles: <AccountProfileComplete>[],
             hasMore: false,
           ),
         },
@@ -834,7 +834,7 @@ void main() {
   testWidgets(
     'DiscoveryScreen partner taps prefer canonical public detail path over slug route',
     (tester) async {
-      final profile = buildAccountProfileModelFromPrimitives(
+      final profile = buildAccountProfileCompleteFromPrimitives(
         id: _mongoId('path-pref'),
         name: 'Perfil Path',
         slug: 'perfil-path',
@@ -983,7 +983,7 @@ void main() {
       final repository = _FakeAccountProfilesRepository(
         pages: {
           1: pagedAccountProfilesResultFromRaw(
-            profiles: List<AccountProfileModel>.generate(
+            profiles: List<AccountProfileComplete>.generate(
               40,
               (index) => _profile(
                 id: _mongoId('ui-page-fail-$index'),
@@ -1082,7 +1082,7 @@ void main() {
       final repository = _FakeAccountProfilesRepository(
         pages: <int, PagedAccountProfilesResult>{
           1: pagedAccountProfilesResultFromRaw(
-            profiles: const <AccountProfileModel>[],
+            profiles: const <AccountProfileComplete>[],
             hasMore: false,
             discoveryFilterCatalog: catalog,
           ),
@@ -1145,7 +1145,7 @@ void main() {
   testWidgets(
     'DiscoveryScreen renders canonical filters by default without a toggle button',
     (tester) async {
-      final profiles = List<AccountProfileModel>.generate(
+      final profiles = List<AccountProfileComplete>.generate(
         24,
         (index) => _profile(
           id: _mongoId('sticky-$index'),
@@ -1265,7 +1265,7 @@ void main() {
       final repository = _FakeAccountProfilesRepository(
         pages: {
           1: pagedAccountProfilesResultFromRaw(
-            profiles: const <AccountProfileModel>[],
+            profiles: const <AccountProfileComplete>[],
             hasMore: false,
           ),
         },
@@ -1417,7 +1417,7 @@ void main() {
       final repository = _FakeAccountProfilesRepository(
         pages: {
           1: pagedAccountProfilesResultFromRaw(
-            profiles: List<AccountProfileModel>.generate(
+            profiles: List<AccountProfileComplete>.generate(
               12,
               (index) => _profile(
                 id: _mongoId('taxonomy-ui-$index'),
@@ -1803,7 +1803,7 @@ void main() {
         pages: {
           1: pagedAccountProfilesResultFromRaw(
             profiles: [
-              buildAccountProfileModelFromPrimitives(
+              buildAccountProfileCompleteFromPrimitives(
                 id: _mongoId('f'),
                 name: 'Resultado remoto',
                 slug: 'slug-exato-remoto',
@@ -2370,7 +2370,7 @@ void main() {
       final repository = _FakeAccountProfilesRepository(
         pages: {
           1: pagedAccountProfilesResultFromRaw(
-            profiles: <AccountProfileModel>[artist1, artist2],
+            profiles: <AccountProfileComplete>[artist1, artist2],
             hasMore: false,
             discoveryFilterCatalog: artistCatalog,
           ),
@@ -2752,22 +2752,22 @@ class _FakeRouteMatch extends Fake implements RouteMatch {
 class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
   _FakeAccountProfilesRepository({
     required this.pages,
-    this.nearbyProfiles = const <AccountProfileModel>[],
+    this.nearbyProfiles = const <AccountProfileComplete>[],
     this.failingPages = const <int>{},
     this.filterRequestAgainstFixtures = true,
     this.queryDelayByQuery = const <String, Duration>{},
   });
 
   final Map<int, PagedAccountProfilesResult> pages;
-  final List<AccountProfileModel> nearbyProfiles;
+  final List<AccountProfileComplete> nearbyProfiles;
   final Set<int> failingPages;
   final bool filterRequestAgainstFixtures;
   final Map<String, Duration> queryDelayByQuery;
   DiscoveryFilterCatalog? fallbackRuntimeCatalog;
   final List<String> toggleCalls = <String>[];
   final List<_PageRequest> pageRequests = <_PageRequest>[];
-  final Map<String, AccountProfileModel> _bySlug =
-      <String, AccountProfileModel>{};
+  final Map<String, AccountProfileComplete> _bySlug =
+      <String, AccountProfileComplete>{};
   int nearbyFetchCalls = 0;
 
   @override
@@ -2822,7 +2822,7 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
     var result =
         pages[pageValue] ??
         pagedAccountProfilesResultFromRaw(
-          profiles: const <AccountProfileModel>[],
+          profiles: const <AccountProfileComplete>[],
           hasMore: false,
         );
 
@@ -2866,14 +2866,14 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
   }
 
   @override
-  Future<AccountProfileModel?> getAccountProfileBySlug(
+  Future<AccountProfileComplete?> getAccountProfileBySlug(
     AccountProfilesRepositoryContractPrimString slug,
   ) async {
     return _bySlug[slug.value];
   }
 
   @override
-  Future<List<AccountProfileModel>> fetchNearbyAccountProfiles({
+  Future<List<AccountProfileComplete>> fetchNearbyAccountProfiles({
     AccountProfilesRepositoryContractPrimInt? pageSize,
     List<AccountProfilesRepositoryContractPrimString>? typeFilters,
     List<dynamic>? taxonomyFilters,
@@ -2921,14 +2921,14 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
   }
 
   @override
-  List<AccountProfileModel> getFavoriteAccountProfiles() {
+  List<AccountProfileComplete> getFavoriteAccountProfiles() {
     final ids = favoriteAccountProfileIdsStreamValue.value;
     return allAccountProfilesStreamValue.value
         .where((profile) => ids.any((id) => id.value == profile.id))
         .toList(growable: false);
   }
 
-  List<AccountProfileModel> _allProfiles() {
+  List<AccountProfileComplete> _allProfiles() {
     return pages.values
         .expand((entry) => entry.profiles)
         .toList(growable: false);
@@ -2953,7 +2953,7 @@ class _FailingAccountProfilesRepository
     extends AccountProfilesRepositoryContract {
   @override
   Future<void> init() async {
-    allAccountProfilesStreamValue.addValue(const <AccountProfileModel>[]);
+    allAccountProfilesStreamValue.addValue(const <AccountProfileComplete>[]);
     favoriteAccountProfileIdsStreamValue.addValue(
       <AccountProfilesRepositoryContractPrimString>{},
     );
@@ -2972,19 +2972,19 @@ class _FailingAccountProfilesRepository
   }
 
   @override
-  Future<AccountProfileModel?> getAccountProfileBySlug(
+  Future<AccountProfileComplete?> getAccountProfileBySlug(
     AccountProfilesRepositoryContractPrimString slug,
   ) async {
     return null;
   }
 
   @override
-  Future<List<AccountProfileModel>> fetchNearbyAccountProfiles({
+  Future<List<AccountProfileComplete>> fetchNearbyAccountProfiles({
     AccountProfilesRepositoryContractPrimInt? pageSize,
     List<AccountProfilesRepositoryContractPrimString>? typeFilters,
     List<dynamic>? taxonomyFilters,
   }) async {
-    return const <AccountProfileModel>[];
+    return const <AccountProfileComplete>[];
   }
 
   @override
@@ -3004,8 +3004,8 @@ class _FailingAccountProfilesRepository
   }
 
   @override
-  List<AccountProfileModel> getFavoriteAccountProfiles() {
-    return const <AccountProfileModel>[];
+  List<AccountProfileComplete> getFavoriteAccountProfiles() {
+    return const <AccountProfileComplete>[];
   }
 }
 
@@ -3033,7 +3033,7 @@ class _InitFailingAccountProfilesRepository
     fetchPageCalls += 1;
     if (page.value != 1) {
       return pagedAccountProfilesResultFromRaw(
-        profiles: const <AccountProfileModel>[],
+        profiles: const <AccountProfileComplete>[],
         hasMore: false,
       );
     }
@@ -3041,14 +3041,14 @@ class _InitFailingAccountProfilesRepository
   }
 
   @override
-  Future<AccountProfileModel?> getAccountProfileBySlug(
+  Future<AccountProfileComplete?> getAccountProfileBySlug(
     AccountProfilesRepositoryContractPrimString slug,
   ) async {
     return null;
   }
 
   @override
-  Future<List<AccountProfileModel>> fetchNearbyAccountProfiles({
+  Future<List<AccountProfileComplete>> fetchNearbyAccountProfiles({
     AccountProfilesRepositoryContractPrimInt? pageSize,
     List<AccountProfilesRepositoryContractPrimString>? typeFilters,
     List<dynamic>? taxonomyFilters,
@@ -3075,8 +3075,8 @@ class _InitFailingAccountProfilesRepository
   }
 
   @override
-  List<AccountProfileModel> getFavoriteAccountProfiles() {
-    return const <AccountProfileModel>[];
+  List<AccountProfileComplete> getFavoriteAccountProfiles() {
+    return const <AccountProfileComplete>[];
   }
 }
 
@@ -3591,12 +3591,12 @@ CityCoordinate _coordinate({
   );
 }
 
-AccountProfileModel _profile({
+AccountProfileComplete _profile({
   required String id,
   required String type,
   required String name,
 }) {
-  return buildAccountProfileModelFromPrimitives(
+  return buildAccountProfileCompleteFromPrimitives(
     id: id,
     name: name,
     slug: '$name-$type'.toLowerCase().replaceAll(' ', '-'),

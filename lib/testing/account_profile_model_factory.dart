@@ -1,11 +1,11 @@
 import 'package:belluga_contact_channels/belluga_contact_channels.dart';
 import 'package:belluga_now/domain/partners/account_profile_gallery_group.dart';
-import 'package:belluga_now/domain/partners/account_profile_model.dart';
+import 'package:belluga_now/domain/partners/account_profile_complete.dart';
 import 'package:belluga_now/domain/partners/account_profile_nested_group.dart';
+import 'package:belluga_now/domain/partners/account_profile_summary.dart';
 import 'package:belluga_now/domain/partners/engagement_data.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_module_data.dart';
-import 'package:belluga_now/domain/partners/value_objects/account_profile_nested_group_member_text_value.dart';
-import 'package:belluga_now/domain/shared/account_profile_contact_source_summary.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_text_value.dart';
 import 'package:belluga_now/domain/shared/value_objects/account_profile_contact_channel_id_value.dart';
 import 'package:belluga_now/domain/shared/value_objects/account_profile_contact_source_account_profile_id_value.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
@@ -18,7 +18,7 @@ import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:value_object_pattern/domain/value_objects/mongo_id_value.dart';
 
-AccountProfileModel buildAccountProfileModelFromPrimitives({
+AccountProfileComplete buildAccountProfileCompleteFromPrimitives({
   required String id,
   required String name,
   required String slug,
@@ -45,8 +45,8 @@ AccountProfileModel buildAccountProfileModelFromPrimitives({
   String? contactBubbleChannelId,
   List<BellugaContactChannel>? effectiveContactChannels,
   BellugaContactChannel? effectiveContactBubbleChannel,
-  AccountProfileContactSourceSummary? contactSourceProfile,
-  AccountProfileContactSourceSummary? effectiveContactSourceProfile,
+  AccountProfileSummary? contactSourceProfile,
+  AccountProfileSummary? effectiveContactSourceProfile,
 }) {
   ThumbUriValue? avatarValue;
   if (avatarUrl != null && avatarUrl.isNotEmpty) {
@@ -89,7 +89,7 @@ AccountProfileModel buildAccountProfileModelFromPrimitives({
       ? (publicDetailPath ?? '/parceiro/$slug')
       : null;
 
-  return AccountProfileModel(
+  return AccountProfileComplete(
     idValue: MongoIDValue()..parse(id),
     nameValue: AccountProfileNameValue()..parse(name),
     slugValue: SlugValue()..parse(slug),
@@ -185,10 +185,8 @@ AccountProfileGalleryItem buildAccountProfileGalleryItemFromPrimitives({
 }) {
   return AccountProfileGalleryItem(
     itemIdValue: AccountProfileNestedGroupIdValue(itemId),
-    titleValue: AccountProfileNestedGroupMemberTextValue(title ?? ''),
-    descriptionValue: AccountProfileNestedGroupMemberTextValue(
-      description ?? '',
-    ),
+    titleValue: AccountProfileTextValue(title ?? ''),
+    descriptionValue: AccountProfileTextValue(description ?? ''),
     orderValue: AccountProfileNestedGroupOrderValue(order),
     imageUrlValue: ThumbUriValue(defaultValue: Uri.parse(imageUrl))
       ..parse(imageUrl),

@@ -4,7 +4,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gal
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
-import 'package:belluga_now/domain/shared/account_profile_contact_source_summary.dart';
+import 'package:belluga_now/domain/partners/account_profile_summary.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_name_value.dart';
 import 'package:belluga_now/domain/partners/account_profile_external_link.dart';
 import 'package:belluga_now/domain/shared/value_objects/account_profile_contact_channel_id_value.dart';
@@ -94,8 +94,8 @@ class TenantAdminAccountProfile {
   final List<BellugaContactChannel> contactChannelsValue;
   final AccountProfileContactChannelIdValue? contactBubbleChannelIdValue;
   final List<BellugaContactChannel> effectiveContactChannelsValue;
-  final AccountProfileContactSourceSummary? contactSourceProfile;
-  final AccountProfileContactSourceSummary? effectiveContactSourceProfile;
+  final AccountProfileSummary? contactSourceProfile;
+  final AccountProfileSummary? effectiveContactSourceProfile;
   final List<AccountProfileExternalLink> externalLinkValues;
   final TenantAdminAccountProfileExternalLinksLimitValue?
   externalLinksLimitValue;

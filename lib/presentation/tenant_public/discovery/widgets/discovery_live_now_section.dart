@@ -1,10 +1,10 @@
-import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
+import 'package:belluga_now/domain/partners/account_profile_summary.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
 import 'package:flutter/material.dart';
 
 class _LiveCounterpartItem {
-  final EventLinkedAccountProfile counterpart;
+  final AccountProfileSummary counterpart;
   final EventModel event;
 
   _LiveCounterpartItem(this.counterpart, this.event);

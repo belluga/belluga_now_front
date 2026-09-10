@@ -1,5 +1,5 @@
 import 'package:belluga_now/domain/partners/engagement_data.dart';
-import 'package:belluga_now/domain/partners/account_profile_model.dart';
+import 'package:belluga_now/domain/partners/account_profile_complete.dart';
 import 'package:belluga_now/presentation/shared/visuals/resolved_account_profile_visual.dart';
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
 import 'package:belluga_now/presentation/shared/widgets/account_profile_identity_block.dart';
@@ -17,7 +17,7 @@ class DiscoveryPartnerCard extends StatelessWidget {
     this.showDetails = true,
   });
 
-  final AccountProfileModel partner;
+  final AccountProfileComplete partner;
   final bool isFavorite;
   final bool isFavoritable;
   final VoidCallback onFavoriteTap;
@@ -59,8 +59,9 @@ class DiscoveryPartnerCard extends StatelessWidget {
                   name: partner.name,
                   avatarUrl: resolvedVisual.identityAvatarUrl,
                   typeVisual: resolvedVisual.typeVisual,
-                  identityAvatarKey:
-                      const Key('discoveryPartnerIdentityAvatar'),
+                  identityAvatarKey: const Key(
+                    'discoveryPartnerIdentityAvatar',
+                  ),
                   typeAvatarKey: const Key('discoveryPartnerTypeAvatar'),
                   avatarSize: 44,
                   avatarSpacing: 10,
@@ -83,7 +84,7 @@ class DiscoveryPartnerCard extends StatelessWidget {
 class _CardImageTags extends StatelessWidget {
   const _CardImageTags({required this.partner});
 
-  final AccountProfileModel partner;
+  final AccountProfileComplete partner;
 
   @override
   Widget build(BuildContext context) {
@@ -97,14 +98,12 @@ class _CardImageTags extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final textStyle = Theme.of(context).textTheme.labelMedium?.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w800,
-                ) ??
-            const TextStyle(
+        final textStyle =
+            Theme.of(context).textTheme.labelMedium?.copyWith(
               color: Colors.white,
               fontWeight: FontWeight.w800,
-            );
+            ) ??
+            const TextStyle(color: Colors.white, fontWeight: FontWeight.w800);
         final visibleLabels = _visibleTagLabelsForTwoRows(
           labels: labels,
           maxWidth: constraints.maxWidth,
@@ -158,9 +157,7 @@ class _CardImageTag extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.black.withValues(alpha: 0.58),
           borderRadius: BorderRadius.circular(999),
-          border: Border.all(
-            color: Colors.white.withValues(alpha: 0.34),
-          ),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.34)),
         ),
         child: Padding(
           padding: const EdgeInsets.symmetric(
@@ -246,7 +243,7 @@ class _CardImage extends StatelessWidget {
     required this.onFavoriteTap,
   });
 
-  final AccountProfileModel partner;
+  final AccountProfileComplete partner;
   final ResolvedAccountProfileVisual resolvedVisual;
   final bool isFavorite;
   final bool isFavoritable;
@@ -257,8 +254,9 @@ class _CardImage extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final imageUrl = resolvedVisual.surfaceImageUrl;
     final isLiveNow = _isLiveNow(partner);
-    final favoriteLabel =
-        isFavorite ? 'Perfil favoritado' : 'Favoritar perfil ${partner.name}';
+    final favoriteLabel = isFavorite
+        ? 'Perfil favoritado'
+        : 'Favoritar perfil ${partner.name}';
 
     return AspectRatio(
       aspectRatio: 0.92,
@@ -285,24 +283,22 @@ class _CardImage extends StatelessWidget {
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Padding(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(
-                          Icons.circle,
-                          size: 7,
-                          color: colorScheme.error,
-                        ),
+                        Icon(Icons.circle, size: 7, color: colorScheme.error),
                         const SizedBox(width: 5),
                         Text(
                           'HOJE',
-                          style:
-                              Theme.of(context).textTheme.labelSmall?.copyWith(
-                                    color: colorScheme.primary,
-                                    fontWeight: FontWeight.w800,
-                                  ),
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(
+                                color: colorScheme.primary,
+                                fontWeight: FontWeight.w800,
+                              ),
                         ),
                       ],
                     ),
@@ -384,7 +380,7 @@ class _CardImage extends StatelessWidget {
   }
 }
 
-bool _isLiveNow(AccountProfileModel partner) {
+bool _isLiveNow(AccountProfileComplete partner) {
   if (partner.type != 'artist') {
     return false;
   }

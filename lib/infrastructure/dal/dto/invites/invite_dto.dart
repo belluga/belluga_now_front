@@ -18,9 +18,9 @@ import 'package:belluga_now/domain/invites/value_objects/invite_location_value.d
 import 'package:belluga_now/domain/invites/value_objects/invite_message_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_occurrence_id_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_tag_value.dart';
-import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
+import 'package:belluga_now/domain/partners/account_profile_summary.dart';
 import 'package:belluga_now/domain/schedule/event_profile_group.dart';
-import 'package:belluga_now/domain/schedule/value_objects/event_linked_account_profile_text_value.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_text_value.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
@@ -71,7 +71,7 @@ class InviteDto {
   final List<String> tags;
   final List<Map<String, dynamic>> taxonomyTerms;
   final String attendancePolicy;
-  final List<EventLinkedAccountProfile> linkedAccountProfiles;
+  final List<AccountProfileSummary> linkedAccountProfiles;
   final List<EventProfileGroup> profileGroups;
   final String? venueAccountProfileId;
   final String? inviterName;
@@ -381,7 +381,7 @@ class InviteDto {
       venueAccountProfileIdValue:
           venueAccountProfileId == null || venueAccountProfileId!.trim().isEmpty
           ? null
-          : EventLinkedAccountProfileTextValue(venueAccountProfileId!.trim()),
+          : AccountProfileTextValue(venueAccountProfileId!.trim()),
     );
   }
 
@@ -460,7 +460,7 @@ class InviteDto {
 
   static Uri _resolveEventImageUri({
     required String eventImageUrl,
-    required List<EventLinkedAccountProfile> linkedAccountProfiles,
+    required List<AccountProfileSummary> linkedAccountProfiles,
   }) {
     final direct = _tryAbsoluteUri(eventImageUrl);
     if (direct != null) {

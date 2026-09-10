@@ -7,17 +7,17 @@ import 'package:belluga_now/domain/map/geo_distance.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/partners/account_profile_nested_group.dart';
 import 'package:belluga_now/domain/partners/account_profile_nested_group_member_page.dart';
-import 'package:belluga_now/domain/partners/account_profile_model.dart';
+import 'package:belluga_now/domain/partners/account_profile_complete.dart';
+import 'package:belluga_now/domain/partners/account_profile_summary.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_module_data.dart';
 import 'package:belluga_now/domain/partners/projections/value_objects/partner_projection_text_values.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_fields.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_gallery_player_aspect_ratio_value.dart';
-import 'package:belluga_now/domain/partners/value_objects/account_profile_nested_group_member_text_value.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_text_value.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_public_detail_path_value.dart';
 import 'package:belluga_now/domain/repositories/value_objects/account_profiles_repository_taxonomy_filter.dart';
 import 'package:belluga_now/domain/services/location_origin_service_contract.dart';
-import 'package:belluga_now/domain/shared/account_profile_contact_source_summary.dart';
 import 'package:belluga_now/domain/shared/value_objects/account_profile_contact_channel_id_value.dart';
 import 'package:belluga_now/domain/shared/value_objects/account_profile_contact_source_account_profile_id_value.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
@@ -149,14 +149,14 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
   }
 
   @override
-  Future<List<AccountProfileModel>> fetchNearbyAccountProfiles({
+  Future<List<AccountProfileComplete>> fetchNearbyAccountProfiles({
     int pageSize = 10,
     List<String>? typeFilters,
     List<AccountProfilesRepositoryTaxonomyFilter>? taxonomyFilters,
   }) async {
     final origin = await _resolveEffectiveOriginCoordinate();
     if (origin == null) {
-      return const <AccountProfileModel>[];
+      return const <AccountProfileComplete>[];
     }
 
     final safePageSize = pageSize <= 0 ? 10 : pageSize.clamp(1, 50);
@@ -276,7 +276,7 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
   }
 
   @override
-  Future<AccountProfileModel?> fetchAccountProfileBySlug(String slug) async {
+  Future<AccountProfileComplete?> fetchAccountProfileBySlug(String slug) async {
     final normalizedSlug = slug.trim();
     if (normalizedSlug.isEmpty) {
       return null;
@@ -333,14 +333,14 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
   }
 
   @override
-  Future<AccountProfileNestedGroupMemberPage> fetchNestedGroupMembersPageByPath(
+  Future<AccountProfileSummaryPage> fetchNestedGroupMembersPageByPath(
     String membersPath, {
     String? cursor,
     String? search,
   }) async {
     final normalizedPath = membersPath.trim();
     if (normalizedPath.isEmpty) {
-      return const AccountProfileNestedGroupMemberPage.empty();
+      return const AccountProfileSummaryPage.empty();
     }
 
     final normalizedCursor = cursor?.trim();
@@ -378,21 +378,21 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
 
     final pagePayload = _extractNestedGroupMembersPagePayload(payload);
     final nextCursor = _normalizedOpaqueCursor(pagePayload['next_cursor']);
-    return AccountProfileNestedGroupMemberPage(
+    return AccountProfileSummaryPage(
       items: _extractNestedGroupMembers(pagePayload['data']),
       nextCursorValue: nextCursor == null
           ? null
-          : AccountProfileNestedGroupMemberTextValue(nextCursor),
+          : AccountProfileTextValue(nextCursor),
     );
   }
 
-  List<AccountProfileModel> _parseProfiles(
+  List<AccountProfileComplete> _parseProfiles(
     List<dynamic> raw, {
     required CityCoordinate? distanceOrigin,
     String? routeSlugFallback,
     bool allowUnavailableNameFallback = false,
   }) {
-    final profiles = <AccountProfileModel>[];
+    final profiles = <AccountProfileComplete>[];
     for (final entry in raw) {
       if (entry is! Map) continue;
       final json = Map<String, dynamic>.from(entry);
@@ -477,7 +477,7 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
           json['contact_bubble_channel_id'],
         );
         profiles.add(
-          AccountProfileModel(
+          AccountProfileComplete(
             idValue: MongoIDValue()..parse(id),
             nameValue: AccountProfileNameValue()..parse(name),
             slugValue: SlugValue()..parse(slug),
@@ -565,7 +565,7 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
     return normalized;
   }
 
-  AccountProfileContactSourceSummary? _parseContactSourceSummary(Object? raw) {
+  AccountProfileSummary? _parseContactSourceSummary(Object? raw) {
     if (raw is! Map) {
       return null;
     }
@@ -576,9 +576,9 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
     if (id == null || displayName == null || profileType == null) {
       return null;
     }
-    return AccountProfileContactSourceSummary(
-      idValue: AccountProfileContactSourceAccountProfileIdValue(id),
-      displayNameValue: AccountProfileNameValue()..parse(displayName),
+    return AccountProfileSummary(
+      idValue: AccountProfileTextValue(id),
+      nameValue: AccountProfileNameValue()..parse(displayName),
       slugValue: switch (_parseNullableText(json['slug'])) {
         final String slug => SlugValue()..parse(slug),
         _ => null,
@@ -698,10 +698,10 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
       items.add(
         AccountProfileGalleryItem(
           itemIdValue: AccountProfileNestedGroupIdValue(itemId),
-          titleValue: AccountProfileNestedGroupMemberTextValue(
+          titleValue: AccountProfileTextValue(
             title == null || title.isEmpty ? '' : title,
           ),
-          descriptionValue: AccountProfileNestedGroupMemberTextValue(
+          descriptionValue: AccountProfileTextValue(
             description == null || description.isEmpty ? '' : description,
           ),
           orderValue: AccountProfileNestedGroupOrderValue(
@@ -712,9 +712,7 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
           cardUrlValue: _galleryUri(cardUrl),
           modalUrlValue: _galleryUri(modalUrl),
           type: type,
-          youtubeVideoIdValue: AccountProfileNestedGroupMemberTextValue(
-            youtubeVideoId,
-          ),
+          youtubeVideoIdValue: AccountProfileTextValue(youtubeVideoId),
           playerAspectRatioValue: AccountProfileGalleryPlayerAspectRatioValue(
             playerAspectRatio,
           ),
@@ -759,7 +757,7 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
           memberCountValue: AccountProfileNestedGroupMemberCountValue(
             _parsePageValue(json['member_count']) ?? 0,
           ),
-          profiles: const <AccountProfileNestedGroupMember>[],
+          profiles: const <AccountProfileSummary>[],
         ),
       );
     }
@@ -768,14 +766,12 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
     return List<AccountProfileNestedGroup>.unmodifiable(groups);
   }
 
-  List<AccountProfileNestedGroupMember> _extractNestedGroupMembers(
-    dynamic raw,
-  ) {
+  List<AccountProfileSummary> _extractNestedGroupMembers(dynamic raw) {
     if (raw is! List) {
-      return const <AccountProfileNestedGroupMember>[];
+      return const <AccountProfileSummary>[];
     }
 
-    final members = <AccountProfileNestedGroupMember>[];
+    final members = <AccountProfileSummary>[];
     final seen = <String>{};
     for (final entry in raw) {
       if (entry is! Map) continue;
@@ -816,8 +812,8 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
         );
 
         members.add(
-          AccountProfileNestedGroupMember(
-            idValue: MongoIDValue()..parse(id),
+          AccountProfileSummary(
+            idValue: AccountProfileTextValue(id),
             nameValue: AccountProfileNameValue()..parse(displayName),
             slugValue: slugValue,
             profileTypeValue: AccountProfileTypeValue(profileType),
@@ -829,10 +825,11 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
             )..parse(canOpenPublicDetail.toString()),
             publicDetailPathValue: publicDetailPath == null
                 ? null
-                : AccountProfileNestedGroupMemberTextValue(publicDetailPath),
+                : AccountProfilePublicDetailPathValue(publicDetailPath),
             tagValues: _extractTags(
               json['taxonomy_terms'],
             ).map(AccountProfileTagValue.new).toList(growable: false),
+            taxonomyTerms: _extractTaxonomyTerms(json['taxonomy_terms']),
           ),
         );
       } catch (_) {
@@ -840,7 +837,7 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
       }
     }
 
-    return List<AccountProfileNestedGroupMember>.unmodifiable(members);
+    return List<AccountProfileSummary>.unmodifiable(members);
   }
 
   Map<String, dynamic> _extractNestedGroupMembersPagePayload(
@@ -933,6 +930,30 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
     return tags;
   }
 
+  AccountProfileTaxonomyTerms _extractTaxonomyTerms(dynamic raw) {
+    final terms = AccountProfileTaxonomyTerms();
+    if (raw is! List) return terms;
+    for (final entry in raw) {
+      if (entry is! Map) continue;
+      final type = entry['type']?.toString().trim() ?? '';
+      final value = entry['value']?.toString().trim() ?? '';
+      if (type.isEmpty || value.isEmpty) continue;
+      final label = entry['label']?.toString().trim() ?? '';
+      terms.addTerm(
+        typeValue: AccountProfileTagValue(type),
+        valueValue: AccountProfileTagValue(value),
+        nameValue: AccountProfileTagValue(
+          entry['name']?.toString().trim() ?? (label.isEmpty ? value : label),
+        ),
+        taxonomyNameValue: AccountProfileTagValue(
+          entry['taxonomy_name']?.toString().trim() ?? '',
+        ),
+        labelValue: AccountProfileTagValue(label),
+      );
+    }
+    return terms;
+  }
+
   List<PartnerEventView> _extractAgendaEvents(dynamic raw) {
     if (raw is! List) return const [];
     final agendaEvents = <PartnerEventView>[];
@@ -1005,14 +1026,12 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
     return agendaEvents;
   }
 
-  List<PartnerSupportedEntityView> _extractAgendaLinkedAccountProfiles(
-    dynamic raw,
-  ) {
+  List<AccountProfileSummary> _extractAgendaLinkedAccountProfiles(dynamic raw) {
     if (raw is! List) {
       return const [];
     }
 
-    final linkedAccountProfiles = <PartnerSupportedEntityView>[];
+    final linkedAccountProfiles = <AccountProfileSummary>[];
     for (final entry in raw) {
       if (entry is! Map) continue;
       final json = Map<String, dynamic>.from(entry);
@@ -1023,27 +1042,25 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
       }
 
       final thumb = json['avatar_url']?.toString().trim();
-      final profileType = json['profile_type']?.toString().trim();
-      final partyType = json['party_type']?.toString().trim();
+      final profileType =
+          json['profile_type']?.toString().trim().isNotEmpty == true
+          ? json['profile_type']!.toString().trim()
+          : json['party_type']?.toString().trim() ?? '';
+      if (profileType.isEmpty) {
+        continue;
+      }
+      final id = json['id']?.toString().trim() ?? '';
       linkedAccountProfiles.add(
-        PartnerSupportedEntityView(
-          idValue: (() {
-            final id = json['id']?.toString().trim();
-            if (id == null || id.isEmpty) {
-              return null;
-            }
-            return MongoIDValue()..parse(id);
-          })(),
-          titleValue: partnerProjectionRequiredText(displayName),
-          thumbValue: thumb == null || thumb.isEmpty
+        AccountProfileSummary(
+          idValue: AccountProfileTextValue(
+            id.isEmpty ? 'name:$displayName' : id,
+          ),
+          nameValue: AccountProfileNameValue()..parse(displayName),
+          profileTypeValue: AccountProfileTypeValue(profileType),
+          avatarValue: thumb == null || thumb.isEmpty
               ? null
-              : partnerProjectionOptionalText(thumb),
-          profileTypeValue: profileType == null || profileType.isEmpty
-              ? null
-              : partnerProjectionOptionalText(profileType),
-          partyTypeValue: partyType == null || partyType.isEmpty
-              ? null
-              : partnerProjectionOptionalText(partyType),
+              : (ThumbUriValue(defaultValue: Uri.parse(thumb), isRequired: true)
+                  ..parse(thumb)),
         ),
       );
     }

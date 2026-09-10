@@ -7,8 +7,9 @@ import 'package:belluga_now/application/rich_text/account_profile_rich_text_bloc
 import 'package:belluga_now/application/rich_text/safe_rich_html.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/proximity_preferences/proximity_preference.dart';
-import 'package:belluga_now/domain/partners/account_profile_model.dart';
+import 'package:belluga_now/domain/partners/account_profile_complete.dart';
 import 'package:belluga_now/domain/partners/account_profile_nested_group.dart';
+import 'package:belluga_now/domain/partners/account_profile_summary.dart';
 import 'package:belluga_now/domain/partners/account_profile_external_link.dart';
 import 'package:belluga_now/domain/partners/profile_type_capabilities.dart';
 import 'package:belluga_now/domain/partners/profile_type_registry.dart';
@@ -150,7 +151,7 @@ class AccountProfileDetailController implements Disposable {
   bool get isAuthorized => _authRepository?.isAuthorized ?? false;
 
   Future<void> loadResolvedAccountProfile(
-    AccountProfileModel accountProfile,
+    AccountProfileComplete accountProfile,
   ) async {
     if (_detailStateStreamValue.value.accountProfile?.id != accountProfile.id) {
       _releaseRetainedNestedGroupMembersPaths();
@@ -243,8 +244,9 @@ class AccountProfileDetailController implements Disposable {
     );
   }
 
-  StreamValue<List<AccountProfileNestedGroupMember>>
-  nestedGroupMembersStreamValue(AccountProfileNestedGroup group) {
+  StreamValue<List<AccountProfileSummary>> nestedGroupMembersStreamValue(
+    AccountProfileNestedGroup group,
+  ) {
     return _accountProfilesRepository.nestedGroupMembersStreamValue(
       AccountProfilesRepositoryContractPrimString.fromRaw(
         group.membersPath?.trim() ?? '',
@@ -345,20 +347,20 @@ class AccountProfileDetailController implements Disposable {
         .value;
   }
 
-  bool isFavoritable(AccountProfileModel accountProfile) {
+  bool isFavoritable(AccountProfileComplete accountProfile) {
     final registry = _resolveRegistry();
     if (registry == null || registry.isEmpty) return false;
     return registry.isFavoritableFor(ProfileTypeKeyValue(accountProfile.type));
   }
 
-  bool canUseAsReferencePoint(AccountProfileModel accountProfile) {
+  bool canUseAsReferencePoint(AccountProfileComplete accountProfile) {
     return AccountProfileReferencePointResolver.canUseAccountProfile(
       accountProfile,
       capabilities: _capabilitiesFor(accountProfile),
     );
   }
 
-  bool isCurrentReferencePoint(AccountProfileModel accountProfile) {
+  bool isCurrentReferencePoint(AccountProfileComplete accountProfile) {
     return AccountProfileReferencePointResolver.matchesAccountProfile(
       _proximityPreferencesRepository
           ?.proximityPreference
@@ -368,7 +370,9 @@ class AccountProfileDetailController implements Disposable {
     );
   }
 
-  Future<bool> setAsReferencePoint(AccountProfileModel accountProfile) async {
+  Future<bool> setAsReferencePoint(
+    AccountProfileComplete accountProfile,
+  ) async {
     final repository = _proximityPreferencesRepository;
     if (repository == null || !canUseAsReferencePoint(accountProfile)) {
       return false;
@@ -394,7 +398,7 @@ class AccountProfileDetailController implements Disposable {
   }
 
   ResolvedAccountProfileVisual resolvedVisualFor(
-    AccountProfileModel accountProfile,
+    AccountProfileComplete accountProfile,
   ) {
     return AccountProfileVisualResolver.resolve(
       accountProfile: accountProfile,
@@ -402,16 +406,27 @@ class AccountProfileDetailController implements Disposable {
     );
   }
 
-  String typeLabelFor(AccountProfileModel accountProfile) {
+  ResolvedAccountProfileVisual resolvedVisualForSummary(
+    AccountProfileSummary accountProfile,
+  ) {
+    return AccountProfileVisualResolver.resolvePreview(
+      profileType: accountProfile.normalizedProfileType,
+      avatarUrl: accountProfile.avatarUrl,
+      coverUrl: accountProfile.coverUrl,
+      registry: _resolveRegistry(),
+    );
+  }
+
+  String typeLabelFor(AccountProfileComplete accountProfile) {
     return resolvedVisualFor(accountProfile).typeLabel;
   }
 
-  bool hasContactChannels(AccountProfileModel accountProfile) {
+  bool hasContactChannels(AccountProfileComplete accountProfile) {
     return _capabilitiesFor(accountProfile)?.hasContactChannels ?? false;
   }
 
   List<AccountProfileExternalLink> availableExternalLinksFor(
-    AccountProfileModel accountProfile,
+    AccountProfileComplete accountProfile,
   ) {
     if (_capabilitiesFor(accountProfile)?.hasExternalLinks != true) {
       return const <AccountProfileExternalLink>[];
@@ -420,7 +435,7 @@ class AccountProfileDetailController implements Disposable {
   }
 
   List<BellugaContactChannel> availableContactChannelsFor(
-    AccountProfileModel accountProfile,
+    AccountProfileComplete accountProfile,
   ) {
     if (!hasContactChannels(accountProfile)) {
       return const <BellugaContactChannel>[];
@@ -430,12 +445,12 @@ class AccountProfileDetailController implements Disposable {
         .toList(growable: false);
   }
 
-  bool shouldRenderContactTab(AccountProfileModel accountProfile) {
+  bool shouldRenderContactTab(AccountProfileComplete accountProfile) {
     return availableContactChannelsFor(accountProfile).isNotEmpty;
   }
 
   BellugaContactChannel? resolvedBubbleChannelFor(
-    AccountProfileModel accountProfile,
+    AccountProfileComplete accountProfile,
   ) {
     final channel = accountProfile.effectiveContactBubbleChannel;
     if (channel == null ||
@@ -456,7 +471,7 @@ class AccountProfileDetailController implements Disposable {
     );
   }
 
-  void trackContactBubbleImpression(AccountProfileModel accountProfile) {
+  void trackContactBubbleImpression(AccountProfileComplete accountProfile) {
     final channel = resolvedBubbleChannelFor(accountProfile);
     if (channel == null) {
       return;
@@ -474,7 +489,7 @@ class AccountProfileDetailController implements Disposable {
     );
   }
 
-  void trackContactBubbleTap(AccountProfileModel accountProfile) {
+  void trackContactBubbleTap(AccountProfileComplete accountProfile) {
     final channel = resolvedBubbleChannelFor(accountProfile);
     if (channel == null) {
       return;
@@ -489,7 +504,7 @@ class AccountProfileDetailController implements Disposable {
   }
 
   void trackContactChooserOpen(
-    AccountProfileModel accountProfile, {
+    AccountProfileComplete accountProfile, {
     required BellugaContactChannel channel,
     required String origin,
   }) {
@@ -503,7 +518,7 @@ class AccountProfileDetailController implements Disposable {
   }
 
   void trackContactCtaTap(
-    AccountProfileModel accountProfile, {
+    AccountProfileComplete accountProfile, {
     required BellugaContactChannel channel,
     required BellugaContactInitialMessage initialMessage,
     required String origin,
@@ -519,7 +534,7 @@ class AccountProfileDetailController implements Disposable {
   }
 
   void trackContactDirectClick(
-    AccountProfileModel accountProfile, {
+    AccountProfileComplete accountProfile, {
     required BellugaContactChannel channel,
     required String origin,
   }) {
@@ -540,7 +555,7 @@ class AccountProfileDetailController implements Disposable {
   }
 
   ProfileTypeCapabilities? _capabilitiesFor(
-    AccountProfileModel accountProfile,
+    AccountProfileComplete accountProfile,
   ) {
     return _resolveRegistry()?.capabilitiesFor(
       ProfileTypeKeyValue(accountProfile.type),
@@ -600,21 +615,21 @@ class AccountProfileDetailController implements Disposable {
   }
 
   String? distanceLabelFor(
-    AccountProfileModel accountProfile,
+    AccountProfileComplete accountProfile,
     UpcomingOcurrenceResume event,
   ) {
     return _distanceLabelForVenueId(accountProfile, event.venueId);
   }
 
   String? distanceLabelForLiveOccurrence(
-    AccountProfileModel accountProfile,
+    AccountProfileComplete accountProfile,
     PartnerEventView event,
   ) {
     return _distanceLabelForVenueId(accountProfile, event.venueId);
   }
 
   String? _distanceLabelForVenueId(
-    AccountProfileModel accountProfile,
+    AccountProfileComplete accountProfile,
     String? venueId,
   ) {
     final distanceMeters = accountProfile.distanceMeters;
@@ -630,7 +645,7 @@ class AccountProfileDetailController implements Disposable {
   }
 
   Future<Map<ProfileModuleId, Object?>> _buildModuleData(
-    AccountProfileModel accountProfile, {
+    AccountProfileComplete accountProfile, {
     ProfileTypeCapabilities? capabilities,
   }) async {
     final modules = <ProfileModuleId, Object?>{};
@@ -677,7 +692,7 @@ class AccountProfileDetailController implements Disposable {
   }
 
   List<AccountProfileRichTextBlock> _buildRichTextModuleData(
-    AccountProfileModel accountProfile, {
+    AccountProfileComplete accountProfile, {
     ProfileTypeCapabilities? capabilities,
   }) {
     final canRenderBio = capabilities?.hasBio ?? true;
@@ -689,13 +704,11 @@ class AccountProfileDetailController implements Disposable {
       return const <AccountProfileRichTextBlock>[];
     }
 
-    return [
-      AccountProfileRichTextBlock(html: canonicalBio),
-    ];
+    return [AccountProfileRichTextBlock(html: canonicalBio)];
   }
 
   PartnerLocationView? _buildLocationModuleData(
-    AccountProfileModel accountProfile,
+    AccountProfileComplete accountProfile,
   ) {
     final lat = accountProfile.locationLat;
     final lng = accountProfile.locationLng;
@@ -719,13 +732,13 @@ class AccountProfileDetailController implements Disposable {
   }
 
   AccountProfileAgendaPresentation _buildAgendaModuleData(
-    AccountProfileModel accountProfile,
+    AccountProfileComplete accountProfile,
   ) {
     return buildAgendaPresentation(accountProfile, accountProfile.agendaEvents);
   }
 
   AccountProfileAgendaPresentation buildAgendaPresentation(
-    AccountProfileModel accountProfile,
+    AccountProfileComplete accountProfile,
     List<PartnerEventView> events, {
     DateTime? now,
   }) {
@@ -774,7 +787,7 @@ class AccountProfileDetailController implements Disposable {
   void _logContactTelemetry(
     EventTrackerEvents event, {
     required String eventName,
-    required AccountProfileModel accountProfile,
+    required AccountProfileComplete accountProfile,
     required BellugaContactChannel channel,
     required String origin,
     BellugaContactInitialMessage? cta,

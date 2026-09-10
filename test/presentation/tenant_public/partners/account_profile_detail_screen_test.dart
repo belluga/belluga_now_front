@@ -13,13 +13,15 @@ import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/partners/account_profile_gallery_item.dart';
 import 'package:belluga_now/infrastructure/dal/decoders/account_profile_external_link_decoder.dart';
-import 'package:belluga_now/domain/partners/account_profile_model.dart';
+import 'package:belluga_now/domain/partners/account_profile_complete.dart';
 import 'package:belluga_now/domain/partners/account_profile_nested_group.dart';
+import 'package:belluga_now/domain/partners/account_profile_summary.dart';
 import 'package:belluga_now/domain/partners/account_profile_nested_group_member_page.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_module_data.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_fields.dart';
-import 'package:belluga_now/domain/partners/value_objects/account_profile_nested_group_member_text_value.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_text_value.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_public_detail_path_value.dart';
 import 'package:belluga_now/domain/proximity_preferences/proximity_preference.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
@@ -146,7 +148,7 @@ void main() {
     await tester.pumpWidget(
       _buildAutoRouteTestApp(
         child: AccountProfileDetailScreen(
-          accountProfile: buildAccountProfileModelFromPrimitives(
+          accountProfile: buildAccountProfileCompleteFromPrimitives(
             id: '507f1f77bcf86cd799439011',
             name: 'Cafe de la Musique',
             slug: 'cafe-de-la-musique',
@@ -314,7 +316,7 @@ void main() {
         _buildRoutedTestApp(
           router: _RecordingStackRouter(),
           child: AccountProfileDetailScreen(
-            accountProfile: buildAccountProfileModelFromPrimitives(
+            accountProfile: buildAccountProfileCompleteFromPrimitives(
               id: '507f1f77bcf86cd799439015',
               name: 'Ananda Torres',
               slug: 'ananda-torres',
@@ -362,7 +364,7 @@ void main() {
       _buildRoutedTestApp(
         router: _RecordingStackRouter(),
         child: AccountProfileDetailScreen(
-          accountProfile: buildAccountProfileModelFromPrimitives(
+          accountProfile: buildAccountProfileCompleteFromPrimitives(
             id: '507f1f77bcf86cd799439115',
             name: 'QA Discovery Tag Longa',
             slug: 'qa-discovery-tag-longa',
@@ -1133,7 +1135,7 @@ void main() {
           ),
         ],
       );
-      final profile = buildAccountProfileModelFromPrimitives(
+      final profile = buildAccountProfileCompleteFromPrimitives(
         id: '507f1f77bcf86cd799439099',
         name: 'Ananda',
         slug: 'ananda',
@@ -1180,7 +1182,7 @@ void main() {
         _buildRoutedTestApp(
           router: _RecordingStackRouter(),
           child: AccountProfileDetailScreen(
-            accountProfile: buildAccountProfileModelFromPrimitives(
+            accountProfile: buildAccountProfileCompleteFromPrimitives(
               id: '507f1f77bcf86cd799439016',
               name: 'Casa Marracini',
               slug: 'casa-marracini',
@@ -2090,10 +2092,9 @@ void main() {
           '/api/v1/account_profiles/ponta-da-fruta/nested_groups/parceiros/members';
       final lazyMembers = _buildNestedAccountProfileGroup().profiles;
       final repository = _FakeAccountProfilesRepository(
-        nestedGroupMembersByPath:
-            <String, List<AccountProfileNestedGroupMember>>{
-              membersPath: lazyMembers,
-            },
+        nestedGroupMembersByPath: <String, List<AccountProfileSummary>>{
+          membersPath: lazyMembers,
+        },
       );
       final controller = AccountProfileDetailController(
         accountProfilesRepository: repository,
@@ -2110,7 +2111,7 @@ void main() {
         memberCountValue: AccountProfileNestedGroupMemberCountValue(
           lazyMembers.length,
         ),
-        profiles: const <AccountProfileNestedGroupMember>[],
+        profiles: const <AccountProfileSummary>[],
       );
 
       await tester.pumpWidget(
@@ -2151,10 +2152,9 @@ void main() {
           '/api/v1/account_profiles/ponta-da-fruta/nested_groups/parceiros/members';
       final lazyMembers = _buildNestedAccountProfileGroup().profiles;
       final repository = _FakeAccountProfilesRepository(
-        nestedGroupMembersByPath:
-            <String, List<AccountProfileNestedGroupMember>>{
-              membersPath: lazyMembers,
-            },
+        nestedGroupMembersByPath: <String, List<AccountProfileSummary>>{
+          membersPath: lazyMembers,
+        },
         nestedGroupHasMore: true,
       );
       GetIt.I.registerFactory<AccountProfileDetailController>(
@@ -2170,7 +2170,7 @@ void main() {
           membersPath,
         ),
         memberCountValue: AccountProfileNestedGroupMemberCountValue(21),
-        profiles: const <AccountProfileNestedGroupMember>[],
+        profiles: const <AccountProfileSummary>[],
       );
 
       await tester.pumpWidget(
@@ -2304,8 +2304,8 @@ void main() {
     (tester) async {
       const membersPath =
           '/api/v1/account_profiles/ponta-da-fruta/nested_groups/parceiros/members';
-      final nonNavigableMember = AccountProfileNestedGroupMember(
-        idValue: MongoIDValue()..parse('507f1f77bcf86cd799439082'),
+      final nonNavigableMember = AccountProfileSummary(
+        idValue: AccountProfileTextValue('507f1f77bcf86cd799439082'),
         nameValue: AccountProfileNameValue()..parse('Parceiro Sem Link'),
         profileTypeValue: AccountProfileTypeValue('guest_public'),
         canOpenPublicDetailValue: DomainBooleanValue(
@@ -2315,10 +2315,9 @@ void main() {
         tagValues: [AccountProfileTagValue('Convidado')],
       );
       final repository = _FakeAccountProfilesRepository(
-        nestedGroupMembersByPath:
-            <String, List<AccountProfileNestedGroupMember>>{
-              membersPath: [nonNavigableMember],
-            },
+        nestedGroupMembersByPath: <String, List<AccountProfileSummary>>{
+          membersPath: [nonNavigableMember],
+        },
       );
       final controller = AccountProfileDetailController(
         accountProfilesRepository: repository,
@@ -3115,7 +3114,6 @@ void main() {
     expect(find.textContaining('<strong>'), findsNothing);
   });
 
-
   testWidgets('projects legacy plain text newlines to canonical html once', (
     tester,
   ) async {
@@ -3546,7 +3544,7 @@ class _LoadingAccountProfileDetailController
 
   @override
   Future<void> loadResolvedAccountProfile(
-    AccountProfileModel accountProfile,
+    AccountProfileComplete accountProfile,
   ) async {}
 }
 
@@ -3558,7 +3556,7 @@ class _EmptyAccountProfileDetailController
 
   @override
   Future<void> loadResolvedAccountProfile(
-    AccountProfileModel accountProfile,
+    AccountProfileComplete accountProfile,
   ) async {
     detailStateStreamValue.addValue(AccountProfileDetailState.empty);
     profileConfigStreamValue.addValue(null);
@@ -3573,7 +3571,7 @@ class _ErrorAccountProfileDetailController
 
   @override
   Future<void> loadResolvedAccountProfile(
-    AccountProfileModel accountProfile,
+    AccountProfileComplete accountProfile,
   ) async {
     errorMessageStreamValue.addValue('Falha ao preparar o perfil');
   }
@@ -3591,7 +3589,9 @@ class _TrackingAccountProfileDetailController
   bool disposed = false;
 
   @override
-  Future<void> loadResolvedAccountProfile(AccountProfileModel accountProfile) {
+  Future<void> loadResolvedAccountProfile(
+    AccountProfileComplete accountProfile,
+  ) {
     loadedSlugs.add(accountProfile.slug);
     return super.loadResolvedAccountProfile(accountProfile);
   }
@@ -3675,16 +3675,15 @@ class _FakeAuthRepository extends AuthRepositoryContract {
 class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
   _FakeAccountProfilesRepository({
     Set<String> initialFavoriteIds = const <String>{},
-    List<AccountProfileModel> profiles = const <AccountProfileModel>[],
-    Map<String, List<AccountProfileNestedGroupMember>>
-        nestedGroupMembersByPath =
-        const <String, List<AccountProfileNestedGroupMember>>{},
+    List<AccountProfileComplete> profiles = const <AccountProfileComplete>[],
+    Map<String, List<AccountProfileSummary>> nestedGroupMembersByPath =
+        const <String, List<AccountProfileSummary>>{},
     this.nestedGroupHasMore = false,
   }) : _favoriteIds = Set<String>.from(initialFavoriteIds),
-       _profiles = List<AccountProfileModel>.from(profiles),
+       _profiles = List<AccountProfileComplete>.from(profiles),
        _nestedGroupMembersByPath =
            (nestedGroupMembersByPath.isEmpty
-                   ? <String, List<AccountProfileNestedGroupMember>>{
+                   ? <String, List<AccountProfileSummary>>{
                        _nestedPartnersMembersPath:
                            _buildNestedAccountProfileGroup().profiles,
                        _nestedSecondaryMembersPath:
@@ -3692,10 +3691,8 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
                      }
                    : nestedGroupMembersByPath)
                .map(
-                 (key, value) => MapEntry(
-                   key,
-                   List<AccountProfileNestedGroupMember>.from(value),
-                 ),
+                 (key, value) =>
+                     MapEntry(key, List<AccountProfileSummary>.from(value)),
                ) {
     favoriteAccountProfileIdsStreamValue.addValue(
       _favoriteIds
@@ -3705,9 +3702,8 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
   }
 
   final Set<String> _favoriteIds;
-  final List<AccountProfileModel> _profiles;
-  final Map<String, List<AccountProfileNestedGroupMember>>
-  _nestedGroupMembersByPath;
+  final List<AccountProfileComplete> _profiles;
+  final Map<String, List<AccountProfileSummary>> _nestedGroupMembersByPath;
   final bool nestedGroupHasMore;
   String? lastNestedGroupMembersPath;
   String? lastNestedGroupMembersSearch;
@@ -3731,7 +3727,7 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
   }
 
   @override
-  Future<AccountProfileModel?> getAccountProfileBySlug(
+  Future<AccountProfileComplete?> getAccountProfileBySlug(
     AccountProfilesRepositoryContractPrimString slug,
   ) async {
     for (final profile in _profiles) {
@@ -3743,7 +3739,7 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
   }
 
   @override
-  Future<AccountProfileNestedGroupMemberPage> fetchNestedGroupMembersPageByPath(
+  Future<AccountProfileSummaryPage> fetchNestedGroupMembersPageByPath(
     AccountProfilesRepositoryContractPrimString membersPath, {
     AccountProfilesRepositoryContractPrimString? cursor,
     AccountProfilesRepositoryContractPrimString? search,
@@ -3751,22 +3747,22 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
     lastNestedGroupMembersPath = membersPath.value;
     lastNestedGroupMembersSearch = search?.value;
     if (cursor?.value.trim().isNotEmpty == true) {
-      return const AccountProfileNestedGroupMemberPage.empty();
+      return const AccountProfileSummaryPage.empty();
     }
 
     final items =
         _nestedGroupMembersByPath[membersPath.value] ??
-        const <AccountProfileNestedGroupMember>[];
-    return AccountProfileNestedGroupMemberPage(
+        const <AccountProfileSummary>[];
+    return AccountProfileSummaryPage(
       items: items,
       nextCursorValue: search == null && nestedGroupHasMore
-          ? AccountProfileNestedGroupMemberTextValue('next-page')
+          ? AccountProfileTextValue('next-page')
           : null,
     );
   }
 
   @override
-  Future<List<AccountProfileModel>> fetchNearbyAccountProfiles({
+  Future<List<AccountProfileComplete>> fetchNearbyAccountProfiles({
     AccountProfilesRepositoryContractPrimInt? pageSize,
     List<AccountProfilesRepositoryContractPrimString>? typeFilters,
     List<dynamic>? taxonomyFilters,
@@ -3799,7 +3795,7 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
   }
 
   @override
-  List<AccountProfileModel> getFavoriteAccountProfiles() => const [];
+  List<AccountProfileComplete> getFavoriteAccountProfiles() => const [];
 }
 
 class _FakeStaticAssetsRepository implements StaticAssetsRepositoryContract {
@@ -3809,8 +3805,8 @@ class _FakeStaticAssetsRepository implements StaticAssetsRepositoryContract {
   ) async => null;
 }
 
-AccountProfileModel _buildArtistProfile() {
-  return buildAccountProfileModelFromPrimitives(
+AccountProfileComplete _buildArtistProfile() {
+  return buildAccountProfileCompleteFromPrimitives(
     id: '507f1f77bcf86cd799439011',
     name: 'Cafe de la Musique',
     slug: 'cafe-de-la-musique',
@@ -3822,8 +3818,8 @@ AccountProfileModel _buildArtistProfile() {
   );
 }
 
-AccountProfileModel _buildArtistProfileWithManyTaxonomies() {
-  return buildAccountProfileModelFromPrimitives(
+AccountProfileComplete _buildArtistProfileWithManyTaxonomies() {
+  return buildAccountProfileCompleteFromPrimitives(
     id: '507f1f77bcf86cd799439011',
     name: 'Cafe de la Musique',
     slug: 'cafe-de-la-musique',
@@ -3841,8 +3837,8 @@ AccountProfileModel _buildArtistProfileWithManyTaxonomies() {
   );
 }
 
-AccountProfileModel _buildArtistLiveOnlyProfile() {
-  return buildAccountProfileModelFromPrimitives(
+AccountProfileComplete _buildArtistLiveOnlyProfile() {
+  return buildAccountProfileCompleteFromPrimitives(
     id: '507f1f77bcf86cd799439011',
     name: 'Cafe de la Musique',
     slug: 'cafe-de-la-musique',
@@ -3854,9 +3850,9 @@ AccountProfileModel _buildArtistLiveOnlyProfile() {
   );
 }
 
-AccountProfileModel _buildArtistRecurringOccurrenceProfile() {
+AccountProfileComplete _buildArtistRecurringOccurrenceProfile() {
   final now = DateTime.now().toUtc();
-  return buildAccountProfileModelFromPrimitives(
+  return buildAccountProfileCompleteFromPrimitives(
     id: '507f1f77bcf86cd799439011',
     name: 'Cafe de la Musique',
     slug: 'cafe-de-la-musique',
@@ -3898,10 +3894,10 @@ AccountProfileModel _buildArtistRecurringOccurrenceProfile() {
   );
 }
 
-AccountProfileModel _buildArtistWithTwoUpcomingDates() {
+AccountProfileComplete _buildArtistWithTwoUpcomingDates() {
   final firstDate = DateTime.utc(2030, 5, 15, 18);
   final secondDate = DateTime.utc(2030, 5, 16, 18);
-  return buildAccountProfileModelFromPrimitives(
+  return buildAccountProfileCompleteFromPrimitives(
     id: '507f1f77bcf86cd799439011',
     name: 'Cafe de la Musique',
     slug: 'cafe-de-la-musique',
@@ -3939,8 +3935,8 @@ AccountProfileModel _buildArtistWithTwoUpcomingDates() {
   );
 }
 
-AccountProfileModel _buildRestaurantProfile() {
-  return buildAccountProfileModelFromPrimitives(
+AccountProfileComplete _buildRestaurantProfile() {
+  return buildAccountProfileCompleteFromPrimitives(
     id: '507f1f77bcf86cd799439012',
     name: 'Casa Marracini',
     slug: 'casa-marracini',
@@ -3953,7 +3949,7 @@ AccountProfileModel _buildRestaurantProfile() {
   );
 }
 
-FixedLocationReference _fixedReferenceFor(AccountProfileModel profile) {
+FixedLocationReference _fixedReferenceFor(AccountProfileComplete profile) {
   return FixedLocationReference(
     sourceKind: FixedLocationReferenceSourceKind.entityReference,
     coordinate: CityCoordinate(
@@ -3972,8 +3968,8 @@ FixedLocationReference _fixedReferenceFor(AccountProfileModel profile) {
   );
 }
 
-AccountProfileModel _buildRestaurantWithAgendaProfile() {
-  return buildAccountProfileModelFromPrimitives(
+AccountProfileComplete _buildRestaurantWithAgendaProfile() {
+  return buildAccountProfileCompleteFromPrimitives(
     id: '507f1f77bcf86cd799439015',
     name: 'Casa Marracini',
     slug: 'casa-marracini-agenda',
@@ -3986,8 +3982,8 @@ AccountProfileModel _buildRestaurantWithAgendaProfile() {
   );
 }
 
-AccountProfileModel _buildMinimalProfile() {
-  return buildAccountProfileModelFromPrimitives(
+AccountProfileComplete _buildMinimalProfile() {
+  return buildAccountProfileCompleteFromPrimitives(
     id: '507f1f77bcf86cd799439013',
     name: 'Perfil Sem Seções',
     slug: 'perfil-sem-secoes',
@@ -3995,8 +3991,8 @@ AccountProfileModel _buildMinimalProfile() {
   );
 }
 
-AccountProfileModel _buildVenueWithBioProfile() {
-  return buildAccountProfileModelFromPrimitives(
+AccountProfileComplete _buildVenueWithBioProfile() {
+  return buildAccountProfileCompleteFromPrimitives(
     id: '507f1f77bcf86cd799439014',
     name: 'Ponta da Fruta',
     slug: 'ponta-da-fruta',
@@ -4006,8 +4002,8 @@ AccountProfileModel _buildVenueWithBioProfile() {
   );
 }
 
-AccountProfileModel _buildVenueWithPlainTextBioProfile() {
-  return buildAccountProfileModelFromPrimitives(
+AccountProfileComplete _buildVenueWithPlainTextBioProfile() {
+  return buildAccountProfileCompleteFromPrimitives(
     id: '507f1f77bcf86cd799439026',
     name: 'Casa da Orla',
     slug: 'casa-da-orla',
@@ -4016,8 +4012,8 @@ AccountProfileModel _buildVenueWithPlainTextBioProfile() {
   );
 }
 
-AccountProfileModel _buildVenueFullProfile() {
-  return buildAccountProfileModelFromPrimitives(
+AccountProfileComplete _buildVenueFullProfile() {
+  return buildAccountProfileCompleteFromPrimitives(
     id: '507f1f77bcf86cd799439055',
     name: 'Ponta da Fruta',
     slug: 'ponta-da-fruta',
@@ -4044,8 +4040,8 @@ AccountProfileNestedGroup _buildNestedAccountProfileGroup() {
     ),
     memberCountValue: AccountProfileNestedGroupMemberCountValue(1),
     profiles: [
-      AccountProfileNestedGroupMember(
-        idValue: MongoIDValue()..parse('507f1f77bcf86cd799439081'),
+      AccountProfileSummary(
+        idValue: AccountProfileTextValue('507f1f77bcf86cd799439081'),
         nameValue: AccountProfileNameValue()..parse('Ananda Torres'),
         slugValue: SlugValue()..parse('ananda-torres'),
         profileTypeValue: AccountProfileTypeValue('artist'),
@@ -4053,7 +4049,7 @@ AccountProfileNestedGroup _buildNestedAccountProfileGroup() {
           defaultValue: false,
           isRequired: false,
         )..parse('true'),
-        publicDetailPathValue: AccountProfileNestedGroupMemberTextValue(
+        publicDetailPathValue: AccountProfilePublicDetailPathValue(
           '/parceiro/ananda-torres',
         ),
         tagValues: [AccountProfileTagValue('Música')],
@@ -4072,8 +4068,8 @@ AccountProfileNestedGroup _buildSecondaryNestedAccountProfileGroup() {
     ),
     memberCountValue: AccountProfileNestedGroupMemberCountValue(1),
     profiles: [
-      AccountProfileNestedGroupMember(
-        idValue: MongoIDValue()..parse('507f1f77bcf86cd799439082'),
+      AccountProfileSummary(
+        idValue: AccountProfileTextValue('507f1f77bcf86cd799439082'),
         nameValue: AccountProfileNameValue()..parse('Public Partner B'),
         slugValue: SlugValue()..parse('public-partner-b'),
         profileTypeValue: AccountProfileTypeValue('venue'),
@@ -4081,7 +4077,7 @@ AccountProfileNestedGroup _buildSecondaryNestedAccountProfileGroup() {
           defaultValue: false,
           isRequired: false,
         )..parse('true'),
-        publicDetailPathValue: AccountProfileNestedGroupMemberTextValue(
+        publicDetailPathValue: AccountProfilePublicDetailPathValue(
           '/parceiro/public-partner-b',
         ),
       ),
@@ -4124,7 +4120,7 @@ List<PartnerEventView> _buildArtistAgendaEvents() {
   ];
 }
 
-AccountProfileModel _buildArtistProfileWithContact({
+AccountProfileComplete _buildArtistProfileWithContact({
   bool withInitialMessages = false,
   bool withEmail = false,
   bool withAgenda = false,
@@ -4154,7 +4150,7 @@ AccountProfileModel _buildArtistProfileWithContact({
     whatsappChannel,
     if (withEmail) emailChannel,
   ];
-  return buildAccountProfileModelFromPrimitives(
+  return buildAccountProfileCompleteFromPrimitives(
     id: '507f1f77bcf86cd799439099',
     name: 'Cafe de la Musique',
     slug: 'cafe-de-la-musique',
@@ -4168,9 +4164,9 @@ AccountProfileModel _buildArtistProfileWithContact({
   );
 }
 
-AccountProfileModel _buildArtistProfileWithPaddedUpcomingOcurrence() {
+AccountProfileComplete _buildArtistProfileWithPaddedUpcomingOcurrence() {
   final now = DateTime.now().toUtc();
-  return buildAccountProfileModelFromPrimitives(
+  return buildAccountProfileCompleteFromPrimitives(
     id: '507f1f77bcf86cd799439011',
     name: 'Cafe de la Musique',
     slug: 'cafe-de-la-musique',
@@ -4231,8 +4227,8 @@ List<PartnerEventView> _buildRestaurantAgendaEvents() {
   ];
 }
 
-AccountProfileModel _buildArtistHostAwareProfile() {
-  return buildAccountProfileModelFromPrimitives(
+AccountProfileComplete _buildArtistHostAwareProfile() {
+  return buildAccountProfileCompleteFromPrimitives(
     id: '507f1f77bcf86cd799439099',
     name: 'Marco Aurélio',
     slug: 'marco-aurelio',
@@ -4258,9 +4254,9 @@ AccountProfileModel _buildArtistHostAwareProfile() {
   );
 }
 
-AccountProfileModel _buildProfileWithCrowdedLiveAgenda() {
+AccountProfileComplete _buildProfileWithCrowdedLiveAgenda() {
   final now = DateTime.now().toUtc();
-  return buildAccountProfileModelFromPrimitives(
+  return buildAccountProfileCompleteFromPrimitives(
     id: '507f1f77bcf86cd799439151',
     name: 'Casa do Som',
     slug: 'casa-do-som',
@@ -4442,8 +4438,8 @@ AccountProfileGalleryItem _buildGalleryItemWithOptionalPreviewVariants({
 }) {
   return AccountProfileGalleryItem(
     itemIdValue: AccountProfileNestedGroupIdValue(itemId),
-    titleValue: AccountProfileNestedGroupMemberTextValue(title),
-    descriptionValue: AccountProfileNestedGroupMemberTextValue(description),
+    titleValue: AccountProfileTextValue(title),
+    descriptionValue: AccountProfileTextValue(description),
     orderValue: AccountProfileNestedGroupOrderValue(0),
     imageUrlValue: _buildOptionalThumbUriValue(imageUrl),
     thumbUrlValue: _buildOptionalThumbUriValue(thumbUrl),

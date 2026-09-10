@@ -2,7 +2,7 @@ import 'package:auto_route/auto_route.dart';
 import 'package:belluga_gallery/belluga_gallery.dart';
 import 'package:belluga_now/domain/partners/profile_type_registry.dart';
 import 'package:belluga_now/domain/partners/account_profile_gallery_group.dart';
-import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
+import 'package:belluga_now/domain/partners/account_profile_summary.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/application/rich_text/safe_rich_html.dart';
 import 'package:belluga_now/application/router/support/route_instance_scope.dart';
@@ -24,6 +24,7 @@ class EventLocalSection extends StatelessWidget {
     required this.event,
     required this.profileTypeRegistry,
     this.onOpenMap,
+    this.onOpenVenueProfile,
     this.onOpenDestinationMap,
     this.onOpenDirectDirections,
     this.onOpenOtherDirections,
@@ -34,7 +35,8 @@ class EventLocalSection extends StatelessWidget {
   final EventModel event;
   final ProfileTypeRegistry? profileTypeRegistry;
   final VoidCallback? onOpenMap;
-  final ValueChanged<EventLinkedAccountProfile>? onOpenDestinationMap;
+  final VoidCallback? onOpenVenueProfile;
+  final ValueChanged<AccountProfileSummary>? onOpenDestinationMap;
   final Future<void> Function(
     DirectionsDirectProvider provider,
     DirectionsLaunchTarget target,
@@ -47,20 +49,20 @@ class EventLocalSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final venue = event.venue;
-    if (venue == null || venue.displayName.trim().isEmpty) {
+    if (venue == null || venue.name.trim().isEmpty) {
       return const SizedBox.shrink();
     }
 
     final resolvedVisual = AccountProfileVisualResolver.resolvePreview(
       registry: profileTypeRegistry,
       profileType: venue.normalizedProfileType,
-      avatarUrl: venue.logoImageUrl,
-      coverUrl: venue.heroImageUrl,
+      avatarUrl: venue.avatarUrl,
+      coverUrl: venue.coverUrl,
     );
     final showNavigation = venue.supportsPublicNavigation;
     final directionsTarget = _directionsTargetFromEvent(
       event,
-      destinationName: venue.displayName,
+      destinationName: venue.name,
     );
     final relatedDestinations = showNavigation
         ? _buildDestinations(event)
@@ -68,8 +70,8 @@ class EventLocalSection extends StatelessWidget {
     final firstGallery = _firstNonEmptyGallery(venue.galleryGroups);
     final venueBioHtml = SafeRichHtml.canonicalize(venue.bio?.trim() ?? '');
     final hasVenueBio = !SafeRichHtml.isEffectivelyEmpty(venueBioHtml);
-    final tags = venue.taxonomyLabels
-        .map((label) => label.value.trim())
+    final tags = venue.tags
+        .map((tag) => tag.value.trim())
         .where((label) => label.isNotEmpty)
         .toList(growable: false);
 
@@ -88,10 +90,11 @@ class EventLocalSection extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           _EventLocalHero(
-            venueName: venue.displayName,
-            coverUrl: venue.heroImageUrl,
+            venueName: venue.name,
+            coverUrl: venue.coverUrl,
             resolvedVisual: resolvedVisual,
             tags: tags,
+            onTap: onOpenVenueProfile,
           ),
           if (hasVenueBio) ...[
             const SizedBox(height: 20),
@@ -248,11 +251,7 @@ class EventLocalSection extends StatelessWidget {
         continue;
       }
       destinations.add(
-        _LocationDestination(
-          key: key,
-          title: profile.displayName,
-          profile: profile,
-        ),
+        _LocationDestination(key: key, title: profile.name, profile: profile),
       );
     }
 
@@ -289,12 +288,14 @@ class _EventLocalHero extends StatelessWidget {
     required this.coverUrl,
     required this.resolvedVisual,
     required this.tags,
+    this.onTap,
   });
 
   final String venueName;
   final String? coverUrl;
   final ResolvedAccountProfileVisual resolvedVisual;
   final List<String> tags;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -306,55 +307,66 @@ class _EventLocalHero extends StatelessWidget {
       tags: tags,
     );
 
-    if (hasCover) {
-      return Stack(
-        key: const Key('eventLocalHeroWithCover'),
-        clipBehavior: Clip.none,
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+    final hero = hasCover
+        ? Stack(
+            key: const Key('eventLocalHeroWithCover'),
+            clipBehavior: Clip.none,
             children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(28),
-                child: SizedBox(
-                  height: 184,
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      BellugaNetworkImage(
-                        coverUrl!,
-                        fit: BoxFit.cover,
-                        semanticLabel: venueName,
-                      ),
-                      DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [
-                              Colors.black.withValues(alpha: 0.08),
-                              Colors.black.withValues(alpha: 0.32),
-                            ],
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(28),
+                    child: SizedBox(
+                      height: 184,
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          BellugaNetworkImage(
+                            coverUrl!,
+                            fit: BoxFit.cover,
+                            semanticLabel: venueName,
                           ),
-                        ),
+                          DecoratedBox(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [
+                                  Colors.black.withValues(alpha: 0.08),
+                                  Colors.black.withValues(alpha: 0.32),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
-                ),
-              ),
-              Transform.translate(
-                offset: const Offset(0, -34),
-                child: identityCard,
+                  Transform.translate(
+                    offset: const Offset(0, -34),
+                    child: identityCard,
+                  ),
+                ],
               ),
             ],
-          ),
-        ],
-      );
+          )
+        : KeyedSubtree(
+            key: const Key('eventLocalHeroWithoutCover'),
+            child: identityCard,
+          );
+    if (onTap == null) {
+      return hero;
     }
-
-    return KeyedSubtree(
-      key: const Key('eventLocalHeroWithoutCover'),
-      child: identityCard,
+    return Semantics(
+      button: true,
+      label: 'Abrir perfil de $venueName',
+      child: InkWell(
+        key: const Key('eventLocalProfileLink'),
+        borderRadius: BorderRadius.circular(28),
+        onTap: onTap,
+        child: hero,
+      ),
     );
   }
 }
@@ -486,7 +498,7 @@ class _LocationDestination {
 
   final String key;
   final String title;
-  final EventLinkedAccountProfile? profile;
+  final AccountProfileSummary? profile;
 
   DirectionsLaunchTarget? get routeTarget {
     final locationProfile = profile;

@@ -1,7 +1,7 @@
-import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
+import 'package:belluga_now/domain/partners/account_profile_summary.dart';
 import 'package:belluga_now/domain/schedule/event_occurrence_option.dart';
 import 'package:belluga_now/domain/schedule/event_programming_item.dart';
-import 'package:belluga_now/domain/schedule/value_objects/event_linked_account_profile_text_value.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_text_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_occurrence_flag_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_programming_count_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_programming_time_value.dart';
@@ -57,10 +57,8 @@ void main() {
                   items: <EventProgrammingItem>[
                     EventProgrammingItem(
                       timeValue: EventProgrammingTimeValue('18:00'),
-                      titleValue: EventLinkedAccountProfileTextValue(
-                        'Faixa ativa',
-                      ),
-                      linkedAccountProfiles: <EventLinkedAccountProfile>[],
+                      titleValue: AccountProfileTextValue('Faixa ativa'),
+                      linkedAccountProfiles: <AccountProfileSummary>[],
                       locationProfile: null,
                     ),
                   ],
@@ -143,8 +141,8 @@ EventOccurrenceOption _buildOccurrence({
 }) {
   final endValue = DomainOptionalDateTimeValue()..parse(end?.toIso8601String());
   return EventOccurrenceOption(
-    occurrenceIdValue: EventLinkedAccountProfileTextValue(id),
-    occurrenceSlugValue: EventLinkedAccountProfileTextValue('$id-slug'),
+    occurrenceIdValue: AccountProfileTextValue(id),
+    occurrenceSlugValue: AccountProfileTextValue('$id-slug'),
     dateTimeStartValue: DateTimeValue(isRequired: true)
       ..parse(start.toIso8601String()),
     dateTimeEndValue: endValue,

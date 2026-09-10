@@ -3,9 +3,11 @@ import 'package:belluga_now/domain/favorite/projections/favorite_resume.dart';
 import 'package:belluga_now/domain/favorite/value_objects/favorite_event_occurrence_id_value.dart';
 import 'package:belluga_now/domain/favorite/value_objects/favorite_event_target_path_value.dart';
 import 'package:belluga_now/domain/favorite/value_objects/favorite_primary_flag_value.dart';
-import 'package:belluga_now/domain/favorite/value_objects/favorite_public_detail_path_value.dart';
 import 'package:belluga_now/domain/favorite/value_objects/favorite_target_type_value.dart';
-import 'package:belluga_now/domain/partners/value_objects/account_profile_type_value.dart';
+import 'package:belluga_now/domain/partners/account_profile_summary.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_fields.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_public_detail_path_value.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_text_value.dart';
 import 'package:belluga_now/domain/value_objects/asset_path_value.dart';
 import 'package:belluga_now/domain/value_objects/domain_boolean_value.dart';
 import 'package:belluga_now/domain/value_objects/domain_optional_date_time_value.dart';
@@ -24,6 +26,7 @@ FavoriteResume favoriteResumeFromRaw({
   ThumbUriValue? iconImageUriValue,
   Color? primaryColor,
   String? targetType,
+  String? targetId,
   String? profileType,
   ThumbUriValue? coverImageUriValue,
   bool canOpenPublicDetail = false,
@@ -34,6 +37,7 @@ FavoriteResume favoriteResumeFromRaw({
   String? liveNowEventOccurrenceId,
   DateTime? liveNowEventOccurrenceAt,
 }) {
+  final accountProfileTypeValue = _profileTypeValueOrNull(profileType);
   return FavoriteResume(
     titleValue: titleValue,
     slugValue: slugValue,
@@ -44,20 +48,35 @@ FavoriteResume favoriteResumeFromRaw({
     iconImageUriValue: iconImageUriValue,
     primaryColor: primaryColor,
     targetTypeValue: _targetTypeValueOrNull(targetType),
-    profileTypeValue: _profileTypeValueOrNull(profileType),
-    coverImageUriValue: coverImageUriValue,
-    canOpenPublicDetailValue: DomainBooleanValue(
-      defaultValue: canOpenPublicDetail,
-      isRequired: false,
-    )..parse(canOpenPublicDetail.toString()),
-    publicDetailPathValue: _publicDetailPathValueOrNull(publicDetailPath),
+    accountProfile:
+        targetType == 'account_profile' &&
+            targetId != null &&
+            accountProfileTypeValue != null
+        ? AccountProfileSummary(
+            idValue: AccountProfileTextValue(targetId),
+            nameValue: AccountProfileNameValue()..parse(titleValue.value),
+            slugValue: slugValue,
+            profileTypeValue: accountProfileTypeValue,
+            avatarValue: imageUriValue,
+            coverValue: coverImageUriValue,
+            canOpenPublicDetailValue: DomainBooleanValue(
+              defaultValue: canOpenPublicDetail,
+              isRequired: false,
+            )..parse(canOpenPublicDetail.toString()),
+            publicDetailPathValue: _publicDetailPathValueOrNull(
+              publicDetailPath,
+            ),
+          )
+        : null,
     eventTargetPathValue: _eventTargetPathValueOrNull(eventTargetPath),
     nextEventOccurrenceAtValue: _optionalDateTimeValue(nextEventOccurrenceAt),
     lastEventOccurrenceAtValue: _optionalDateTimeValue(lastEventOccurrenceAt),
-    liveNowEventOccurrenceIdValue:
-        _occurrenceIdValueOrNull(liveNowEventOccurrenceId),
-    liveNowEventOccurrenceAtValue:
-        _optionalDateTimeValue(liveNowEventOccurrenceAt),
+    liveNowEventOccurrenceIdValue: _occurrenceIdValueOrNull(
+      liveNowEventOccurrenceId,
+    ),
+    liveNowEventOccurrenceAtValue: _optionalDateTimeValue(
+      liveNowEventOccurrenceAt,
+    ),
   );
 }
 
@@ -85,12 +104,12 @@ FavoriteEventOccurrenceIdValue? _occurrenceIdValueOrNull(String? raw) {
   return FavoriteEventOccurrenceIdValue(normalized);
 }
 
-FavoritePublicDetailPathValue? _publicDetailPathValueOrNull(String? raw) {
+AccountProfilePublicDetailPathValue? _publicDetailPathValueOrNull(String? raw) {
   final normalized = raw?.trim();
   if (normalized == null || normalized.isEmpty) {
     return null;
   }
-  return FavoritePublicDetailPathValue(normalized);
+  return AccountProfilePublicDetailPathValue(normalized);
 }
 
 FavoriteEventTargetPathValue? _eventTargetPathValueOrNull(String? raw) {

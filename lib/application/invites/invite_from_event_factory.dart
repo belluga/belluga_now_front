@@ -11,7 +11,7 @@ import 'package:belluga_now/domain/invites/value_objects/invite_occurrence_id_va
 import 'package:belluga_now/domain/invites/value_objects/invite_tag_value.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/event_profile_group.dart';
-import 'package:belluga_now/domain/schedule/value_objects/event_linked_account_profile_text_value.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_text_value.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
@@ -41,7 +41,8 @@ final class InviteFromEventFactory {
       settingsDefaultImageValue: fallbackImageValue,
     ).toString();
     final locationLabel = event.location.value;
-    final hostName = (event.counterpartProfiles.isNotEmpty
+    final hostName =
+        (event.counterpartProfiles.isNotEmpty
             ? event.counterpartProfiles.first.displayName
             : null) ??
         event.venue?.displayName ??
@@ -53,8 +54,8 @@ final class InviteFromEventFactory {
     final parsedTags = tags.isEmpty
         ? <InviteTagValue>[InviteTagValue()..parse('belluga')]
         : tags
-            .map((tag) => InviteTagValue()..parse(tag.value))
-            .toList(growable: false);
+              .map((tag) => InviteTagValue()..parse(tag.value))
+              .toList(growable: false);
 
     return InviteModel(
       idValue: InviteIdValue()..parse(inviteId),
@@ -83,14 +84,14 @@ final class InviteFromEventFactory {
     );
   }
 
-  static EventLinkedAccountProfileTextValue? _venueAccountProfileIdValue(
+  static AccountProfileTextValue? _venueAccountProfileIdValue(
     EventModel event,
   ) {
     final venueId = event.venue?.id.trim();
     if (venueId == null || venueId.isEmpty) {
       return null;
     }
-    return EventLinkedAccountProfileTextValue(venueId);
+    return AccountProfileTextValue(venueId);
   }
 
   static String stripHtml(String raw) {

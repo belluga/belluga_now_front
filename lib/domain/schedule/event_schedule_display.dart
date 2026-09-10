@@ -2,10 +2,7 @@ import 'package:belluga_now/application/time/timezone_converter.dart';
 import 'package:value_object_pattern/domain/value_objects/date_time_value.dart';
 
 class EventScheduleDisplay {
-  EventScheduleDisplay({
-    required this.startValue,
-    this.endValue,
-  });
+  EventScheduleDisplay({required this.startValue, this.endValue});
 
   final DateTimeValue startValue;
   final DateTimeValue? endValue;

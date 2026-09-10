@@ -1,9 +1,9 @@
-import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
+import 'package:belluga_now/domain/partners/account_profile_summary.dart';
 import 'package:belluga_now/domain/schedule/event_occurrence_option.dart';
 import 'package:belluga_now/domain/schedule/event_programming_item.dart';
-import 'package:belluga_now/domain/schedule/value_objects/event_linked_account_profile_text_value.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_text_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_occurrence_values.dart';
-import 'package:belluga_now/domain/partners/value_objects/account_profile_type_value.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_fields.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/domain_optional_date_time_value.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/widgets/event_programming_section.dart';
@@ -81,7 +81,7 @@ void main() {
   testWidgets(
     'programming wraps every linked profile as a complete labeled passive chip',
     (tester) async {
-      final profiles = <EventLinkedAccountProfile>[
+      final profiles = <AccountProfileSummary>[
         _buildLinkedProfile(id: 'profile-1', name: 'Ananda Torres'),
         _buildLinkedProfile(id: 'profile-2', name: 'DJ Lua'),
         _buildLinkedProfile(id: 'profile-3', name: 'Coletivo Sol'),
@@ -446,8 +446,8 @@ EventOccurrenceOption _buildOccurrence({
 }) {
   final endValue = DomainOptionalDateTimeValue()..parse(end?.toIso8601String());
   return EventOccurrenceOption(
-    occurrenceIdValue: EventLinkedAccountProfileTextValue(id),
-    occurrenceSlugValue: EventLinkedAccountProfileTextValue('$id-slug'),
+    occurrenceIdValue: AccountProfileTextValue(id),
+    occurrenceSlugValue: AccountProfileTextValue('$id-slug'),
     dateTimeStartValue: DateTimeValue(isRequired: true)
       ..parse(start.toIso8601String()),
     dateTimeEndValue: endValue,
@@ -464,27 +464,25 @@ EventProgrammingItem _buildProgrammingItem({
   required String time,
   String? endTime,
   String? title,
-  List<EventLinkedAccountProfile> linkedProfiles = const [],
-  EventLinkedAccountProfile? locationProfile,
+  List<AccountProfileSummary> linkedProfiles = const [],
+  AccountProfileSummary? locationProfile,
 }) {
   return EventProgrammingItem(
     timeValue: EventProgrammingTimeValue(time),
     endTimeValue: endTime == null ? null : EventProgrammingTimeValue(endTime),
-    titleValue: title == null
-        ? null
-        : EventLinkedAccountProfileTextValue(title),
+    titleValue: title == null ? null : AccountProfileTextValue(title),
     linkedAccountProfiles: linkedProfiles,
     locationProfile: locationProfile,
   );
 }
 
-EventLinkedAccountProfile _buildLinkedProfile({
+AccountProfileSummary _buildLinkedProfile({
   required String id,
   required String name,
 }) {
-  return EventLinkedAccountProfile(
-    idValue: EventLinkedAccountProfileTextValue(id),
-    displayNameValue: EventLinkedAccountProfileTextValue(name),
+  return AccountProfileSummary(
+    idValue: AccountProfileTextValue(id),
+    nameValue: AccountProfileNameValue()..parse(name),
     profileTypeValue: AccountProfileTypeValue('artist'),
     slugValue: SlugValue()..parse(id),
   );

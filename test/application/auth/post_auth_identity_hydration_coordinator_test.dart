@@ -11,7 +11,7 @@ import 'package:belluga_now/domain/invites/invite_materialize_result.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/invites/invite_runtime_settings.dart';
 import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
-import 'package:belluga_now/domain/partners/account_profile_model.dart';
+import 'package:belluga_now/domain/partners/account_profile_complete.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
@@ -313,7 +313,7 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
   }
 
   @override
-  Future<List<AccountProfileModel>> fetchNearbyAccountProfiles({
+  Future<List<AccountProfileComplete>> fetchNearbyAccountProfiles({
     AccountProfilesRepositoryContractPrimInt? pageSize,
     List<AccountProfilesRepositoryContractPrimString>? typeFilters,
     List<AccountProfilesRepositoryTaxonomyFilter>? taxonomyFilters,
@@ -322,11 +322,11 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
   }
 
   @override
-  List<AccountProfileModel> getFavoriteAccountProfiles() =>
-      const <AccountProfileModel>[];
+  List<AccountProfileComplete> getFavoriteAccountProfiles() =>
+      const <AccountProfileComplete>[];
 
   @override
-  Future<AccountProfileModel?> getAccountProfileBySlug(
+  Future<AccountProfileComplete?> getAccountProfileBySlug(
     AccountProfilesRepositoryContractPrimString slug,
   ) async => null;
 

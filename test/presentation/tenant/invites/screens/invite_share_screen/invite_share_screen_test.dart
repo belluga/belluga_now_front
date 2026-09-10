@@ -24,14 +24,14 @@ import 'package:belluga_now/domain/invites/value_objects/inviteable_reason_value
 import 'package:belluga_now/domain/repositories/contacts_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/inviteables_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
-import 'package:belluga_now/domain/partners/value_objects/account_profile_type_value.dart';
-import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_fields.dart';
+import 'package:belluga_now/domain/partners/account_profile_summary.dart';
 import 'package:belluga_now/domain/schedule/event_profile_group.dart';
 import 'package:belluga_now/domain/schedule/friend_resume.dart';
 import 'package:belluga_now/domain/schedule/invite_status.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_summary.dart';
-import 'package:belluga_now/domain/schedule/value_objects/event_linked_account_profile_text_value.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_text_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_profile_group_order_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/sent_invite_summary_count_value.dart';
 import 'package:belluga_now/domain/user/value_objects/user_avatar_value.dart';
@@ -1530,8 +1530,8 @@ InviteModel _buildInviteWithShareContext() {
     linkedAccountProfiles: [duJorge, qaTag],
     profileGroups: [
       EventProfileGroup(
-        idValue: EventLinkedAccountProfileTextValue('group-bandas'),
-        labelValue: EventLinkedAccountProfileTextValue('Bandas'),
+        idValue: AccountProfileTextValue('group-bandas'),
+        labelValue: AccountProfileTextValue('Bandas'),
         orderValue: EventProfileGroupOrderValue()..parse('0'),
         profiles: [duJorge, qaTag],
       ),
@@ -1540,14 +1540,14 @@ InviteModel _buildInviteWithShareContext() {
   );
 }
 
-EventLinkedAccountProfile _buildLinkedAccountProfile({
+AccountProfileSummary _buildLinkedAccountProfile({
   required String id,
   required String displayName,
   required String profileType,
 }) {
-  return EventLinkedAccountProfile(
-    idValue: EventLinkedAccountProfileTextValue(id),
-    displayNameValue: EventLinkedAccountProfileTextValue(displayName),
+  return AccountProfileSummary(
+    idValue: AccountProfileTextValue(id),
+    nameValue: AccountProfileNameValue()..parse(displayName),
     profileTypeValue: AccountProfileTypeValue(profileType),
     slugValue: SlugValue()..parse(id),
   );

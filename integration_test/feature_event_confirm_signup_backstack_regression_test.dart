@@ -32,7 +32,7 @@ import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/event_occurrence_option.dart';
 import 'package:belluga_now/domain/schedule/event_type_model.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
-import 'package:belluga_now/domain/schedule/value_objects/event_linked_account_profile_text_value.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_text_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_is_confirmed_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_occurrence_values.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_total_confirmed_value.dart';
@@ -131,7 +131,8 @@ void main() {
       );
       getIt.registerSingleton<ScheduleRepositoryContract>(scheduleRepository);
       getIt.registerSingleton<UserEventsRepositoryContract>(
-          userEventsRepository);
+        userEventsRepository,
+      );
       getIt.registerSingleton<InvitesRepositoryContract>(invitesRepository);
       getIt.registerSingleton<UserLocationRepositoryContract>(
         _FakeUserLocationRepository(),
@@ -172,8 +173,9 @@ void main() {
         name: 'Stack Regression',
         email: 'stack-regression@belluga.test',
       );
-      app.appRouter
-          .replaceAll([ImmersiveEventDetailRoute(eventSlug: eventSlug)]);
+      app.appRouter.replaceAll([
+        ImmersiveEventDetailRoute(eventSlug: eventSlug),
+      ]);
       await _pumpFor(tester, const Duration(seconds: 2));
 
       await _dismissLocationGateIfNeeded(tester);
@@ -386,9 +388,7 @@ class _TestGeolocatorPlatform extends GeolocatorPlatform {
   }
 }
 
-AppData _buildAppData({
-  required String mainDomain,
-}) {
+AppData _buildAppData({required String mainDomain}) {
   final origin = _requireOriginUri(mainDomain);
   final remoteData = {
     'name': 'Tenant Test',
@@ -404,9 +404,7 @@ AppData _buildAppData({
     'main_color': '#009688',
     'main_domain': origin.toString(),
     'tenant_id': 'tenant-1',
-    'telemetry': const {
-      'trackers': [],
-    },
+    'telemetry': const {'trackers': []},
     'telemetry_context': const {'location_freshness_minutes': 5},
     'push': const {
       'enabled': true,
@@ -448,12 +446,13 @@ class _FakeAppDataRepository extends AppDataRepositoryContract {
   _FakeAppDataRepository(this._appData);
 
   final AppData _appData;
-  final StreamValue<ThemeMode?> _themeModeStreamValue =
-      StreamValue<ThemeMode?>(defaultValue: ThemeMode.light);
+  final StreamValue<ThemeMode?> _themeModeStreamValue = StreamValue<ThemeMode?>(
+    defaultValue: ThemeMode.light,
+  );
   final StreamValue<DistanceInMetersValue> _maxRadiusMetersStreamValue =
       StreamValue<DistanceInMetersValue>(
-          defaultValue:
-              DistanceInMetersValue.fromRaw(1000, defaultValue: 1000));
+        defaultValue: DistanceInMetersValue.fromRaw(1000, defaultValue: 1000),
+      );
 
   @override
   AppData get appData => _appData;
@@ -496,20 +495,18 @@ class _FakeAppDataRepository extends AppDataRepositoryContract {
 
 class _FakeScheduleRepository extends IntegrationTestScheduleRepositoryFake {
   _FakeScheduleRepository({required EventModel event})
-      : super(
-          seededEvents: <EventModel>[event],
-          slugResolver: ({
-            required List<EventModel> seededEvents,
-            required String slug,
-          }) {
-            for (final candidate in seededEvents) {
-              if (candidate.slugValue.value == slug) {
-                return candidate;
+    : super(
+        seededEvents: <EventModel>[event],
+        slugResolver:
+            ({required List<EventModel> seededEvents, required String slug}) {
+              for (final candidate in seededEvents) {
+                if (candidate.slugValue.value == slug) {
+                  return candidate;
+                }
               }
-            }
-            return null;
-          },
-        );
+              return null;
+            },
+      );
 }
 
 class _FakeTenantRepository extends TenantRepositoryContract {
@@ -586,10 +583,10 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
 
   @override
   final StreamValue<Set<UserEventsRepositoryContractPrimString>>
-      confirmedOccurrenceIdsStream =
+  confirmedOccurrenceIdsStream =
       StreamValue<Set<UserEventsRepositoryContractPrimString>>(
-    defaultValue: const <UserEventsRepositoryContractPrimString>{},
-  );
+        defaultValue: const <UserEventsRepositoryContractPrimString>{},
+      );
 
   final Set<String> _confirmedIds = <String>{};
   int confirmCalls = 0;
@@ -604,11 +601,8 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
     confirmedOccurrenceIdsStream.addValue(
       _confirmedIds
           .map(
-            (value) => userEventsRepoString(
-              value,
-              defaultValue: '',
-              isRequired: true,
-            ),
+            (value) =>
+                userEventsRepoString(value, defaultValue: '', isRequired: true),
           )
           .toSet(),
     );
@@ -623,23 +617,19 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
   @override
   UserEventsRepositoryContractPrimBool isOccurrenceConfirmed(
     UserEventsRepositoryContractPrimString occurrenceId,
-  ) =>
-      userEventsRepoBool(
-        _confirmedIds.contains(occurrenceId.value),
-        defaultValue: false,
-        isRequired: true,
-      );
+  ) => userEventsRepoBool(
+    _confirmedIds.contains(occurrenceId.value),
+    defaultValue: false,
+    isRequired: true,
+  );
 
   @override
   Future<void> refreshConfirmedOccurrenceIds() async {
     confirmedOccurrenceIdsStream.addValue(
       _confirmedIds
           .map(
-            (value) => userEventsRepoString(
-              value,
-              defaultValue: '',
-              isRequired: true,
-            ),
+            (value) =>
+                userEventsRepoString(value, defaultValue: '', isRequired: true),
           )
           .toSet(),
     );
@@ -654,11 +644,8 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
     confirmedOccurrenceIdsStream.addValue(
       _confirmedIds
           .map(
-            (value) => userEventsRepoString(
-              value,
-              defaultValue: '',
-              isRequired: true,
-            ),
+            (value) =>
+                userEventsRepoString(value, defaultValue: '', isRequired: true),
           )
           .toSet(),
     );
@@ -668,7 +655,8 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
 class _FakeInvitesRepository extends InvitesRepositoryContract {
   @override
   Future<InviteAcceptResult> acceptInvite(
-      InvitesRepositoryContractPrimString inviteId) async {
+    InvitesRepositoryContractPrimString inviteId,
+  ) async {
     return buildInviteAcceptResult(
       inviteId: inviteId.value,
       status: 'accepted',
@@ -708,7 +696,8 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
 
   @override
   Future<InviteDeclineResult> declineInvite(
-      InvitesRepositoryContractPrimString inviteId) async {
+    InvitesRepositoryContractPrimString inviteId,
+  ) async {
     return buildInviteDeclineResult(
       inviteId: inviteId.value,
       status: 'declined',
@@ -717,9 +706,10 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   }
 
   @override
-  Future<List<InviteModel>> fetchInvites(
-      {InvitesRepositoryContractPrimInt? page,
-      InvitesRepositoryContractPrimInt? pageSize}) async {
+  Future<List<InviteModel>> fetchInvites({
+    InvitesRepositoryContractPrimInt? page,
+    InvitesRepositoryContractPrimInt? pageSize,
+  }) async {
     return const <InviteModel>[];
   }
 
@@ -735,7 +725,8 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
 
   @override
   Future<List<SentInviteStatus>> getSentInvitesForOccurrence(
-      InvitesRepositoryContractPrimString eventId) async {
+    InvitesRepositoryContractPrimString eventId,
+  ) async {
     return const <SentInviteStatus>[];
   }
 
@@ -748,9 +739,11 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
 
   @override
   Future<void> sendInvites(
-      InvitesRepositoryContractPrimString eventId, InviteRecipients recipients,
-      {InvitesRepositoryContractPrimString? occurrenceId,
-      InvitesRepositoryContractPrimString? message}) async {}
+    InvitesRepositoryContractPrimString eventId,
+    InviteRecipients recipients, {
+    InvitesRepositoryContractPrimString? occurrenceId,
+    InvitesRepositoryContractPrimString? message,
+  }) async {}
 }
 
 class _MutableFakeAuthRepository extends AuthRepositoryContract<UserContract> {
@@ -764,8 +757,10 @@ class _MutableFakeAuthRepository extends AuthRepositoryContract<UserContract> {
   Future<void> autoLogin() async {}
 
   @override
-  Future<void> createNewPassword(AuthRepositoryContractParamString newPassword,
-      AuthRepositoryContractParamString confirmPassword) {
+  Future<void> createNewPassword(
+    AuthRepositoryContractParamString newPassword,
+    AuthRepositoryContractParamString confirmPassword,
+  ) {
     return Future<void>.value();
   }
 
@@ -785,8 +780,10 @@ class _MutableFakeAuthRepository extends AuthRepositoryContract<UserContract> {
   bool get isUserLoggedIn => _authorized;
 
   @override
-  Future<void> loginWithEmailPassword(AuthRepositoryContractParamString email,
-      AuthRepositoryContractParamString password) async {
+  Future<void> loginWithEmailPassword(
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString password,
+  ) async {
     _setAuthorized();
   }
 
@@ -799,12 +796,14 @@ class _MutableFakeAuthRepository extends AuthRepositoryContract<UserContract> {
 
   @override
   Future<void> sendPasswordResetEmail(
-      AuthRepositoryContractParamString email) async {}
+    AuthRepositoryContractParamString email,
+  ) async {}
 
   @override
   Future<void> sendTokenRecoveryPassword(
-      AuthRepositoryContractParamString email,
-      AuthRepositoryContractParamString codigoEnviado) async {}
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString codigoEnviado,
+  ) async {}
 
   @override
   void setUserToken(AuthRepositoryContractParamString? token) {
@@ -840,13 +839,10 @@ class _MutableFakeAuthRepository extends AuthRepositoryContract<UserContract> {
 
 class _FakeUser extends UserContract {
   _FakeUser({required String name, required String email})
-      : super(
-          uuidValue: MongoIDValue()..parse('507f1f77bcf86cd799439011'),
-          profile: UserProfileContract(
-            nameValue: null,
-            emailValue: null,
-          ),
-        );
+    : super(
+        uuidValue: MongoIDValue()..parse('507f1f77bcf86cd799439011'),
+        profile: UserProfileContract(nameValue: null, emailValue: null),
+      );
 }
 
 class _FakeUserLocationRepository implements UserLocationRepositoryContract {
@@ -873,7 +869,7 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
   @override
   @override
   final StreamValue<LocationResolutionPhase>
-      locationResolutionPhaseStreamValue = StreamValue<LocationResolutionPhase>(
+  locationResolutionPhaseStreamValue = StreamValue<LocationResolutionPhase>(
     defaultValue: LocationResolutionPhase.unknown,
   );
 
@@ -889,23 +885,18 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
   Future<bool> warmUpIfPermitted() async => false;
 
   @override
-  Future<bool> refreshIfPermitted({
-    Object? minInterval,
-  }) async =>
-      false;
+  Future<bool> refreshIfPermitted({Object? minInterval}) async => false;
 
   @override
   Future<String?> resolveUserLocation({
     Object? timeout,
     UserLocationRepositoryContractBoolValue? requestPermissionIfNeededValue,
-  }) async =>
-      null;
+  }) async => null;
 
   @override
   Future<bool> startTracking({
     LocationTrackingMode mode = LocationTrackingMode.mapForeground,
-  }) async =>
-      false;
+  }) async => false;
 
   @override
   Future<void> stopTracking() async {}
@@ -939,10 +930,8 @@ EventModel _buildEvent({required String slug}) {
     dateTimeEnd: null,
     occurrences: [
       EventOccurrenceOption(
-        occurrenceIdValue: EventLinkedAccountProfileTextValue(
-          '507f1f77bcf86cd799439012',
-        ),
-        occurrenceSlugValue: EventLinkedAccountProfileTextValue(
+        occurrenceIdValue: AccountProfileTextValue('507f1f77bcf86cd799439012'),
+        occurrenceSlugValue: AccountProfileTextValue(
           'evento-regressao-stack-2026-03-15',
         ),
         dateTimeStartValue: DateTimeValue(isRequired: true)

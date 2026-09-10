@@ -1,7 +1,6 @@
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
-import 'package:belluga_now/domain/partner/partner_resume.dart';
-import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
+import 'package:belluga_now/domain/partners/account_profile_summary.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/event_occurrence_option.dart';
 import 'package:belluga_now/domain/schedule/event_profile_group.dart';
@@ -29,13 +28,13 @@ EventModel eventModelFromRaw({
   required TitleValue title,
   required HTMLContentValue content,
   required DescriptionValue location,
-  PartnerResume? venue,
+  AccountProfileSummary? venue,
   required ThumbModel? thumb,
   required DateTimeValue dateTimeStart,
   required DateTimeValue? dateTimeEnd,
-  List<EventLinkedAccountProfile> linkedAccountProfiles = const [],
-  List<EventLinkedAccountProfile> counterpartPreviewProfiles =
-      const <EventLinkedAccountProfile>[],
+  List<AccountProfileSummary> linkedAccountProfiles = const [],
+  List<AccountProfileSummary> counterpartPreviewProfiles =
+      const <AccountProfileSummary>[],
   EventCounterpartCountValue? counterpartCountValue,
   List<EventProfileGroup> profileGroups = const [],
   List<EventOccurrenceOption> occurrences = const [],

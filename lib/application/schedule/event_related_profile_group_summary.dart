@@ -1,18 +1,18 @@
-import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
+import 'package:belluga_now/domain/partners/account_profile_summary.dart';
 
 class EventRelatedProfileGroupSummary {
   EventRelatedProfileGroupSummary({
     required String label,
-    required List<EventLinkedAccountProfile> profiles,
-  })  : label = label.trim(),
-        profiles = List<EventLinkedAccountProfile>.unmodifiable(profiles);
+    required List<AccountProfileSummary> profiles,
+  }) : label = label.trim(),
+       profiles = List<AccountProfileSummary>.unmodifiable(profiles);
 
   final String label;
-  final List<EventLinkedAccountProfile> profiles;
+  final List<AccountProfileSummary> profiles;
 
   List<String> get profileNames => List<String>.unmodifiable(
-        profiles
-            .map((profile) => profile.displayName.trim())
-            .where((name) => name.isNotEmpty),
-      );
+    profiles
+        .map((profile) => profile.displayName.trim())
+        .where((name) => name.isNotEmpty),
+  );
 }

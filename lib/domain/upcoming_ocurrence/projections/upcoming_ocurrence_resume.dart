@@ -1,11 +1,9 @@
 import 'package:belluga_now/domain/gamification/mission_resume.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_module_data.dart';
-import 'package:belluga_now/domain/partners/value_objects/account_profile_type_value.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/application/time/timezone_converter.dart';
-import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
-import 'package:belluga_now/domain/schedule/value_objects/event_linked_account_profile_text_value.dart';
+import 'package:belluga_now/domain/partners/account_profile_summary.dart';
 import 'package:belluga_now/domain/schedule/event_schedule_display.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_counterpart_count_value.dart';
 import 'package:belluga_now/domain/value_objects/description_value.dart';
@@ -59,7 +57,7 @@ class UpcomingOcurrenceResume {
   final EventOptionalTextValue selectedOccurrenceIdValue;
   final EventCounterpartCountValue? counterpartCountValue;
   final MongoIDValue? venueIdValue;
-  final List<EventLinkedAccountProfile> linkedAccountProfiles;
+  final List<AccountProfileSummary> linkedAccountProfiles;
   final List<EventTagValue> tagValues;
   final CityCoordinate? coordinate;
   final MissionResume? mission;
@@ -126,12 +124,11 @@ class UpcomingOcurrenceResume {
   }
 
   CityCoordinate? get coordinateValue => coordinate;
-  List<EventLinkedAccountProfile> get counterpartProfiles =>
-      List<EventLinkedAccountProfile>.unmodifiable(
+  List<AccountProfileSummary> get counterpartProfiles =>
+      List<AccountProfileSummary>.unmodifiable(
         linkedAccountProfiles.where((profile) {
-          final partyType = profile.partyType?.trim().toLowerCase();
           final profileType = profile.profileType.trim().toLowerCase();
-          return partyType != 'venue' && profileType != 'venue';
+          return profileType != 'venue';
         }),
       );
   UpcomingOcurrenceResumePrimInt get counterpartCount {
@@ -142,7 +139,7 @@ class UpcomingOcurrenceResume {
 
   UpcomingOcurrenceResumePrimBool get hasCounterparts =>
       counterpartProfiles.isNotEmpty;
-  EventLinkedAccountProfile? get primaryCounterpart =>
+  AccountProfileSummary? get primaryCounterpart =>
       hasCounterparts ? counterpartProfiles.first : null;
   List<EventTagValue> get tags => List<EventTagValue>.unmodifiable(tagValues);
   UpcomingOcurrenceResumePrimString get counterpartNamesLabel =>
@@ -276,7 +273,7 @@ class UpcomingOcurrenceResume {
     );
   }
 
-  static List<EventLinkedAccountProfile> _partnerCounterpartsToEventProfiles(
+  static List<AccountProfileSummary> _partnerCounterpartsToEventProfiles(
     PartnerEventView event, {
     required MongoIDValue viewedProfileId,
     required TitleValue viewedProfileName,
@@ -284,13 +281,13 @@ class UpcomingOcurrenceResume {
     final normalizedViewedId = viewedProfileId.value.trim();
     final normalizedViewedName = viewedProfileName.value.trim().toLowerCase();
     final normalizedVenueId = event.venueId?.trim();
-    final profiles = <EventLinkedAccountProfile>[];
+    final profiles = <AccountProfileSummary>[];
 
     for (final profile in event.counterpartProfiles) {
-      final profileId = profile.id?.trim() ?? '';
-      final profileName = profile.title.trim();
-      final normalizedProfileType = profile.profileType?.trim().toLowerCase();
-      final normalizedPartyType = profile.partyType?.trim().toLowerCase();
+      final profileId = profile.id.trim();
+      final profileName = profile.name.trim();
+      final profileType = profile.profileType.trim();
+      final normalizedProfileType = profileType.toLowerCase();
       final matchesViewedProfile =
           profileId == normalizedViewedId ||
           (profileId.isEmpty &&
@@ -298,34 +295,13 @@ class UpcomingOcurrenceResume {
       if (matchesViewedProfile ||
           (normalizedVenueId != null && profileId == normalizedVenueId) ||
           normalizedProfileType == 'venue' ||
-          normalizedPartyType == 'venue' ||
           profileName.isEmpty) {
         continue;
       }
 
-      final avatarUrl = profile.thumb?.trim();
-      profiles.add(
-        EventLinkedAccountProfile(
-          idValue: EventLinkedAccountProfileTextValue(
-            profileId.isEmpty ? 'name:$profileName' : profileId,
-          ),
-          displayNameValue: EventLinkedAccountProfileTextValue(profileName),
-          profileTypeValue: AccountProfileTypeValue(
-            profile.profileType?.trim() ?? 'profile',
-          ),
-          avatarUrlValue: avatarUrl == null || avatarUrl.isEmpty
-              ? null
-              : (ThumbUriValue(
-                  defaultValue: Uri.parse(avatarUrl),
-                  isRequired: true,
-                )..parse(avatarUrl)),
-          partyTypeValue: profile.partyType == null
-              ? null
-              : EventLinkedAccountProfileTextValue(profile.partyType!),
-        ),
-      );
+      profiles.add(profile);
     }
 
-    return List<EventLinkedAccountProfile>.unmodifiable(profiles);
+    return List<AccountProfileSummary>.unmodifiable(profiles);
   }
 }

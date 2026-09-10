@@ -1,4 +1,5 @@
 import 'package:belluga_now/domain/partners/projections/value_objects/partner_projection_text_values.dart';
+import 'package:belluga_now/domain/partners/account_profile_summary.dart';
 import 'package:belluga_now/application/time/timezone_converter.dart';
 import 'package:belluga_now/domain/schedule/event_schedule_display.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_counterpart_count_value.dart';
@@ -16,4 +17,3 @@ part 'partner_profile_module_data/partner_media_view.dart';
 part 'partner_profile_module_data/partner_product_view.dart';
 part 'partner_profile_module_data/partner_recommendation_view.dart';
 part 'partner_profile_module_data/partner_score_view.dart';
-part 'partner_profile_module_data/partner_supported_entity_view.dart';

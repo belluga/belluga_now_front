@@ -82,11 +82,9 @@ class FavoritesSectionController implements Disposable {
       return const FavoriteNavigationUnavailable();
     }
 
-    final publicDetailPath = favorite.publicDetailPath?.trim();
-    if (favorite.canOpenPublicDetail &&
-        publicDetailPath != null &&
-        publicDetailPath.isNotEmpty) {
-      return FavoriteNavigationPath(path: publicDetailPath);
+    final publicDetailUrl = favorite.publicDetailUrl;
+    if (publicDetailUrl != null) {
+      return FavoriteNavigationPath(path: publicDetailUrl);
     }
 
     return const FavoriteNavigationUnavailable();

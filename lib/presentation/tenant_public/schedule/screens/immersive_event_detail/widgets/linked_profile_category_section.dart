@@ -1,4 +1,4 @@
-import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
+import 'package:belluga_now/domain/partners/account_profile_summary.dart';
 import 'package:belluga_now/presentation/shared/visuals/account_profile_visual_resolver.dart';
 import 'package:belluga_now/presentation/shared/visuals/resolved_account_profile_visual.dart';
 import 'package:belluga_now/presentation/shared/widgets/account_profile_overlapping_identity_card.dart';
@@ -19,12 +19,12 @@ class LinkedProfileCategorySection extends StatelessWidget {
   });
 
   final String title;
-  final List<EventLinkedAccountProfile> profiles;
+  final List<AccountProfileSummary> profiles;
   final ProfileTypeRegistry? profileTypeRegistry;
   final Set<String> favoriteAccountProfileIds;
-  final bool Function(EventLinkedAccountProfile profile) isFavoritable;
-  final ValueChanged<EventLinkedAccountProfile> onProfileTap;
-  final ValueChanged<EventLinkedAccountProfile> onFavoriteTap;
+  final bool Function(AccountProfileSummary profile) isFavoritable;
+  final ValueChanged<AccountProfileSummary> onProfileTap;
+  final ValueChanged<AccountProfileSummary> onFavoriteTap;
   final Widget? footer;
 
   @override
@@ -55,7 +55,7 @@ class LinkedProfileCategorySection extends StatelessWidget {
                 ),
                 isFavorite: favoriteAccountProfileIds.contains(profile.id),
                 isFavoritable: isFavoritable(profile),
-                onTap: profile.canOpenPublicDetail
+                onTap: profile.publicDetailUrl != null
                     ? () => onProfileTap(profile)
                     : null,
                 onFavoriteTap: () => onFavoriteTap(profile),
@@ -80,7 +80,7 @@ class _LinkedProfileCard extends StatelessWidget {
     required this.onFavoriteTap,
   });
 
-  final EventLinkedAccountProfile profile;
+  final AccountProfileSummary profile;
   final ResolvedAccountProfileVisual resolvedVisual;
   final bool isFavorite;
   final bool isFavoritable;

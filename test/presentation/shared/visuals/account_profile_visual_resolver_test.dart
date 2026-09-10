@@ -7,31 +7,34 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('AccountProfileVisualResolver', () {
-    test('uses cover first for surface media and avatar first for compact media', () {
-      final appData = _buildAppData();
-      final profile = buildAccountProfileModelFromPrimitives(
-        id: '507f1f77bcf86cd799439011',
-        name: 'Casa Mangue',
-        slug: 'casa-mangue',
-        type: 'venue',
-        avatarUrl: 'https://tenant.test/avatar.png',
-        coverUrl: 'https://tenant.test/cover.png',
-      );
+    test(
+      'uses cover first for surface media and avatar first for compact media',
+      () {
+        final appData = _buildAppData();
+        final profile = buildAccountProfileCompleteFromPrimitives(
+          id: '507f1f77bcf86cd799439011',
+          name: 'Casa Mangue',
+          slug: 'casa-mangue',
+          type: 'venue',
+          avatarUrl: 'https://tenant.test/avatar.png',
+          coverUrl: 'https://tenant.test/cover.png',
+        );
 
-      final resolved = AccountProfileVisualResolver.resolve(
-        accountProfile: profile,
-        registry: appData.profileTypeRegistry,
-      );
+        final resolved = AccountProfileVisualResolver.resolve(
+          accountProfile: profile,
+          registry: appData.profileTypeRegistry,
+        );
 
-      expect(resolved.typeLabel, 'Venue');
-      expect(resolved.surfaceImageUrl, 'https://tenant.test/cover.png');
-      expect(resolved.compactImageUrl, 'https://tenant.test/avatar.png');
-      expect(resolved.identityAvatarUrl, 'https://tenant.test/avatar.png');
-    });
+        expect(resolved.typeLabel, 'Venue');
+        expect(resolved.surfaceImageUrl, 'https://tenant.test/cover.png');
+        expect(resolved.compactImageUrl, 'https://tenant.test/avatar.png');
+        expect(resolved.identityAvatarUrl, 'https://tenant.test/avatar.png');
+      },
+    );
 
     test('omits identity avatar when only cover exists', () {
       final appData = _buildAppData();
-      final profile = buildAccountProfileModelFromPrimitives(
+      final profile = buildAccountProfileCompleteFromPrimitives(
         id: '507f1f77bcf86cd799439012',
         name: 'Casa Mangue',
         slug: 'casa-mangue',
@@ -51,7 +54,7 @@ void main() {
 
     test('falls back to type-visual image when no avatar or cover exist', () {
       final appData = _buildAppData();
-      final profile = buildAccountProfileModelFromPrimitives(
+      final profile = buildAccountProfileCompleteFromPrimitives(
         id: '507f1f77bcf86cd799439013',
         name: 'Casa Mangue',
         slug: 'casa-mangue',
@@ -63,40 +66,36 @@ void main() {
         registry: appData.profileTypeRegistry,
       );
 
-      expect(
-        resolved.surfaceImageUrl,
-        'https://tenant.test/type-asset.png',
-      );
-      expect(
-        resolved.compactImageUrl,
-        'https://tenant.test/type-asset.png',
-      );
+      expect(resolved.surfaceImageUrl, 'https://tenant.test/type-asset.png');
+      expect(resolved.compactImageUrl, 'https://tenant.test/type-asset.png');
       expect(resolved.identityAvatarUrl, isNull);
       expect(resolved.themeSeedColor, isNull);
     });
 
-    test('uses type-visual color as theme seed when no image-backed source exists',
-        () {
-      final appData = _buildAppData();
-      final profile = buildAccountProfileModelFromPrimitives(
-        id: '507f1f77bcf86cd799439014',
-        name: 'Ananda Torres',
-        slug: 'ananda-torres',
-        type: 'artist',
-      );
+    test(
+      'uses type-visual color as theme seed when no image-backed source exists',
+      () {
+        final appData = _buildAppData();
+        final profile = buildAccountProfileCompleteFromPrimitives(
+          id: '507f1f77bcf86cd799439014',
+          name: 'Ananda Torres',
+          slug: 'ananda-torres',
+          type: 'artist',
+        );
 
-      final resolved = AccountProfileVisualResolver.resolve(
-        accountProfile: profile,
-        registry: appData.profileTypeRegistry,
-      );
+        final resolved = AccountProfileVisualResolver.resolve(
+          accountProfile: profile,
+          registry: appData.profileTypeRegistry,
+        );
 
-      expect(resolved.typeLabel, 'Artista');
-      expect(resolved.surfaceImageUrl, isNull);
-      expect(resolved.compactImageUrl, isNull);
-      expect(resolved.identityAvatarUrl, isNull);
-      expect(resolved.typeVisual, isNotNull);
-      expect(resolved.themeSeedColor, const Color(0xFF7E22CE));
-    });
+        expect(resolved.typeLabel, 'Artista');
+        expect(resolved.surfaceImageUrl, isNull);
+        expect(resolved.compactImageUrl, isNull);
+        expect(resolved.identityAvatarUrl, isNull);
+        expect(resolved.typeVisual, isNotNull);
+        expect(resolved.themeSeedColor, const Color(0xFF7E22CE));
+      },
+    );
   });
 }
 

@@ -1,15 +1,14 @@
 import 'dart:async';
 
 import 'package:belluga_now/application/invites/invite_from_event_factory.dart';
-import 'package:belluga_now/domain/partners/account_profile_nested_group_member.dart';
+import 'package:belluga_now/domain/partners/account_profile_summary.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
-import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/event_occurrence_option.dart';
 import 'package:belluga_now/domain/schedule/event_profile_group.dart';
 import 'package:belluga_now/application/schedule/event_related_profile_groups.dart';
 import 'package:belluga_now/application/schedule/event_related_profile_group_summary.dart';
-import 'package:belluga_now/domain/schedule/value_objects/event_linked_account_profile_text_value.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_text_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_profile_group_order_value.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
@@ -178,6 +177,8 @@ class _ImmersiveEventDetailScreenState
                                   )
                                 : null;
 
+                            final venuePublicDetailUrl =
+                                resolvedEvent.venue?.publicDetailUrl;
                             final tabs = <ImmersiveTabItem>[
                               if (_hasAboutContent(resolvedEvent))
                                 ImmersiveCommonTabs.about(
@@ -231,6 +232,12 @@ class _ImmersiveEventDetailScreenState
                                     event: resolvedEvent,
                                     profileTypeRegistry:
                                         _controller.profileTypeRegistry,
+                                    onOpenVenueProfile:
+                                        venuePublicDetailUrl == null
+                                        ? null
+                                        : () => context.router.pushPath(
+                                            venuePublicDetailUrl,
+                                          ),
                                     canOpenMap: _canOpenEventMap(resolvedEvent),
                                     onOpenMap: _canOpenEventMap(resolvedEvent)
                                         ? () => _openEventMap(resolvedEvent)
@@ -333,7 +340,7 @@ class _ImmersiveEventDetailScreenState
     if (venue == null) {
       return false;
     }
-    return venue.displayName.trim().isNotEmpty;
+    return venue.name.trim().isNotEmpty;
   }
 
   List<ImmersiveHeroAction> _buildHeroActions(EventModel event) {
@@ -571,7 +578,7 @@ class _ImmersiveEventDetailScreenState
 
   int? _linkedProfileTabIndexForHeroTap(
     EventModel event,
-    EventLinkedAccountProfile profile,
+    AccountProfileSummary profile,
   ) {
     final groups = _orderedVisibleCanonicalProfileGroups(event);
     final exactGroupOffset = groups.indexWhere(
@@ -774,7 +781,7 @@ class _ImmersiveEventDetailScreenState
     context.router.pushPath(path);
   }
 
-  void _openProgrammingLocationMap(EventLinkedAccountProfile profile) {
+  void _openProgrammingLocationMap(AccountProfileSummary profile) {
     final profileId = profile.id.trim();
     if (profileId.isEmpty) {
       return;
@@ -978,10 +985,8 @@ class _ImmersiveEventDetailScreenState
     return [
       for (var index = 0; index < groups.length; index += 1)
         EventProfileGroup(
-          idValue: EventLinkedAccountProfileTextValue(
-            'event-participants-$index',
-          ),
-          labelValue: EventLinkedAccountProfileTextValue(groups[index].label),
+          idValue: AccountProfileTextValue('event-participants-$index'),
+          labelValue: AccountProfileTextValue(groups[index].label),
           orderValue: EventProfileGroupOrderValue(index),
           memberCountValue: EventProfileGroupMemberCountValue(
             groups[index].profiles.length,
@@ -1007,7 +1012,7 @@ class _ImmersiveEventDetailScreenState
     }
   }
 
-  void _handleLinkedProfileFavoriteTap(EventLinkedAccountProfile profile) {
+  void _handleLinkedProfileFavoriteTap(AccountProfileSummary profile) {
     final accountProfileId = profile.id;
     final redirectPath = buildRedirectPathFromRouteMatch(
       context.routeData.route,
@@ -1026,14 +1031,10 @@ class _ImmersiveEventDetailScreenState
     );
   }
 
-  void _openLinkedProfile(EventLinkedAccountProfile profile) {
-    if (!profile.canOpenPublicDetail) {
-      return;
-    }
-
-    final publicDetailPath = profile.publicDetailPath?.trim();
-    if (publicDetailPath != null && publicDetailPath.isNotEmpty) {
-      context.router.pushPath(publicDetailPath);
+  void _openLinkedProfile(AccountProfileSummary profile) {
+    final publicDetailUrl = profile.publicDetailUrl;
+    if (publicDetailUrl != null) {
+      context.router.pushPath(publicDetailUrl);
     }
   }
 }
@@ -1113,15 +1114,12 @@ class _LazyEventRelatedProfileGroupContent extends StatelessWidget {
 
   final ImmersiveEventDetailController controller;
   final EventProfileGroup group;
-  final Widget Function(
-    List<EventLinkedAccountProfile> profiles,
-    Widget? footer,
-  )
+  final Widget Function(List<AccountProfileSummary> profiles, Widget? footer)
   itemBuilder;
 
   @override
   Widget build(BuildContext context) {
-    return StreamValueBuilder<List<AccountProfileNestedGroupMember>>(
+    return StreamValueBuilder<List<AccountProfileSummary>>(
       streamValue: controller.relatedProfileGroupMembersStreamValue(group),
       builder: (context, members) {
         return StreamValueBuilder<AccountProfilesRepositoryContractPrimBool>(
@@ -1185,11 +1183,6 @@ class _LazyEventRelatedProfileGroupContent extends StatelessWidget {
                       return _withSearch(const SizedBox.shrink());
                     }
 
-                    final profiles = members
-                        .map(
-                          controller.mapNestedGroupMemberToEventLinkedProfile,
-                        )
-                        .toList(growable: false);
                     final footer = hasMore || isLoading
                         ? NestedAccountsLoadMoreIndicator(
                             visibilityKey:
@@ -1201,7 +1194,7 @@ class _LazyEventRelatedProfileGroupContent extends StatelessWidget {
                           )
                         : null;
 
-                    return _withSearch(itemBuilder(profiles, footer));
+                    return _withSearch(itemBuilder(members, footer));
                   },
                 );
               },

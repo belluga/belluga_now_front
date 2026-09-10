@@ -8,11 +8,14 @@ import 'package:belluga_now/domain/favorite/paged_favorite_resumes_result.dart';
 import 'package:belluga_now/domain/favorite/projections/favorite_resume.dart';
 import 'package:belluga_now/domain/favorite/value_objects/favorite_event_target_path_value.dart';
 import 'package:belluga_now/domain/favorite/value_objects/favorite_event_occurrence_id_value.dart';
-import 'package:belluga_now/domain/favorite/value_objects/favorite_public_detail_path_value.dart';
 import 'package:belluga_now/domain/favorite/value_objects/favorite_target_type_value.dart';
 import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
 import 'package:belluga_now/domain/partners/profile_type_registry.dart';
 import 'package:belluga_now/domain/partners/profile_type_definitions.dart';
+import 'package:belluga_now/domain/partners/account_profile_summary.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_fields.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_public_detail_path_value.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_text_value.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/favorite_repository_contract.dart';
 import 'package:belluga_now/domain/tenant/value_objects/icon_url_value.dart';
@@ -86,9 +89,8 @@ PagedFavoriteResumesResult _pagedFavoriteResumesResultFromRaw({
 }) {
   return PagedFavoriteResumesResult(
     items: items,
-    hasMoreValue:
-        (DomainBooleanValue(defaultValue: false, isRequired: false)
-          ..parse(hasMore?.toString())),
+    hasMoreValue: (DomainBooleanValue(defaultValue: false, isRequired: false)
+      ..parse(hasMore?.toString())),
   );
 }
 
@@ -282,12 +284,9 @@ void main() {
         assetPathValue: AssetPathValue()
           ..parse('assets/images/placeholder_avatar.png'),
         targetTypeValue: FavoriteTargetTypeValue()..parse('account_profile'),
-        canOpenPublicDetailValue: DomainBooleanValue(
-          defaultValue: true,
-          isRequired: false,
-        )..parse('true'),
-        publicDetailPathValue: FavoritePublicDetailPathValue(
-          '/parceiro/du-jorge',
+        accountProfile: _accountProfileSummary(
+          name: 'Du Jorge',
+          publicDetailPath: '/parceiro/du-jorge',
         ),
       );
 
@@ -329,12 +328,9 @@ void main() {
                 ..parse('assets/images/placeholder_avatar.png'),
               targetTypeValue: FavoriteTargetTypeValue()
                 ..parse('account_profile'),
-              canOpenPublicDetailValue: DomainBooleanValue(
-                defaultValue: true,
-                isRequired: false,
-              )..parse('true'),
-              publicDetailPathValue: FavoritePublicDetailPathValue(
-                '/parceiro/yuri-dias',
+              accountProfile: _accountProfileSummary(
+                name: 'Yuri Dias',
+                publicDetailPath: '/parceiro/yuri-dias',
               ),
               nextEventOccurrenceAtValue: DomainOptionalDateTimeValue(
                 defaultValue: _pastOccurrence(),
@@ -346,12 +342,9 @@ void main() {
                 ..parse('assets/images/placeholder_avatar.png'),
               targetTypeValue: FavoriteTargetTypeValue()
                 ..parse('account_profile'),
-              canOpenPublicDetailValue: DomainBooleanValue(
-                defaultValue: true,
-                isRequired: false,
-              )..parse('true'),
-              publicDetailPathValue: FavoritePublicDetailPathValue(
-                '/parceiro/later-favorite',
+              accountProfile: _accountProfileSummary(
+                name: 'Later Favorite',
+                publicDetailPath: '/parceiro/later-favorite',
               ),
             ),
           ],
@@ -669,6 +662,24 @@ FavoriteResume _favoriteResume({
     liveNowEventOccurrenceIdValue: liveNowEventOccurrenceId == null
         ? null
         : FavoriteEventOccurrenceIdValue(liveNowEventOccurrenceId),
+  );
+}
+
+AccountProfileSummary _accountProfileSummary({
+  required String name,
+  required String publicDetailPath,
+}) {
+  return AccountProfileSummary(
+    idValue: AccountProfileTextValue(name.toLowerCase().replaceAll(' ', '-')),
+    nameValue: AccountProfileNameValue()..parse(name),
+    profileTypeValue: AccountProfileTypeValue('artist'),
+    canOpenPublicDetailValue: DomainBooleanValue(
+      defaultValue: true,
+      isRequired: false,
+    )..parse('true'),
+    publicDetailPathValue: AccountProfilePublicDetailPathValue(
+      publicDetailPath,
+    ),
   );
 }
 

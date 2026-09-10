@@ -2,7 +2,7 @@ import 'package:value_object_pattern/domain/value_objects/generic_string_value.d
 
 class AccountProfileNestedGroupIdValue extends GenericStringValue {
   AccountProfileNestedGroupIdValue([String raw = ''])
-      : super(defaultValue: '', isRequired: false) {
+    : super(defaultValue: '', isRequired: false) {
     parse(raw.trim());
   }
 }

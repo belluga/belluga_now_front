@@ -32,15 +32,14 @@ import 'package:belluga_now/domain/invites/value_objects/invite_share_code_value
 import 'package:belluga_now/domain/invites/value_objects/inviteable_reason_value.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_module_data.dart';
-import 'package:belluga_now/domain/partners/value_objects/account_profile_tag_value.dart';
-import 'package:belluga_now/domain/partners/value_objects/account_profile_type_value.dart';
 import 'package:belluga_now/domain/partners/projections/value_objects/partner_projection_text_values.dart';
 import 'package:belluga_now/domain/tenant/value_objects/tenant_id_value.dart';
 import 'package:belluga_now/domain/user/value_objects/user_id_value.dart';
-import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
+import 'package:belluga_now/domain/partners/account_profile_summary.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_fields.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_counterpart_count_value.dart';
-import 'package:belluga_now/domain/schedule/value_objects/event_linked_account_profile_text_value.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_text_value.dart';
 import 'package:belluga_now/domain/value_objects/description_value.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
@@ -237,43 +236,65 @@ PartnerEventView buildPartnerEventView({
     counterpartCountValue: counterpartCount == null
         ? null
         : EventCounterpartCountValue(counterpartCount),
-    linkedAccountProfiles: artistNames
-        .asMap()
-        .entries
-        .map(
-          (entry) => PartnerSupportedEntityView(
-            idValue: entry.key < artistIds.length
-                ? (MongoIDValue(
-                    defaultValue: _coerceMongoId(artistIds[entry.key]),
-                    isRequired: true,
-                  )..parse(_coerceMongoId(artistIds[entry.key])))
-                : null,
-            titleValue: partnerProjectionRequiredText(entry.value),
-            thumbValue:
-                entry.key < artistThumbUrls.length &&
-                    artistThumbUrls[entry.key]?.trim().isNotEmpty == true
-                ? partnerProjectionOptionalText(
-                    artistThumbUrls[entry.key]!.trim(),
-                  )
-                : null,
-            profileTypeValue:
-                entry.key < artistProfileTypes.length &&
-                    artistProfileTypes[entry.key]?.trim().isNotEmpty == true
-                ? partnerProjectionOptionalText(
-                    artistProfileTypes[entry.key]!.trim(),
-                  )
-                : null,
-            partyTypeValue:
-                entry.key < artistPartyTypes.length &&
-                    artistPartyTypes[entry.key]?.trim().isNotEmpty == true
-                ? partnerProjectionOptionalText(
-                    artistPartyTypes[entry.key]!.trim(),
-                  )
-                : null,
-          ),
-        )
-        .toList(growable: false),
+    linkedAccountProfiles: _buildEventLinkedAccountProfiles(
+      artistNames: artistNames,
+      artistIds: artistIds,
+      artistProfileTypes: artistProfileTypes,
+      artistPartyTypes: artistPartyTypes,
+      artistThumbUrls: artistThumbUrls,
+    ),
   );
+}
+
+List<AccountProfileSummary> _buildEventLinkedAccountProfiles({
+  required List<String> artistNames,
+  required List<String> artistIds,
+  required List<String?> artistProfileTypes,
+  required List<String?> artistPartyTypes,
+  required List<String?> artistThumbUrls,
+}) {
+  final profiles = <AccountProfileSummary>[];
+  for (final entry in artistNames.asMap().entries) {
+    final index = entry.key;
+    final name = entry.value.trim();
+    final explicitProfileType = index < artistProfileTypes.length
+        ? artistProfileTypes[index]?.trim() ?? ''
+        : '';
+    final explicitPartyType = index < artistPartyTypes.length
+        ? artistPartyTypes[index]?.trim() ?? ''
+        : '';
+    final profileType = explicitProfileType.isNotEmpty
+        ? explicitProfileType
+        : explicitPartyType.isNotEmpty
+        ? explicitPartyType
+        : index >= artistProfileTypes.length && index >= artistPartyTypes.length
+        ? 'artist'
+        : '';
+    if (name.isEmpty || profileType.isEmpty) {
+      continue;
+    }
+
+    final id = index < artistIds.length
+        ? _coerceMongoId(artistIds[index])
+        : 'name:$name';
+    final avatarUrl = index < artistThumbUrls.length
+        ? artistThumbUrls[index]?.trim() ?? ''
+        : '';
+    profiles.add(
+      AccountProfileSummary(
+        idValue: AccountProfileTextValue(id),
+        nameValue: AccountProfileNameValue()..parse(name),
+        profileTypeValue: AccountProfileTypeValue(profileType),
+        avatarValue: avatarUrl.isEmpty
+            ? null
+            : (ThumbUriValue(
+                defaultValue: Uri.parse(avatarUrl),
+                isRequired: true,
+              )..parse(avatarUrl)),
+      ),
+    );
+  }
+  return List<AccountProfileSummary>.unmodifiable(profiles);
 }
 
 UpcomingOcurrenceResume buildUpcomingOcurrenceResume({
@@ -332,10 +353,10 @@ UpcomingOcurrenceResume buildUpcomingOcurrenceResume({
   );
 }
 
-List<EventLinkedAccountProfile> _artistResumesToLinkedProfiles(
+List<AccountProfileSummary> _artistResumesToLinkedProfiles(
   List<ArtistResume> artists,
 ) {
-  final linkedProfiles = <EventLinkedAccountProfile>[];
+  final linkedProfiles = <AccountProfileSummary>[];
   for (final artist in artists) {
     final id = artist.id.trim();
     final displayName = artist.displayName.trim();
@@ -343,7 +364,7 @@ List<EventLinkedAccountProfile> _artistResumesToLinkedProfiles(
       continue;
     }
 
-    final taxonomyTerms = EventLinkedAccountProfileTaxonomyTerms();
+    final taxonomyTerms = AccountProfileTaxonomyTerms();
     for (final genre in artist.genres) {
       final value = genre.value.trim();
       if (value.isEmpty) continue;
@@ -356,12 +377,12 @@ List<EventLinkedAccountProfile> _artistResumesToLinkedProfiles(
 
     final avatar = artist.avatarUri?.toString().trim();
     linkedProfiles.add(
-      EventLinkedAccountProfile(
-        idValue: EventLinkedAccountProfileTextValue(id),
-        displayNameValue: EventLinkedAccountProfileTextValue(displayName),
+      AccountProfileSummary(
+        idValue: AccountProfileTextValue(id),
+        nameValue: AccountProfileNameValue()..parse(displayName),
         profileTypeValue: AccountProfileTypeValue('artist'),
         slugValue: SlugValue()..parse(id),
-        avatarUrlValue: avatar == null || avatar.isEmpty
+        avatarValue: avatar == null || avatar.isEmpty
             ? null
             : (ThumbUriValue(defaultValue: Uri.parse(avatar), isRequired: true)
                 ..parse(avatar)),
@@ -370,7 +391,7 @@ List<EventLinkedAccountProfile> _artistResumesToLinkedProfiles(
     );
   }
 
-  return List<EventLinkedAccountProfile>.unmodifiable(linkedProfiles);
+  return List<AccountProfileSummary>.unmodifiable(linkedProfiles);
 }
 
 String _coerceMongoId(String raw) {

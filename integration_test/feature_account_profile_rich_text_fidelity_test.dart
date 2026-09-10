@@ -4,7 +4,7 @@ import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/support/canonical_route_family.dart';
 import 'package:belluga_now/application/router/support/canonical_route_meta.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
-import 'package:belluga_now/domain/partners/account_profile_model.dart';
+import 'package:belluga_now/domain/partners/account_profile_complete.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
@@ -688,7 +688,7 @@ class _PublicAccountProfilesRepository
     selectedAccountProfileStreamValue.addValue(profile);
   }
 
-  final AccountProfileModel profile;
+  final AccountProfileComplete profile;
   final Set<String> _favoriteIds = <String>{};
 
   @override
@@ -710,14 +710,14 @@ class _PublicAccountProfilesRepository
   }
 
   @override
-  Future<AccountProfileModel?> getAccountProfileBySlug(
+  Future<AccountProfileComplete?> getAccountProfileBySlug(
     AccountProfilesRepositoryContractPrimString slug,
   ) async {
     return slug.value == profile.slug ? profile : null;
   }
 
   @override
-  Future<List<AccountProfileModel>> fetchNearbyAccountProfiles({
+  Future<List<AccountProfileComplete>> fetchNearbyAccountProfiles({
     AccountProfilesRepositoryContractPrimInt? pageSize,
     List<AccountProfilesRepositoryContractPrimString>? typeFilters,
     List<dynamic>? taxonomyFilters,
@@ -752,11 +752,13 @@ class _PublicAccountProfilesRepository
   }
 
   @override
-  List<AccountProfileModel> getFavoriteAccountProfiles() => const [];
+  List<AccountProfileComplete> getFavoriteAccountProfiles() => const [];
 }
 
-AccountProfileModel _publicProfileFromAdmin(TenantAdminAccountProfile profile) {
-  return buildAccountProfileModelFromPrimitives(
+AccountProfileComplete _publicProfileFromAdmin(
+  TenantAdminAccountProfile profile,
+) {
+  return buildAccountProfileCompleteFromPrimitives(
     id: '507f1f77bcf86cd799439888',
     name: profile.displayName,
     slug: profile.slug ?? 'casa-cultural',

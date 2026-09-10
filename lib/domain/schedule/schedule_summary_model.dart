@@ -3,9 +3,7 @@ import 'package:belluga_now/domain/schedule/schedule_summary_item_model.dart';
 class ScheduleSummaryModel {
   final List<ScheduleSummaryItemModel> items;
 
-  ScheduleSummaryModel({
-    required this.items,
-  });
+  ScheduleSummaryModel({required this.items});
 
   static const int _daysBackwardLimit = 15;
   static const int _monthsForwardLimit = 3;
@@ -23,8 +21,11 @@ class ScheduleSummaryModel {
   }
 
   DateTime get lastDayRange {
-    final future =
-        DateTime(today.year, today.month + _monthsForwardLimit, today.day);
+    final future = DateTime(
+      today.year,
+      today.month + _monthsForwardLimit,
+      today.day,
+    );
     return DateTime(future.year, future.month, future.day);
   }
 

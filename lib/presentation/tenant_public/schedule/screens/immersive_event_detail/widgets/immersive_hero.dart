@@ -1,4 +1,4 @@
-import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
+import 'package:belluga_now/domain/partners/account_profile_summary.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/domain/upcoming_ocurrence/projections/upcoming_ocurrence_resume.dart';
@@ -16,7 +16,7 @@ class ImmersiveHero extends StatelessWidget {
 
   final EventModel event;
   final Uri fallbackImageUri;
-  final ValueChanged<EventLinkedAccountProfile>? onCounterpartTap;
+  final ValueChanged<AccountProfileSummary>? onCounterpartTap;
 
   @override
   Widget build(BuildContext context) {
@@ -165,10 +165,10 @@ class ImmersiveHero extends StatelessWidget {
     );
   }
 
-  List<EventLinkedAccountProfile> _counterpartProfiles(EventModel event) {
+  List<AccountProfileSummary> _counterpartProfiles(EventModel event) {
     final venueId = event.venue?.id;
     final seen = <String>{};
-    final linked = <EventLinkedAccountProfile>[];
+    final linked = <AccountProfileSummary>[];
     for (final profile in event.heroCounterpartProfiles) {
       if (profile.id == venueId) {
         continue;
@@ -386,9 +386,9 @@ class _CounterpartStrip extends StatelessWidget {
 
   static const int _compactThreshold = 1;
 
-  final List<EventLinkedAccountProfile> profiles;
+  final List<AccountProfileSummary> profiles;
   final int totalCount;
-  final ValueChanged<EventLinkedAccountProfile>? onCounterpartTap;
+  final ValueChanged<AccountProfileSummary>? onCounterpartTap;
 
   @override
   Widget build(BuildContext context) {
@@ -429,7 +429,7 @@ class _CounterpartStrip extends StatelessWidget {
 class _CounterpartChip extends StatelessWidget {
   const _CounterpartChip({required this.profile, required this.onTap});
 
-  final EventLinkedAccountProfile profile;
+  final AccountProfileSummary profile;
   final VoidCallback? onTap;
 
   @override

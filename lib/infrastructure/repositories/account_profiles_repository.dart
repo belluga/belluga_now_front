@@ -1,4 +1,4 @@
-import 'package:belluga_now/domain/partners/account_profile_model.dart';
+import 'package:belluga_now/domain/partners/account_profile_complete.dart';
 import 'package:belluga_now/domain/partners/account_profile_nested_group_member_page.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
@@ -97,7 +97,7 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
   }
 
   @override
-  Future<List<AccountProfileModel>> fetchNearbyAccountProfiles({
+  Future<List<AccountProfileComplete>> fetchNearbyAccountProfiles({
     AccountProfilesRepositoryContractPrimInt? pageSize,
     List<AccountProfilesRepositoryContractPrimString>? typeFilters,
     List<AccountProfilesRepositoryTaxonomyFilter>? taxonomyFilters,
@@ -111,14 +111,14 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
   }
 
   @override
-  Future<AccountProfileModel?> getAccountProfileBySlug(
+  Future<AccountProfileComplete?> getAccountProfileBySlug(
     AccountProfilesRepositoryContractPrimString slug,
   ) async {
     return _backend.fetchAccountProfileBySlug(slug.value);
   }
 
   @override
-  Future<AccountProfileNestedGroupMemberPage> fetchNestedGroupMembersPageByPath(
+  Future<AccountProfileSummaryPage> fetchNestedGroupMembersPageByPath(
     AccountProfilesRepositoryContractPrimString membersPath, {
     AccountProfilesRepositoryContractPrimString? cursor,
     AccountProfilesRepositoryContractPrimString? search,
@@ -208,7 +208,7 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
   }
 
   @override
-  List<AccountProfileModel> getFavoriteAccountProfiles() {
+  List<AccountProfileComplete> getFavoriteAccountProfiles() {
     final favoriteIds = favoriteAccountProfileIdsStreamValue.value
         .map((value) => value.value)
         .toSet();

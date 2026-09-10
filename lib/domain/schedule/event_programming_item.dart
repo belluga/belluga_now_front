@@ -1,5 +1,5 @@
-import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
-import 'package:belluga_now/domain/schedule/value_objects/event_linked_account_profile_text_value.dart';
+import 'package:belluga_now/domain/partners/account_profile_summary.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_text_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_occurrence_values.dart';
 
 class EventProgrammingItem {
@@ -7,17 +7,17 @@ class EventProgrammingItem {
     required this.timeValue,
     this.endTimeValue,
     this.titleValue,
-    List<EventLinkedAccountProfile> linkedAccountProfiles = const [],
+    List<AccountProfileSummary> linkedAccountProfiles = const [],
     this.locationProfile,
-  }) : linkedAccountProfiles = List<EventLinkedAccountProfile>.unmodifiable(
-          linkedAccountProfiles,
-        );
+  }) : linkedAccountProfiles = List<AccountProfileSummary>.unmodifiable(
+         linkedAccountProfiles,
+       );
 
   final EventProgrammingTimeValue timeValue;
   final EventProgrammingTimeValue? endTimeValue;
-  final EventLinkedAccountProfileTextValue? titleValue;
-  final List<EventLinkedAccountProfile> linkedAccountProfiles;
-  final EventLinkedAccountProfile? locationProfile;
+  final AccountProfileTextValue? titleValue;
+  final List<AccountProfileSummary> linkedAccountProfiles;
+  final AccountProfileSummary? locationProfile;
 
   String get time => timeValue.value;
   bool get hasTime => time.trim().isNotEmpty;

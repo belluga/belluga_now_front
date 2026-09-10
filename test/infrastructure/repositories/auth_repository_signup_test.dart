@@ -2,7 +2,7 @@ import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/auth_repository_contract_values.dart';
 import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
-import 'package:belluga_now/domain/partners/account_profile_model.dart';
+import 'package:belluga_now/domain/partners/account_profile_complete.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/app_data_backend_contract.dart';
@@ -351,11 +351,11 @@ class _UnsupportedAppDataBackend extends AppDataBackendContract {
 class _UnsupportedAccountProfilesBackend
     extends AccountProfilesBackendContract {
   @override
-  Future<AccountProfileModel?> fetchAccountProfileBySlug(String slug) =>
+  Future<AccountProfileComplete?> fetchAccountProfileBySlug(String slug) =>
       throw UnimplementedError();
 
   @override
-  Future<List<AccountProfileModel>> fetchNearbyAccountProfiles({
+  Future<List<AccountProfileComplete>> fetchNearbyAccountProfiles({
     int pageSize = 10,
     List<String>? typeFilters,
     List<dynamic>? taxonomyFilters,

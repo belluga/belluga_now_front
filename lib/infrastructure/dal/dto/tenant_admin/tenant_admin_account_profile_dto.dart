@@ -1,13 +1,13 @@
 import 'package:belluga_contact_channels/belluga_contact_channels.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_fields.dart';
-import 'package:belluga_now/domain/shared/value_objects/account_profile_contact_source_account_profile_id_value.dart';
+import 'package:belluga_now/domain/partners/account_profile_summary.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_text_value.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_group.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_capabilities.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_snapshot.dart';
 import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_taxonomy_term_dto.dart';
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
-import 'package:belluga_now/domain/shared/account_profile_contact_source_summary.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
@@ -73,8 +73,8 @@ class TenantAdminAccountProfileDTO {
   final List<BellugaContactChannel> contactChannels;
   final String? contactBubbleChannelId;
   final List<BellugaContactChannel> effectiveContactChannels;
-  final AccountProfileContactSourceSummary? contactSourceProfile;
-  final AccountProfileContactSourceSummary? effectiveContactSourceProfile;
+  final AccountProfileSummary? contactSourceProfile;
+  final AccountProfileSummary? effectiveContactSourceProfile;
   final List<AccountProfileExternalLink> externalLinks;
   final int? externalLinksLimit;
 
@@ -273,7 +273,7 @@ TenantAdminAccountProfileGallerySnapshot
 tenantAdminAccountProfileGallerySnapshotFromJson(Map<String, dynamic> json) =>
     _TenantAdminAccountProfileGallerySnapshotDTO.fromJson(json).toDomain();
 
-AccountProfileContactSourceSummary? _contactSourceSummaryFromRaw(Object? raw) {
+AccountProfileSummary? _contactSourceSummaryFromRaw(Object? raw) {
   if (raw is! Map) {
     return null;
   }
@@ -285,9 +285,9 @@ AccountProfileContactSourceSummary? _contactSourceSummaryFromRaw(Object? raw) {
     return null;
   }
   final slug = json['slug']?.toString().trim();
-  return AccountProfileContactSourceSummary(
-    idValue: AccountProfileContactSourceAccountProfileIdValue(id),
-    displayNameValue: AccountProfileNameValue()..parse(displayName),
+  return AccountProfileSummary(
+    idValue: AccountProfileTextValue(id),
+    nameValue: AccountProfileNameValue()..parse(displayName),
     slugValue: slug == null || slug.isEmpty ? null : (SlugValue()..parse(slug)),
     profileTypeValue: AccountProfileTypeValue(profileType),
   );

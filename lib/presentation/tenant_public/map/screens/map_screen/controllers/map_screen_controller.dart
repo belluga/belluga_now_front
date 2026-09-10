@@ -41,7 +41,7 @@ import 'package:belluga_now/domain/map/value_objects/poi_stack_count_value.dart'
 import 'package:belluga_now/domain/map/value_objects/poi_stack_key_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_tag_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_type_label_value.dart';
-import 'package:belluga_now/domain/partners/account_profile_model.dart';
+import 'package:belluga_now/domain/partners/account_profile_complete.dart';
 import 'package:belluga_now/domain/partners/value_objects/profile_type_key_value.dart';
 import 'package:belluga_now/domain/proximity_preferences/proximity_preference.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
@@ -302,12 +302,12 @@ class MapScreenController implements Disposable {
     mapInteractionGuardActiveStreamValue.addValue(isActive);
   }
 
-  AccountProfileModel? hydratedAccountProfileForPoi(CityPoiModel poi) {
+  AccountProfileComplete? hydratedAccountProfileForPoi(CityPoiModel poi) {
     return _poiRepository.hydratedAccountProfileForPoi(poi);
   }
 
   ResolvedAccountProfileVisual resolvedVisualForAccountProfile(
-    AccountProfileModel accountProfile,
+    AccountProfileComplete accountProfile,
   ) {
     return AccountProfileVisualResolver.resolve(
       accountProfile: accountProfile,
@@ -1669,7 +1669,7 @@ class MapScreenController implements Disposable {
 
   CityPoiModel _mergeAccountProfileIntoPoi(
     CityPoiModel poi,
-    AccountProfileModel profile,
+    AccountProfileComplete profile,
   ) {
     final normalizedAvatarUrl = profile.avatarUrl?.trim();
     final normalizedCoverUrl = profile.coverUrl?.trim();
@@ -1714,9 +1714,7 @@ class MapScreenController implements Disposable {
     final categoryLabelValue = normalizedProfileType.isEmpty
         ? null
         : _parseTypeLabelValue(normalizedProfileType);
-    final canonicalProfilePath = profile.canOpenPublicDetail
-        ? _normalizedPublicDetailPath(profile.publicDetailPath)
-        : null;
+    final canonicalProfilePath = profile.publicDetailUrl;
     final clearedReferencePathValue = poi.refPath == null
         ? null
         : PoiReferencePathValue(isRequired: false);
@@ -1733,7 +1731,7 @@ class MapScreenController implements Disposable {
       visual: mergedVisual,
       refSlugValue:
           poi.refSlug == null &&
-              profile.canOpenPublicDetail &&
+              profile.publicDetailUrl != null &&
               profile.slug.trim().isNotEmpty
           ? _parseReferenceSlugValue(profile.slug)
           : null,
@@ -1780,14 +1778,6 @@ class MapScreenController implements Disposable {
     );
   }
 
-  String? _normalizedPublicDetailPath(String? rawPath) {
-    final normalized = rawPath?.trim();
-    if (normalized == null || normalized.isEmpty) {
-      return null;
-    }
-    return normalized;
-  }
-
   CityPoiModel _mergeStaticAssetIntoPoi(
     CityPoiModel poi,
     PublicStaticAssetModel asset,
@@ -1824,7 +1814,9 @@ class MapScreenController implements Disposable {
   }
 
   String? _resolveEventCoverImageUrl(EventModel event) {
-    final eventImageUri = UpcomingOcurrenceResume.resolvePreferredImageUri(event);
+    final eventImageUri = UpcomingOcurrenceResume.resolvePreferredImageUri(
+      event,
+    );
     final canonicalEventImageUrl = _normalizeExternalImageUrl(
       eventImageUri.toString(),
     );

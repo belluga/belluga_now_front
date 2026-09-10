@@ -1,14 +1,11 @@
 import 'package:belluga_now/application/time/timezone_converter.dart';
-import 'package:belluga_now/domain/favorite/favorite.dart';
 import 'package:belluga_now/domain/favorite/favorite_badge.dart';
 import 'package:belluga_now/domain/favorite/value_objects/favorite_event_occurrence_id_value.dart';
 import 'package:belluga_now/domain/favorite/value_objects/favorite_event_target_path_value.dart';
 import 'package:belluga_now/domain/favorite/value_objects/favorite_primary_flag_value.dart';
-import 'package:belluga_now/domain/favorite/value_objects/favorite_public_detail_path_value.dart';
 import 'package:belluga_now/domain/favorite/value_objects/favorite_target_type_value.dart';
-import 'package:belluga_now/domain/partners/value_objects/account_profile_type_value.dart';
+import 'package:belluga_now/domain/partners/account_profile_summary.dart';
 import 'package:belluga_now/domain/value_objects/asset_path_value.dart';
-import 'package:belluga_now/domain/value_objects/domain_boolean_value.dart';
 import 'package:belluga_now/domain/value_objects/domain_optional_date_time_value.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
@@ -28,10 +25,7 @@ class FavoriteResume {
     this.iconImageUriValue,
     this.primaryColor,
     this.targetTypeValue,
-    this.profileTypeValue,
-    this.coverImageUriValue,
-    DomainBooleanValue? canOpenPublicDetailValue,
-    this.publicDetailPathValue,
+    this.accountProfile,
     this.eventTargetPathValue,
     DomainOptionalDateTimeValue? nextEventOccurrenceAtValue,
     DomainOptionalDateTimeValue? lastEventOccurrenceAtValue,
@@ -49,10 +43,6 @@ class FavoriteResume {
            nextEventOccurrenceAtValue ?? DomainOptionalDateTimeValue(),
        lastEventOccurrenceAtValue =
            lastEventOccurrenceAtValue ?? DomainOptionalDateTimeValue(),
-       canOpenPublicDetailValue =
-           canOpenPublicDetailValue ??
-           (DomainBooleanValue(defaultValue: false, isRequired: false)
-             ..parse('false')),
        liveNowEventOccurrenceAtValue =
            liveNowEventOccurrenceAtValue ?? DomainOptionalDateTimeValue(),
        isPrimaryValue =
@@ -67,10 +57,7 @@ class FavoriteResume {
   final ThumbUriValue? iconImageUriValue;
   final Color? primaryColor;
   final FavoriteTargetTypeValue? targetTypeValue;
-  final AccountProfileTypeValue? profileTypeValue;
-  final ThumbUriValue? coverImageUriValue;
-  final DomainBooleanValue canOpenPublicDetailValue;
-  final FavoritePublicDetailPathValue? publicDetailPathValue;
+  final AccountProfileSummary? accountProfile;
   final FavoriteEventTargetPathValue? eventTargetPathValue;
   final DomainOptionalDateTimeValue nextEventOccurrenceAtValue;
   final DomainOptionalDateTimeValue lastEventOccurrenceAtValue;
@@ -83,18 +70,11 @@ class FavoriteResume {
   String get title => titleValue.value;
   Uri? get imageUri => imageUriValue?.value;
   String? get assetPath => assetPathValue?.value;
-  Uri? get coverImageUri => coverImageUriValue?.value;
+  Uri? get coverImageUri => accountProfile?.coverUri;
   String? get coverImageUrl => coverImageUri?.toString();
   String? get targetType => targetTypeValue?.value;
-  String? get profileType => profileTypeValue?.value;
-  bool get canOpenPublicDetail => canOpenPublicDetailValue.value;
-  String? get publicDetailPath {
-    final value = publicDetailPathValue?.value.trim();
-    if (value == null || value.isEmpty) {
-      return null;
-    }
-    return value;
-  }
+  String? get profileType => accountProfile?.profileType;
+  String? get publicDetailUrl => accountProfile?.publicDetailUrl;
 
   String? get eventTargetPath {
     final value = eventTargetPathValue?.value.trim();
@@ -114,7 +94,9 @@ class FavoriteResume {
     if (nextOccurrenceAt == null) {
       return false;
     }
-    return nextOccurrenceAt.isAfter(TimezoneConverter.localToUtc(DateTime.now()));
+    return nextOccurrenceAt.isAfter(
+      TimezoneConverter.localToUtc(DateTime.now()),
+    );
   }
 
   FavoriteChipHaloState get haloState {
@@ -126,22 +108,5 @@ class FavoriteResume {
       return FavoriteChipHaloState.upcoming;
     }
     return FavoriteChipHaloState.none;
-  }
-
-  /// Display-only compatibility factory.
-  ///
-  /// Use `FavoritePreviewDTO.toResume()` for navigation-capable favorites,
-  /// because the legacy `Favorite` domain object does not carry the routed
-  /// public-detail / event-target occurrence-state fields.
-  @Deprecated('Use FavoritePreviewDTO.toResume for navigation-capable data.')
-  factory FavoriteResume.fromFavorite(Favorite favorite) {
-    return FavoriteResume(
-      titleValue: favorite.titleValue,
-      slugValue: favorite.slugValue,
-      imageUriValue: favorite.imageUriValue,
-      assetPathValue: favorite.assetPathValue,
-      badge: favorite.badge,
-      isPrimaryValue: favorite.isPrimaryValue,
-    );
   }
 }

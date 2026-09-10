@@ -73,6 +73,23 @@ void main() {
       final favorite = favorites.single;
 
       expect(favorites, hasLength(1));
+      expect(favorite.accountProfile, isNotNull);
+      final accountProfile = favorite.accountProfile!;
+      expect(accountProfile.id, 'profile-relative');
+      expect(accountProfile.name, 'Perfil relativo');
+      expect(accountProfile.slug, 'profile-relative');
+      expect(accountProfile.profileType, 'artist');
+      expect(
+        accountProfile.avatarUrl,
+        'https://tenant.test/api/v1/media/account-profiles/profile-relative/avatar?v=7',
+      );
+      expect(
+        accountProfile.coverUrl,
+        'https://tenant.test/api/v1/media/account-profiles/profile-relative/cover?v=8',
+      );
+      expect(accountProfile.canOpenPublicDetail, isTrue);
+      expect(accountProfile.publicDetailPath, '/parceiro/profile-relative');
+      expect(accountProfile.publicDetailUrl, '/parceiro/profile-relative');
       expect(favorite.title, 'Perfil relativo');
       expect(
         favorite.imageUri?.toString(),
@@ -82,9 +99,33 @@ void main() {
         favorite.coverImageUrl,
         'https://tenant.test/api/v1/media/account-profiles/profile-relative/cover?v=8',
       );
-      expect(favorite.publicDetailPath, '/parceiro/profile-relative');
+      expect(favorite.publicDetailUrl, '/parceiro/profile-relative');
     },
   );
+
+  test('account-profile favorite without profile type fails closed', () {
+    final favorite = FavoritePreviewDTO.fromJson({
+      'favorite_id': 'fav-invalid',
+      'registry_key': 'account_profile',
+      'target_type': 'account_profile',
+      'target_id': 'profile-without-type',
+      'target': {
+        'id': 'profile-without-type',
+        'display_name': 'Perfil sem tipo',
+        'can_open_public_detail': true,
+        'public_detail_path': '/parceiro/profile-without-type',
+      },
+      'occurrence_state': const <String, Object?>{},
+      'navigation': {
+        'kind': 'account_profile',
+        'profile_target_path': '/parceiro/profile-without-type',
+        'can_open_public_detail': true,
+      },
+    }).toResume();
+
+    expect(favorite.accountProfile, isNull);
+    expect(favorite.publicDetailUrl, isNull);
+  });
 }
 
 AppData _buildAppData() {

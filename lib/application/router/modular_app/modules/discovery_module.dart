@@ -7,7 +7,7 @@ import 'package:belluga_now/application/router/resolvers/account_profile_detail_
 import 'package:belluga_now/application/router/resolvers/static_asset_detail_route_resolver.dart';
 import 'package:belluga_now/application/router/support/canonical_route_family.dart';
 import 'package:belluga_now/application/router/support/canonical_route_meta.dart';
-import 'package:belluga_now/domain/partners/account_profile_model.dart';
+import 'package:belluga_now/domain/partners/account_profile_complete.dart';
 import 'package:belluga_now/domain/partners/services/partner_profile_config_builder.dart';
 import 'package:belluga_now/domain/static_assets/public_static_asset_model.dart';
 import 'package:belluga_now/presentation/tenant_public/discovery/controllers/discovery_screen_controller.dart';
@@ -24,7 +24,7 @@ class DiscoveryModule extends ModuleContract {
     );
     registerFactory(() => AccountProfileDetailController());
     registerFactory(() => StaticAssetDetailController());
-    registerRouteResolver<AccountProfileModel>(
+    registerRouteResolver<AccountProfileComplete>(
       AccountProfileDetailRouteResolver.new,
     );
     registerRouteResolver<PublicStaticAssetModel>(
@@ -34,25 +34,23 @@ class DiscoveryModule extends ModuleContract {
 
   @override
   List<AutoRoute> get routes => [
-        AutoRoute(
-          path: '/descobrir',
-          page: DiscoveryRoute.page,
-          guards: [TenantRouteGuard()],
-          meta: canonicalRouteMeta(family: CanonicalRouteFamily.discoveryRoot),
-        ),
-        AutoRoute(
-          path: '/parceiro/:slug',
-          page: PartnerDetailRoute.page,
-          guards: [TenantRouteGuard()],
-          meta: canonicalRouteMeta(family: CanonicalRouteFamily.partnerDetail),
-        ),
-        AutoRoute(
-          path: '/static/:assetRef',
-          page: StaticAssetDetailRoute.page,
-          guards: [TenantRouteGuard()],
-          meta: canonicalRouteMeta(
-            family: CanonicalRouteFamily.staticAssetDetail,
-          ),
-        ),
-      ];
+    AutoRoute(
+      path: '/descobrir',
+      page: DiscoveryRoute.page,
+      guards: [TenantRouteGuard()],
+      meta: canonicalRouteMeta(family: CanonicalRouteFamily.discoveryRoot),
+    ),
+    AutoRoute(
+      path: '/parceiro/:slug',
+      page: PartnerDetailRoute.page,
+      guards: [TenantRouteGuard()],
+      meta: canonicalRouteMeta(family: CanonicalRouteFamily.partnerDetail),
+    ),
+    AutoRoute(
+      path: '/static/:assetRef',
+      page: StaticAssetDetailRoute.page,
+      guards: [TenantRouteGuard()],
+      meta: canonicalRouteMeta(family: CanonicalRouteFamily.staticAssetDetail),
+    ),
+  ];
 }

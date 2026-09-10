@@ -13,8 +13,9 @@ import 'package:belluga_now/application/router/support/route_instance_scope.dart
 import 'package:belluga_now/application/telemetry/auth_wall_telemetry.dart';
 import 'package:belluga_now/domain/partners/account_profile_gallery_group.dart';
 import 'package:belluga_now/domain/partners/account_profile_external_link.dart';
-import 'package:belluga_now/domain/partners/account_profile_model.dart';
+import 'package:belluga_now/domain/partners/account_profile_complete.dart';
 import 'package:belluga_now/domain/partners/account_profile_nested_group.dart';
+import 'package:belluga_now/domain/partners/account_profile_summary.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_config.dart';
 import 'package:belluga_now/domain/proximity_preferences/proximity_preference.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
@@ -40,7 +41,6 @@ import 'package:belluga_now/presentation/shared/widgets/public_rich_text_html.da
 import 'package:belluga_now/presentation/shared/widgets/nested_accounts_load_more_indicator.dart';
 import 'package:belluga_now/presentation/shared/widgets/nested_accounts_search_field.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_module_data.dart';
-import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/application/icons/boora_icons.dart';
 import 'package:belluga_now/presentation/tenant_public/widgets/invite_status_icon.dart';
 import 'package:belluga_now/presentation/tenant_public/partners/widgets/account_profile_external_link_strip.dart';
@@ -64,7 +64,7 @@ class AccountProfileDetailScreen extends StatefulWidget {
     this.isWebRuntime = kIsWeb,
   });
 
-  final AccountProfileModel accountProfile;
+  final AccountProfileComplete accountProfile;
   final DirectionsAppChooserContract? directionsAppChooser;
   final SystemShareLauncher? shareLauncher;
   final ExternalUrlLauncher? externalUrlLauncher;
@@ -234,7 +234,7 @@ class _AccountProfileDetailScreenState
     );
   }
 
-  Widget _buildHero(AccountProfileModel accountProfile) {
+  Widget _buildHero(AccountProfileComplete accountProfile) {
     final colorScheme = Theme.of(context).colorScheme;
     final resolvedVisual = _controller.resolvedVisualFor(accountProfile);
     final fallbackHero = _buildHeroFallback(
@@ -287,7 +287,7 @@ class _AccountProfileDetailScreenState
     );
   }
 
-  Widget _buildHeroSurfaceSummary(AccountProfileModel accountProfile) {
+  Widget _buildHeroSurfaceSummary(AccountProfileComplete accountProfile) {
     final colorScheme = Theme.of(context).colorScheme;
     final resolvedVisual = _controller.resolvedVisualFor(accountProfile);
 
@@ -322,7 +322,7 @@ class _AccountProfileDetailScreenState
     );
   }
 
-  Widget _buildCollapsedTitle(AccountProfileModel accountProfile) {
+  Widget _buildCollapsedTitle(AccountProfileComplete accountProfile) {
     final colorScheme = Theme.of(context).colorScheme;
     return Align(
       alignment: Alignment.centerLeft,
@@ -340,7 +340,7 @@ class _AccountProfileDetailScreenState
   }
 
   List<ImmersiveHeroAction> _buildHeroActions(
-    AccountProfileModel accountProfile, {
+    AccountProfileComplete accountProfile, {
     required bool isFav,
     required bool isFavoritable,
   }) {
@@ -400,7 +400,7 @@ class _AccountProfileDetailScreenState
     );
   }
 
-  Widget? _buildHeroSupporting(AccountProfileModel accountProfile) {
+  Widget? _buildHeroSupporting(AccountProfileComplete accountProfile) {
     final colorScheme = Theme.of(context).colorScheme;
     final chipBackground = colorScheme.surfaceContainerHighest;
     final chipForeground = chipBackground.computeIconColor(
@@ -494,7 +494,7 @@ class _AccountProfileDetailScreenState
     );
   }
 
-  Widget _buildHeroReferencePointAction(AccountProfileModel accountProfile) {
+  Widget _buildHeroReferencePointAction(AccountProfileComplete accountProfile) {
     final colorScheme = Theme.of(context).colorScheme;
     final isCurrent = _controller.isCurrentReferencePoint(accountProfile);
     final backgroundColor = isCurrent
@@ -554,7 +554,7 @@ class _AccountProfileDetailScreenState
   }
 
   Future<void> _handleReferencePointTap(
-    AccountProfileModel accountProfile,
+    AccountProfileComplete accountProfile,
   ) async {
     final confirmed = await _showReferencePointConfirmationDialog(
       accountProfile,
@@ -604,7 +604,7 @@ class _AccountProfileDetailScreenState
   }
 
   Future<bool> _showReferencePointConfirmationDialog(
-    AccountProfileModel accountProfile,
+    AccountProfileComplete accountProfile,
   ) async {
     final result = await showRouteScopedDialog<bool>(
       context: context,
@@ -717,7 +717,7 @@ class _AccountProfileDetailScreenState
 
   Widget _buildReferencePointPreviewCard(
     BuildContext context,
-    AccountProfileModel accountProfile,
+    AccountProfileComplete accountProfile,
   ) {
     final colorScheme = Theme.of(context).colorScheme;
     final resolvedVisual = _controller.resolvedVisualFor(accountProfile);
@@ -831,7 +831,7 @@ class _AccountProfileDetailScreenState
   }
 
   List<ImmersiveTabItem> _buildTabsFromConfig(
-    AccountProfileModel accountProfile,
+    AccountProfileComplete accountProfile,
     PartnerProfileConfig config,
     Map<ProfileModuleId, Object?> moduleData,
   ) {
@@ -876,7 +876,7 @@ class _AccountProfileDetailScreenState
   }
 
   List<ImmersiveTabItem> _buildNestedProfileGroupTabs(
-    AccountProfileModel accountProfile,
+    AccountProfileComplete accountProfile,
   ) {
     final groups =
         accountProfile.nestedProfileGroups
@@ -931,7 +931,7 @@ class _AccountProfileDetailScreenState
   }
 
   ImmersiveTabItem _buildFallbackTab(
-    AccountProfileModel accountProfile, {
+    AccountProfileComplete accountProfile, {
     required bool isFav,
     required bool isFavoritable,
   }) {
@@ -945,7 +945,7 @@ class _AccountProfileDetailScreenState
     );
   }
 
-  ImmersiveTabItem _buildContactTab(AccountProfileModel accountProfile) {
+  ImmersiveTabItem _buildContactTab(AccountProfileComplete accountProfile) {
     final channels = _controller.availableContactChannelsFor(accountProfile);
     return ImmersiveTabItem(
       title: 'Contato',
@@ -954,7 +954,7 @@ class _AccountProfileDetailScreenState
   }
 
   Widget _buildContactTabContent(
-    AccountProfileModel accountProfile,
+    AccountProfileComplete accountProfile,
     List<BellugaContactChannel> channels,
   ) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -996,7 +996,7 @@ class _AccountProfileDetailScreenState
   }
 
   Widget _buildContactChannelCard(
-    AccountProfileModel accountProfile,
+    AccountProfileComplete accountProfile,
     BellugaContactChannel channel,
   ) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -1073,7 +1073,7 @@ class _AccountProfileDetailScreenState
   }
 
   Widget? _buildContactBubbleFloatingActionButton(
-    AccountProfileModel accountProfile,
+    AccountProfileComplete accountProfile,
   ) {
     final bubbleChannel = _controller.resolvedBubbleChannelFor(accountProfile);
     if (bubbleChannel == null) {
@@ -1138,7 +1138,7 @@ class _AccountProfileDetailScreenState
   }
 
   Future<void> _handleContactBubbleTap(
-    AccountProfileModel accountProfile,
+    AccountProfileComplete accountProfile,
     BellugaContactChannel bubbleChannel,
   ) async {
     _controller.trackContactBubbleTap(accountProfile);
@@ -1150,7 +1150,7 @@ class _AccountProfileDetailScreenState
   }
 
   Future<void> _invokeContactChannel(
-    AccountProfileModel accountProfile,
+    AccountProfileComplete accountProfile,
     BellugaContactChannel channel, {
     required String origin,
   }) async {
@@ -1169,7 +1169,7 @@ class _AccountProfileDetailScreenState
   }
 
   Future<void> _handleContactCtaTap(
-    AccountProfileModel accountProfile,
+    AccountProfileComplete accountProfile,
     BellugaContactChannel channel,
     BellugaContactInitialMessage initialMessage, {
     required String origin,
@@ -1190,7 +1190,7 @@ class _AccountProfileDetailScreenState
   }
 
   Future<void> _showContactChooserSheet(
-    AccountProfileModel accountProfile,
+    AccountProfileComplete accountProfile,
     BellugaContactChannel channel, {
     required String origin,
   }) async {
@@ -1241,7 +1241,7 @@ class _AccountProfileDetailScreenState
   }
 
   Future<void> _launchContactChannel(
-    AccountProfileModel accountProfile,
+    AccountProfileComplete accountProfile,
     BellugaContactChannel channel, {
     required String origin,
     BellugaContactInitialMessage? initialMessage,
@@ -1284,7 +1284,7 @@ class _AccountProfileDetailScreenState
     return launchUrl(uri, mode: mode);
   }
 
-  Widget? _buildExternalLinkStrip(AccountProfileModel accountProfile) {
+  Widget? _buildExternalLinkStrip(AccountProfileComplete accountProfile) {
     final links = _controller.availableExternalLinksFor(accountProfile);
     if (links.isEmpty) return null;
 
@@ -1311,7 +1311,9 @@ class _AccountProfileDetailScreenState
     }
   }
 
-  Future<void> _shareAccountProfile(AccountProfileModel accountProfile) async {
+  Future<void> _shareAccountProfile(
+    AccountProfileComplete accountProfile,
+  ) async {
     final payload = _buildAccountProfilePublicSharePayload(accountProfile);
     if (payload == null) {
       _showStatusMessage(
@@ -1333,20 +1335,14 @@ class _AccountProfileDetailScreenState
   }
 
   ({String subject, String message})? _buildAccountProfilePublicSharePayload(
-    AccountProfileModel accountProfile,
+    AccountProfileComplete accountProfile,
   ) {
-    if (!accountProfile.canOpenPublicDetail) {
+    final publicDetailUrl = accountProfile.publicDetailUrl;
+    if (publicDetailUrl == null) {
       return null;
     }
 
-    final publicDetailPath = accountProfile.publicDetailPath?.trim();
-    if (publicDetailPath == null || publicDetailPath.isEmpty) {
-      return null;
-    }
-
-    final publicUri = _controller.buildTenantPublicUriFromPath(
-      publicDetailPath,
-    );
+    final publicUri = _controller.buildTenantPublicUriFromPath(publicDetailUrl);
     if (publicUri == null) {
       return null;
     }
@@ -1423,7 +1419,7 @@ class _AccountProfileDetailScreenState
   }
 
   Widget _buildNoSectionsFallback(
-    AccountProfileModel accountProfile, {
+    AccountProfileComplete accountProfile, {
     required bool isFav,
     required bool isFavoritable,
   }) {
@@ -1525,7 +1521,7 @@ class _AccountProfileDetailScreenState
   }
 
   Widget? _buildFavoriteFooterIfAvailable(
-    AccountProfileModel accountProfile, {
+    AccountProfileComplete accountProfile, {
     required bool isFav,
     required bool isFavoritable,
   }) {
@@ -1535,7 +1531,7 @@ class _AccountProfileDetailScreenState
     return _favoriteFooter(accountProfile);
   }
 
-  Widget _favoriteFooter(AccountProfileModel accountProfile) {
+  Widget _favoriteFooter(AccountProfileComplete accountProfile) {
     return _buildFooterShell(
       child: FilledButton.icon(
         key: const Key('accountProfileFavoriteFooterButton'),
@@ -1666,7 +1662,7 @@ class _AccountProfileDetailScreenState
   }
 
   Widget _agendaList(
-    AccountProfileModel accountProfile,
+    AccountProfileComplete accountProfile,
     AccountProfileAgendaPresentation? presentation,
   ) {
     if (presentation == null || presentation.isEmpty) {
@@ -2009,7 +2005,7 @@ class _AccountProfileDetailScreenState
   }
 
   Widget _buildAgendaLiveHighlightCard(
-    AccountProfileModel accountProfile,
+    AccountProfileComplete accountProfile,
     PartnerEventView event,
   ) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -2214,7 +2210,7 @@ class _AccountProfileDetailScreenState
   }
 
   String _agendaPrimaryLabel(
-    AccountProfileModel accountProfile,
+    AccountProfileComplete accountProfile,
     PartnerEventView event,
   ) {
     return event.title;
@@ -2225,7 +2221,7 @@ class _AccountProfileDetailScreenState
   }
 
   List<_AgendaCounterpart> _agendaCounterparts(
-    AccountProfileModel accountProfile,
+    AccountProfileComplete accountProfile,
     PartnerEventView event,
   ) {
     final counterparts = <_AgendaCounterpart>[];
@@ -2235,7 +2231,7 @@ class _AccountProfileDetailScreenState
       accountProfile,
       event,
     )) {
-      final title = counterpart.title.trim();
+      final title = counterpart.name.trim();
       if (title.isEmpty) {
         continue;
       }
@@ -2245,15 +2241,15 @@ class _AccountProfileDetailScreenState
       }
       seen.add(normalized);
       counterparts.add(
-        _AgendaCounterpart(label: title, thumbUrl: counterpart.thumb),
+        _AgendaCounterpart(label: title, thumbUrl: counterpart.avatarUrl),
       );
     }
 
     return counterparts;
   }
 
-  List<PartnerSupportedEntityView> _agendaCounterpartProfiles(
-    AccountProfileModel accountProfile,
+  List<AccountProfileSummary> _agendaCounterpartProfiles(
+    AccountProfileComplete accountProfile,
     PartnerEventView event,
   ) {
     return event.counterpartProfiles
@@ -2261,14 +2257,14 @@ class _AccountProfileDetailScreenState
           (counterpart) => !_agendaMatchesHost(
             accountProfile,
             candidateId: counterpart.id,
-            candidateTitle: counterpart.title,
+            candidateTitle: counterpart.name,
           ),
         )
         .toList(growable: false);
   }
 
   bool _agendaMatchesHost(
-    AccountProfileModel accountProfile, {
+    AccountProfileComplete accountProfile, {
     String? candidateId,
     String? candidateTitle,
   }) {
@@ -2297,7 +2293,7 @@ class _AccountProfileDetailScreenState
   }
 
   Widget _buildAgendaCounterpartsLine(
-    AccountProfileModel accountProfile,
+    AccountProfileComplete accountProfile,
     PartnerEventView event, {
     required String keyPrefix,
     required Color textColor,
@@ -2387,7 +2383,7 @@ class _AccountProfileDetailScreenState
   }
 
   Widget? _buildAgendaVenueLine(
-    AccountProfileModel accountProfile,
+    AccountProfileComplete accountProfile,
     PartnerEventView event, {
     required String keyPrefix,
     required Color textColor,
@@ -2807,10 +2803,7 @@ class _AccountProfileDetailScreenState
     );
   }
 
-  Widget _supportedEntities(
-    String title,
-    List<PartnerSupportedEntityView>? data,
-  ) {
+  Widget _supportedEntities(String title, List<AccountProfileSummary>? data) {
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -2848,16 +2841,16 @@ class _AccountProfileDetailScreenState
                             color: Colors.grey.shade300,
                             borderRadius: BorderRadius.circular(10),
                           ),
-                          child: entity.thumb != null
+                          child: entity.avatarUrl != null
                               ? BellugaNetworkImage(
-                                  entity.thumb!,
+                                  entity.avatarUrl!,
                                   fit: BoxFit.cover,
                                   errorWidget: const SizedBox(),
                                 )
                               : null,
                         ),
                         const SizedBox(height: 8),
-                        Text(entity.title),
+                        Text(entity.name),
                       ],
                     ),
                   );
@@ -2905,12 +2898,11 @@ class _AccountProfileDetailScreenState
 
   Widget _nestedProfileMemberCard(
     AccountProfileNestedGroup group,
-    AccountProfileNestedGroupMember member,
+    AccountProfileSummary member,
   ) {
     final theme = Theme.of(context);
     final colorScheme = Theme.of(context).colorScheme;
-    final memberProfile = _profileFromNestedMember(member);
-    final resolvedVisual = _controller.resolvedVisualFor(memberProfile);
+    final resolvedVisual = _controller.resolvedVisualForSummary(member);
     final memberPath = _nestedProfileMemberPath(member);
     final labels = member.tags
         .map((tag) => tag.value.trim())
@@ -2961,30 +2953,8 @@ class _AccountProfileDetailScreenState
     );
   }
 
-  String? _nestedProfileMemberPath(AccountProfileNestedGroupMember member) {
-    if (!member.canOpenPublicDetail) {
-      return null;
-    }
-
-    final publicDetailPath = member.publicDetailPath?.trim();
-    if (publicDetailPath != null && publicDetailPath.isNotEmpty) {
-      return publicDetailPath;
-    }
-    return null;
-  }
-
-  AccountProfileModel _profileFromNestedMember(
-    AccountProfileNestedGroupMember member,
-  ) {
-    return AccountProfileModel(
-      idValue: member.idValue,
-      nameValue: member.nameValue,
-      slugValue: member.slugValue ?? (SlugValue()..parse(member.id)),
-      profileTypeValue: member.profileTypeValue,
-      avatarValue: member.avatarValue,
-      coverValue: member.coverValue,
-      tagValues: member.tags,
-    );
+  String? _nestedProfileMemberPath(AccountProfileSummary member) {
+    return member.publicDetailUrl;
   }
 
   Widget _sponsorBanner(String? sponsor) {
@@ -3117,7 +3087,7 @@ class _AccountProfileDetailScreenState
       case ProfileModuleId.supportedEntities:
         return _supportedEntities(
           module.title ?? 'Quem apoiamos',
-          data is List<PartnerSupportedEntityView> ? data : null,
+          data is List<AccountProfileSummary> ? data : null,
         );
       case ProfileModuleId.richText:
         if (data is List<AccountProfileRichTextBlock>) {
@@ -3148,15 +3118,12 @@ class _LazyNestedProfileGroupContent extends StatelessWidget {
 
   final AccountProfileDetailController controller;
   final AccountProfileNestedGroup group;
-  final Widget Function(
-    List<AccountProfileNestedGroupMember> members,
-    Widget? footer,
-  )
+  final Widget Function(List<AccountProfileSummary> members, Widget? footer)
   itemBuilder;
 
   @override
   Widget build(BuildContext context) {
-    return StreamValueBuilder<List<AccountProfileNestedGroupMember>>(
+    return StreamValueBuilder<List<AccountProfileSummary>>(
       streamValue: controller.nestedGroupMembersStreamValue(group),
       builder: (context, members) {
         return StreamValueBuilder<AccountProfilesRepositoryContractPrimBool>(

@@ -1,14 +1,9 @@
-import 'package:belluga_now/domain/invites/invite_partner_type.dart';
-import 'package:belluga_now/domain/partner/partner_resume.dart';
-import 'package:belluga_now/domain/partner/value_objects/invite_partner_hero_image_value.dart';
-import 'package:belluga_now/domain/partner/value_objects/invite_partner_logo_image_value.dart';
-import 'package:belluga_now/domain/partner/value_objects/invite_partner_name_value.dart';
-import 'package:belluga_now/domain/partners/value_objects/account_profile_type_value.dart';
-import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
+import 'package:belluga_now/domain/partners/account_profile_summary.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_fields.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/event_occurrence_option.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_counterpart_count_value.dart';
-import 'package:belluga_now/domain/schedule/value_objects/event_linked_account_profile_text_value.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_text_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_occurrence_values.dart';
 import 'package:belluga_now/domain/schedule/event_type_model.dart';
 import 'package:belluga_now/domain/services/timezone_service_contract.dart';
@@ -217,8 +212,38 @@ void main() {
         ['Marco Aurélio', 'DJ Lua'],
       );
       expect(projection.counterpartProfiles.last.profileType, 'artist');
-      expect(projection.counterpartProfiles.last.partyType, 'artist');
       expect(projection.counterpartCount, 7);
+    },
+  );
+
+  test(
+    'fromPartnerEventView uses party type and drops counterparts without a type',
+    () {
+      final event = buildPartnerEventView(
+        eventId: '507f1f77bcf86cd799439021',
+        occurrenceId: '507f1f77bcf86cd799439121',
+        title: 'Jazz na Orla',
+        location: 'Deck Principal',
+        startDateTime: DateTime.utc(2026, 8, 25, 2, 30),
+        artistNames: const ['Casa Venue', 'DJ Lua', 'Sem Tipo'],
+        artistIds: const [
+          '507f1f77bcf86cd799439015',
+          '507f1f77bcf86cd799439199',
+          '507f1f77bcf86cd799439200',
+        ],
+        artistProfileTypes: const [null, null, null],
+        artistPartyTypes: const ['venue', 'artist', null],
+      );
+
+      final projection = UpcomingOcurrenceResume.fromPartnerEventView(
+        event,
+        viewedProfileId: MongoIDValue()..parse('507f1f77bcf86cd799439099'),
+        viewedProfileName: TitleValue(minLenght: 1)..parse('Perfil Visitado'),
+      );
+
+      expect(projection.counterpartProfiles, hasLength(1));
+      expect(projection.counterpartProfiles.single.displayName, 'DJ Lua');
+      expect(projection.counterpartProfiles.single.profileType, 'artist');
     },
   );
 
@@ -308,9 +333,9 @@ UpcomingOcurrenceResume _buildResume({required DateTime start, DateTime? end}) {
 
 EventModel _buildEvent({
   ThumbModel? thumb,
-  List<EventLinkedAccountProfile> linkedAccountProfiles = const [],
+  List<AccountProfileSummary> linkedAccountProfiles = const [],
   int? counterpartCount,
-  PartnerResume? venue,
+  AccountProfileSummary? venue,
   DateTime? occurrenceStart,
   DateTime? occurrenceEnd,
 }) {
@@ -318,12 +343,8 @@ EventModel _buildEvent({
       ? const <EventOccurrenceOption>[]
       : <EventOccurrenceOption>[
           EventOccurrenceOption(
-            occurrenceIdValue: EventLinkedAccountProfileTextValue(
-              'occurrence-1',
-            ),
-            occurrenceSlugValue: EventLinkedAccountProfileTextValue(
-              'occurrence-1',
-            ),
+            occurrenceIdValue: AccountProfileTextValue('occurrence-1'),
+            occurrenceSlugValue: AccountProfileTextValue('occurrence-1'),
             dateTimeStartValue: DateTimeValue(isRequired: true)
               ..parse(occurrenceStart.toIso8601String()),
             dateTimeEndValue: DomainOptionalDateTimeValue()
@@ -413,48 +434,44 @@ class _FakeTimezoneService implements TimezoneServiceContract {
   }
 }
 
-EventLinkedAccountProfile _buildLinkedProfile({
+AccountProfileSummary _buildLinkedProfile({
   required String id,
   required String displayName,
   required String profileType,
-  String? partyType,
   String? avatarUrl,
   String? coverUrl,
 }) {
-  return EventLinkedAccountProfile(
-    idValue: EventLinkedAccountProfileTextValue(id),
-    displayNameValue: EventLinkedAccountProfileTextValue(displayName),
+  return AccountProfileSummary(
+    idValue: AccountProfileTextValue(id),
+    nameValue: AccountProfileNameValue()..parse(displayName),
     profileTypeValue: AccountProfileTypeValue(profileType),
     slugValue: SlugValue()..parse('$id-slug'),
-    avatarUrlValue: avatarUrl == null
+    avatarValue: avatarUrl == null
         ? null
         : (ThumbUriValue(defaultValue: Uri.parse(avatarUrl), isRequired: true)
             ..parse(avatarUrl)),
-    coverUrlValue: coverUrl == null
+    coverValue: coverUrl == null
         ? null
         : (ThumbUriValue(defaultValue: Uri.parse(coverUrl), isRequired: true)
             ..parse(coverUrl)),
-    partyTypeValue: partyType == null
-        ? null
-        : EventLinkedAccountProfileTextValue(partyType),
   );
 }
 
-PartnerResume _buildVenue({String? heroUrl, String? logoUrl}) {
-  InvitePartnerHeroImageValue? heroValue;
+AccountProfileSummary _buildVenue({String? heroUrl, String? logoUrl}) {
+  ThumbUriValue? heroValue;
   if (heroUrl != null && heroUrl.isNotEmpty) {
-    heroValue = InvitePartnerHeroImageValue()..parse(heroUrl);
+    heroValue = ThumbUriValue(defaultValue: Uri.parse(heroUrl))..parse(heroUrl);
   }
-  InvitePartnerLogoImageValue? logoValue;
+  ThumbUriValue? logoValue;
   if (logoUrl != null && logoUrl.isNotEmpty) {
-    logoValue = InvitePartnerLogoImageValue()..parse(logoUrl);
+    logoValue = ThumbUriValue(defaultValue: Uri.parse(logoUrl))..parse(logoUrl);
   }
 
-  return PartnerResume(
-    idValue: MongoIDValue()..parse('507f1f77bcf86cd799439012'),
-    nameValue: InvitePartnerNameValue()..parse('Host Venue'),
-    type: InviteAccountProfileType.mercadoProducer,
-    heroImageValue: heroValue,
-    logoImageValue: logoValue,
+  return AccountProfileSummary(
+    idValue: AccountProfileTextValue('507f1f77bcf86cd799439012'),
+    nameValue: AccountProfileNameValue()..parse('Host Venue'),
+    profileTypeValue: AccountProfileTypeValue('venue'),
+    coverValue: heroValue,
+    avatarValue: logoValue,
   );
 }

@@ -19,87 +19,90 @@ void main() {
   });
 
   testWidgets(
-      'wraps account profile detail with image palette theme when cover exists',
-      (tester) async {
-    final route = const PartnerDetailRoute(slug: 'guarapari-vibes');
-    final profile = buildAccountProfileModelFromPrimitives(
-      id: '507f1f77bcf86cd799439011',
-      name: 'Guarapari Vibes',
-      slug: 'guarapari-vibes',
-      type: 'artist',
-      coverUrl: 'https://example.com/cover.png',
-    );
+    'wraps account profile detail with image palette theme when cover exists',
+    (tester) async {
+      final route = const PartnerDetailRoute(slug: 'guarapari-vibes');
+      final profile = buildAccountProfileCompleteFromPrimitives(
+        id: '507f1f77bcf86cd799439011',
+        name: 'Guarapari Vibes',
+        slug: 'guarapari-vibes',
+        type: 'artist',
+        coverUrl: 'https://example.com/cover.png',
+      );
 
-    late Widget builtScreen;
+      late Widget builtScreen;
 
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Builder(
-          builder: (context) {
-            builtScreen = route.buildScreen(context, profile);
-            return const SizedBox.shrink();
-          },
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (context) {
+              builtScreen = route.buildScreen(context, profile);
+              return const SizedBox.shrink();
+            },
+          ),
         ),
-      ),
-    );
+      );
 
-    expect(builtScreen, isA<ImagePaletteTheme>());
-  });
+      expect(builtScreen, isA<ImagePaletteTheme>());
+    },
+  );
 
   testWidgets(
-      'wraps account profile detail with image palette theme when avatar is the final hero image source',
-      (tester) async {
-    final route = const PartnerDetailRoute(slug: 'guarapari-vibes');
-    final profile = buildAccountProfileModelFromPrimitives(
-      id: '507f1f77bcf86cd799439011',
-      name: 'Guarapari Vibes',
-      slug: 'guarapari-vibes',
-      type: 'artist',
-      avatarUrl: 'https://example.com/avatar.png',
-    );
+    'wraps account profile detail with image palette theme when avatar is the final hero image source',
+    (tester) async {
+      final route = const PartnerDetailRoute(slug: 'guarapari-vibes');
+      final profile = buildAccountProfileCompleteFromPrimitives(
+        id: '507f1f77bcf86cd799439011',
+        name: 'Guarapari Vibes',
+        slug: 'guarapari-vibes',
+        type: 'artist',
+        avatarUrl: 'https://example.com/avatar.png',
+      );
 
-    late Widget builtScreen;
+      late Widget builtScreen;
 
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Builder(
-          builder: (context) {
-            builtScreen = route.buildScreen(context, profile);
-            return const SizedBox.shrink();
-          },
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (context) {
+              builtScreen = route.buildScreen(context, profile);
+              return const SizedBox.shrink();
+            },
+          ),
         ),
-      ),
-    );
+      );
 
-    expect(builtScreen, isA<ImagePaletteTheme>());
-  });
+      expect(builtScreen, isA<ImagePaletteTheme>());
+    },
+  );
 
   testWidgets(
-      'wraps account profile detail with seed palette theme when only type-visual color fallback exists',
-      (tester) async {
-    final route = const PartnerDetailRoute(slug: 'guarapari-vibes');
-    final profile = buildAccountProfileModelFromPrimitives(
-      id: '507f1f77bcf86cd799439011',
-      name: 'Guarapari Vibes',
-      slug: 'guarapari-vibes',
-      type: 'artist',
-    );
+    'wraps account profile detail with seed palette theme when only type-visual color fallback exists',
+    (tester) async {
+      final route = const PartnerDetailRoute(slug: 'guarapari-vibes');
+      final profile = buildAccountProfileCompleteFromPrimitives(
+        id: '507f1f77bcf86cd799439011',
+        name: 'Guarapari Vibes',
+        slug: 'guarapari-vibes',
+        type: 'artist',
+      );
 
-    late Widget builtScreen;
+      late Widget builtScreen;
 
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Builder(
-          builder: (context) {
-            builtScreen = route.buildScreen(context, profile);
-            return const SizedBox.shrink();
-          },
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (context) {
+              builtScreen = route.buildScreen(context, profile);
+              return const SizedBox.shrink();
+            },
+          ),
         ),
-      ),
-    );
+      );
 
-    expect(builtScreen, isA<SeedPaletteTheme>());
-  });
+      expect(builtScreen, isA<SeedPaletteTheme>());
+    },
+  );
 }
 
 AppData _buildAppData() {

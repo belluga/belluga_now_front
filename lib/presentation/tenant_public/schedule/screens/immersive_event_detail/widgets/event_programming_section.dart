@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:belluga_now/domain/partners/profile_type_registry.dart';
 import 'package:belluga_now/application/rich_text/safe_rich_html.dart';
 import 'package:belluga_now/domain/schedule/event_programming_item.dart';
-import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
+import 'package:belluga_now/domain/partners/account_profile_summary.dart';
 import 'package:belluga_now/domain/schedule/event_occurrence_option.dart';
 import 'package:belluga_now/presentation/shared/visuals/account_profile_visual_resolver.dart';
 import 'package:belluga_now/presentation/shared/visuals/resolved_account_profile_visual.dart';
@@ -31,7 +31,7 @@ class EventProgrammingSection extends StatefulWidget {
   final List<EventProgrammingItem> items;
   final List<EventOccurrenceOption> occurrences;
   final ValueChanged<EventOccurrenceOption> onOccurrenceTap;
-  final ValueChanged<EventLinkedAccountProfile> onLocationTap;
+  final ValueChanged<AccountProfileSummary> onLocationTap;
   final ProfileTypeRegistry? profileTypeRegistry;
   @visibleForTesting
   final VoidCallback? debugOnOccurrenceCenterAnimationStart;
@@ -510,7 +510,7 @@ class _ProgrammingTimelineEntry extends StatelessWidget {
   final EventProgrammingItem item;
   final int itemIndex;
   final GlobalKey markerKey;
-  final ValueChanged<EventLinkedAccountProfile> onLocationTap;
+  final ValueChanged<AccountProfileSummary> onLocationTap;
   final ProfileTypeRegistry? profileTypeRegistry;
 
   @override
@@ -570,7 +570,7 @@ class _ProgrammingCard extends StatelessWidget {
 
   final EventProgrammingItem item;
   final int itemIndex;
-  final ValueChanged<EventLinkedAccountProfile> onLocationTap;
+  final ValueChanged<AccountProfileSummary> onLocationTap;
   final ProfileTypeRegistry? profileTypeRegistry;
 
   @override
@@ -668,7 +668,7 @@ class _ProgrammingCard extends StatelessWidget {
 class _ProgrammingLocationLine extends StatelessWidget {
   const _ProgrammingLocationLine({required this.profile, required this.onTap});
 
-  final EventLinkedAccountProfile profile;
+  final AccountProfileSummary profile;
   final VoidCallback onTap;
 
   @override
@@ -719,7 +719,7 @@ class _ProgrammingProfileChip extends StatelessWidget {
     required this.profileTypeRegistry,
   });
 
-  final EventLinkedAccountProfile profile;
+  final AccountProfileSummary profile;
   final ProfileTypeRegistry? profileTypeRegistry;
 
   @override
@@ -774,7 +774,7 @@ class _ProgrammingProfileVisual extends StatelessWidget {
     required this.resolvedVisual,
   });
 
-  final EventLinkedAccountProfile profile;
+  final AccountProfileSummary profile;
   final ResolvedAccountProfileVisual resolvedVisual;
 
   @override

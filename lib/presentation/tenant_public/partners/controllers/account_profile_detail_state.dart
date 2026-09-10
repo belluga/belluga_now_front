@@ -1,11 +1,9 @@
-import 'package:belluga_now/domain/partners/account_profile_model.dart';
+import 'package:belluga_now/domain/partners/account_profile_complete.dart';
 
 class AccountProfileDetailState {
-  const AccountProfileDetailState({
-    required this.accountProfile,
-  });
+  const AccountProfileDetailState({required this.accountProfile});
 
   static const empty = AccountProfileDetailState(accountProfile: null);
 
-  final AccountProfileModel? accountProfile;
+  final AccountProfileComplete? accountProfile;
 }

@@ -1,36 +1,34 @@
-import 'package:belluga_now/domain/invites/invite_partner_summary.dart';
+import 'package:belluga_now/domain/partners/account_profile_summary.dart';
 import 'package:flutter/material.dart';
 
 class InviterNameLabel extends StatelessWidget {
   const InviterNameLabel({
     super.key,
     required this.name,
-    required this.partner,
+    required this.accountProfile,
     required this.isPreview,
-    this.onTapPartner,
+    this.onTapAccountProfile,
   });
 
   final String name;
-  final InvitePartnerSummary? partner;
+  final AccountProfileSummary? accountProfile;
   final bool isPreview;
-  final VoidCallback? onTapPartner;
+  final VoidCallback? onTapAccountProfile;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final text = Text(
       name,
-      style: theme.textTheme.labelLarge?.copyWith(
-        fontWeight: FontWeight.w700,
-      ),
+      style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700),
       textAlign: TextAlign.center,
     );
 
-    if (partner != null && onTapPartner != null) {
+    if (accountProfile != null && onTapAccountProfile != null) {
       return Material(
         type: MaterialType.transparency,
         child: InkWell(
-          onTap: isPreview ? null : onTapPartner,
+          onTap: isPreview ? null : onTapAccountProfile,
           borderRadius: BorderRadius.circular(12),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),

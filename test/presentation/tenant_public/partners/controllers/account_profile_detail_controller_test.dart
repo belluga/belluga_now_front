@@ -5,7 +5,8 @@ import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.da
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/partners/account_profile_gallery_group.dart';
-import 'package:belluga_now/domain/partners/account_profile_model.dart';
+import 'package:belluga_now/domain/partners/account_profile_complete.dart';
+import 'package:belluga_now/domain/partners/account_profile_summary.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_config.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_module_data.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
@@ -19,8 +20,6 @@ import 'package:belluga_now/domain/repositories/user_events_repository_contract.
 import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
-import 'package:belluga_now/domain/shared/account_profile_contact_source_summary.dart';
-import 'package:belluga_now/domain/shared/value_objects/account_profile_contact_source_account_profile_id_value.dart';
 import 'package:belluga_now/domain/invites/invite_accept_result.dart';
 import 'package:belluga_now/domain/invites/invite_decline_result.dart';
 import 'package:belluga_now/domain/invites/invite_materialize_result.dart';
@@ -30,6 +29,7 @@ import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
 import 'package:belluga_now/domain/invites/invite_contact_match.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_fields.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_text_value.dart';
 import 'package:belluga_now/presentation/tenant_public/partners/controllers/account_profile_detail_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/partners/controllers/account_profile_agenda_presentation.dart';
 import 'package:belluga_now/infrastructure/services/telemetry/telemetry_properties_codec.dart';
@@ -51,7 +51,7 @@ void main() {
       final controller = AccountProfileDetailController(
         accountProfilesRepository: accountProfileRepository,
       );
-      final profile = buildAccountProfileModelFromPrimitives(
+      final profile = buildAccountProfileCompleteFromPrimitives(
         id: '507f1f77bcf86cd799439011',
         name: 'Cafe de la Musique',
         slug: 'cafe-de-la-musique',
@@ -94,7 +94,7 @@ void main() {
       expect(agenda.upcomingOccurrences, hasLength(1));
       expect(agenda.liveOccurrences.first.slug, 'jazz-na-orla');
       expect(
-        agenda.liveOccurrences.first.primaryCounterpart?.title,
+        agenda.liveOccurrences.first.primaryCounterpart?.name,
         'Marco Aurélio',
       );
       expect(
@@ -110,7 +110,7 @@ void main() {
       final controller = AccountProfileDetailController(
         accountProfilesRepository: _FakeAccountProfilesRepository(),
       );
-      final profile = buildAccountProfileModelFromPrimitives(
+      final profile = buildAccountProfileCompleteFromPrimitives(
         id: '507f1f77bcf86cd799439011',
         name: 'Casa Marracini',
         slug: 'casa-marracini',
@@ -183,7 +183,7 @@ void main() {
       final controller = AccountProfileDetailController(
         accountProfilesRepository: accountProfileRepository,
       );
-      final profile = buildAccountProfileModelFromPrimitives(
+      final profile = buildAccountProfileCompleteFromPrimitives(
         id: '507f1f77bcf86cd799439011',
         name: 'Casa Marracini',
         slug: 'casa-marracini',
@@ -213,7 +213,7 @@ void main() {
       final controller = AccountProfileDetailController(
         accountProfilesRepository: accountProfileRepository,
       );
-      final profile = buildAccountProfileModelFromPrimitives(
+      final profile = buildAccountProfileCompleteFromPrimitives(
         id: '507f1f77bcf86cd799439011',
         name: 'Cafe de la Musique',
         slug: 'cafe-de-la-musique',
@@ -258,7 +258,7 @@ void main() {
       final controller = AccountProfileDetailController(
         accountProfilesRepository: _FakeAccountProfilesRepository(),
       );
-      final profile = buildAccountProfileModelFromPrimitives(
+      final profile = buildAccountProfileCompleteFromPrimitives(
         id: '507f1f77bcf86cd799439011',
         name: 'Cafe de la Musique',
         slug: 'cafe-de-la-musique',
@@ -296,7 +296,7 @@ void main() {
       final controller = AccountProfileDetailController(
         accountProfilesRepository: _FakeAccountProfilesRepository(),
       );
-      final profile = buildAccountProfileModelFromPrimitives(
+      final profile = buildAccountProfileCompleteFromPrimitives(
         id: '507f1f77bcf86cd799439011',
         name: 'Cafe de la Musique',
         slug: 'cafe-de-la-musique',
@@ -340,7 +340,7 @@ void main() {
         type: BellugaContactChannelType.email,
         value: 'email-invalido',
       );
-      final profile = buildAccountProfileModelFromPrimitives(
+      final profile = buildAccountProfileCompleteFromPrimitives(
         id: '507f1f77bcf86cd799439011',
         name: 'Cafe de la Musique',
         slug: 'cafe-de-la-musique',
@@ -374,7 +374,7 @@ void main() {
         type: BellugaContactChannelType.email,
         value: 'contato@example.test',
       );
-      final profile = buildAccountProfileModelFromPrimitives(
+      final profile = buildAccountProfileCompleteFromPrimitives(
         id: '507f1f77bcf86cd799439015',
         name: 'Perfil com ponteiro inválido',
         slug: 'perfil-com-ponteiro-invalido',
@@ -402,7 +402,7 @@ void main() {
         value: '+55 (27) 99999-1111',
         title: 'Atendimento',
       );
-      final profile = buildAccountProfileModelFromPrimitives(
+      final profile = buildAccountProfileCompleteFromPrimitives(
         id: '507f1f77bcf86cd799439115',
         name: 'Perfil espelhado',
         slug: 'perfil-espelhado',
@@ -441,7 +441,7 @@ void main() {
         type: BellugaContactChannelType.whatsapp,
         value: '+55 (27) 99999-9999',
       );
-      final profile = buildAccountProfileModelFromPrimitives(
+      final profile = buildAccountProfileCompleteFromPrimitives(
         id: '507f1f77bcf86cd799439012',
         name: 'Casa do Som',
         slug: 'casa-do-som',
@@ -491,7 +491,7 @@ void main() {
         value: '+55 (27) 99999-9999',
         initialMessages: [initialMessage],
       );
-      final profile = buildAccountProfileModelFromPrimitives(
+      final profile = buildAccountProfileCompleteFromPrimitives(
         id: '507f1f77bcf86cd799439013',
         name: 'Cafe de la Musique',
         slug: 'cafe-de-la-musique',
@@ -500,11 +500,9 @@ void main() {
         contactSourceAccountProfileId: '507f1f77bcf86cd799439099',
         effectiveContactChannels: [whatsappChannel],
         contactBubbleChannelId: whatsappChannel.id,
-        effectiveContactSourceProfile: AccountProfileContactSourceSummary(
-          idValue: AccountProfileContactSourceAccountProfileIdValue(
-            '507f1f77bcf86cd799439099',
-          ),
-          displayNameValue: AccountProfileNameValue()..parse('Perfil Origem'),
+        effectiveContactSourceProfile: AccountProfileSummary(
+          idValue: AccountProfileTextValue('507f1f77bcf86cd799439099'),
+          nameValue: AccountProfileNameValue()..parse('Perfil Origem'),
           profileTypeValue: AccountProfileTypeValue('artist'),
         ),
       );
@@ -553,7 +551,7 @@ void main() {
       value: '+55 (27) 99999-9999',
       initialMessages: [initialMessage],
     );
-    final profile = buildAccountProfileModelFromPrimitives(
+    final profile = buildAccountProfileCompleteFromPrimitives(
       id: '507f1f77bcf86cd799439017',
       name: 'Perfil de contato',
       slug: 'perfil-de-contato',
@@ -631,7 +629,7 @@ void main() {
         userEventsRepository: userEventsRepository,
         invitesRepository: invitesRepository,
       );
-      final profile = buildAccountProfileModelFromPrimitives(
+      final profile = buildAccountProfileCompleteFromPrimitives(
         id: '507f1f77bcf86cd799439015',
         name: 'Casa Marracini',
         slug: 'casa-marracini',
@@ -901,13 +899,13 @@ Future<void> _registerContactAppData({required bool contactEnabled}) async {
   );
 }
 
-AccountProfileModel _buildReferenceProfile({
+AccountProfileComplete _buildReferenceProfile({
   String id = '507f1f77bcf86cd799439012',
   String slug = 'casa-marracini',
   double? locationLat = -20.7389,
   double? locationLng = -40.8212,
 }) {
-  return buildAccountProfileModelFromPrimitives(
+  return buildAccountProfileCompleteFromPrimitives(
     id: id,
     name: 'Casa Marracini',
     slug: slug,
@@ -917,7 +915,7 @@ AccountProfileModel _buildReferenceProfile({
   );
 }
 
-FixedLocationReference _fixedReferenceFor(AccountProfileModel profile) {
+FixedLocationReference _fixedReferenceFor(AccountProfileComplete profile) {
   return FixedLocationReference(
     sourceKind: FixedLocationReferenceSourceKind.entityReference,
     coordinate: CityCoordinate(
@@ -1002,7 +1000,7 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
     favoriteAccountProfileIdsStreamValue.addValue(const {});
   }
 
-  final List<AccountProfileModel> _profiles = <AccountProfileModel>[];
+  final List<AccountProfileComplete> _profiles = <AccountProfileComplete>[];
   final List<String> toggleFavoriteCalls = <String>[];
 
   @override
@@ -1024,7 +1022,7 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
   }
 
   @override
-  Future<AccountProfileModel?> getAccountProfileBySlug(
+  Future<AccountProfileComplete?> getAccountProfileBySlug(
     AccountProfilesRepositoryContractPrimString slug,
   ) async {
     for (final profile in _profiles) {
@@ -1036,7 +1034,7 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
   }
 
   @override
-  Future<List<AccountProfileModel>> fetchNearbyAccountProfiles({
+  Future<List<AccountProfileComplete>> fetchNearbyAccountProfiles({
     AccountProfilesRepositoryContractPrimInt? pageSize,
     List<AccountProfilesRepositoryContractPrimString>? typeFilters,
     List<dynamic>? taxonomyFilters,
@@ -1060,7 +1058,7 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
   }
 
   @override
-  List<AccountProfileModel> getFavoriteAccountProfiles() => const [];
+  List<AccountProfileComplete> getFavoriteAccountProfiles() => const [];
 }
 
 class _FakeAuthRepository extends Fake

@@ -1,10 +1,7 @@
 import 'package:value_object_pattern/value_object.dart';
 
 class EngagementCountValue extends ValueObject<int> {
-  EngagementCountValue({
-    super.defaultValue = 0,
-    super.isRequired = true,
-  });
+  EngagementCountValue({super.defaultValue = 0, super.isRequired = true});
 
   @override
   int doParse(dynamic parseValue) {

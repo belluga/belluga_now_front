@@ -2,7 +2,7 @@ import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/modular_app/modules/discovery_module.dart';
 import 'package:belluga_now/application/router/support/route_scoped_resolver_route.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
-import 'package:belluga_now/domain/partners/account_profile_model.dart';
+import 'package:belluga_now/domain/partners/account_profile_complete.dart';
 import 'package:belluga_now/presentation/shared/visuals/account_profile_visual_resolver.dart';
 import 'package:belluga_now/presentation/shared/widgets/image_palette_theme.dart';
 import 'package:belluga_now/presentation/shared/widgets/seed_palette_theme.dart';
@@ -13,11 +13,8 @@ import 'package:get_it_modular_with_auto_route/get_it_modular_with_auto_route.da
 
 @RoutePage()
 class PartnerDetailRoute
-    extends RouteScopedResolverRoute<AccountProfileModel, DiscoveryModule> {
-  const PartnerDetailRoute({
-    super.key,
-    @PathParam('slug') required this.slug,
-  });
+    extends RouteScopedResolverRoute<AccountProfileComplete, DiscoveryModule> {
+  const PartnerDetailRoute({super.key, @PathParam('slug') required this.slug});
 
   final String slug;
 
@@ -25,7 +22,7 @@ class PartnerDetailRoute
   RouteResolverParams get resolverParams => {'slug': slug};
 
   @override
-  Widget buildScreen(BuildContext context, AccountProfileModel model) {
+  Widget buildScreen(BuildContext context, AccountProfileComplete model) {
     final registry = GetIt.I.isRegistered<AppData>()
         ? GetIt.I.get<AppData>().profileTypeRegistry
         : null;
@@ -37,9 +34,8 @@ class PartnerDetailRoute
     if (imageUrl != null) {
       return ImagePaletteTheme(
         imageProvider: NetworkImage(imageUrl),
-        builder: (context, _) => AccountProfileDetailScreen(
-          accountProfile: model,
-        ),
+        builder: (context, _) =>
+            AccountProfileDetailScreen(accountProfile: model),
       );
     }
 
@@ -47,9 +43,8 @@ class PartnerDetailRoute
     if (seedColor != null) {
       return SeedPaletteTheme(
         seedColor: seedColor,
-        builder: (context, _) => AccountProfileDetailScreen(
-          accountProfile: model,
-        ),
+        builder: (context, _) =>
+            AccountProfileDetailScreen(accountProfile: model),
       );
     }
 

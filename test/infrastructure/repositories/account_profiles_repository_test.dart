@@ -8,11 +8,11 @@ import 'package:belluga_contact_channels/belluga_contact_channels.dart';
 import 'package:belluga_discovery_filters/belluga_discovery_filters.dart';
 import 'package:belluga_now/domain/favorite/favorite.dart';
 import 'package:belluga_now/domain/favorite/projections/favorite_resume.dart';
-import 'package:belluga_now/domain/partners/account_profile_model.dart';
-import 'package:belluga_now/domain/partners/account_profile_nested_group_member.dart';
+import 'package:belluga_now/domain/partners/account_profile_complete.dart';
+import 'package:belluga_now/domain/partners/account_profile_summary.dart';
 import 'package:belluga_now/domain/partners/account_profile_nested_group_member_page.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
-import 'package:belluga_now/domain/partners/value_objects/account_profile_nested_group_member_text_value.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_text_value.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_name_value.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_type_value.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
@@ -30,7 +30,6 @@ import 'package:event_tracker_handler/event_tracker_handler.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:belluga_now/testing/account_profile_model_factory.dart';
-import 'package:value_object_pattern/domain/value_objects/mongo_id_value.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 
 void main() {
@@ -52,7 +51,7 @@ void main() {
       final validId = _generateMongoId();
       final backend = _StubAccountProfilesBackend(
         accountProfiles: [
-          buildAccountProfileModelFromPrimitives(
+          buildAccountProfileCompleteFromPrimitives(
             id: validId,
             name: 'Artist One',
             slug: 'artist-one',
@@ -86,7 +85,7 @@ void main() {
       );
       final backend = _StubAccountProfilesBackend(
         accountProfiles: [
-          buildAccountProfileModelFromPrimitives(
+          buildAccountProfileCompleteFromPrimitives(
             id: _generateMongoId(),
             name: 'Artist One',
             slug: 'artist-one',
@@ -122,7 +121,7 @@ void main() {
     () async {
       final backend = _StubAccountProfilesBackend(
         accountProfiles: [
-          buildAccountProfileModelFromPrimitives(
+          buildAccountProfileCompleteFromPrimitives(
             id: _generateMongoId(),
             name: 'Dynamic Public Type',
             slug: 'dynamic-public-type',
@@ -157,13 +156,13 @@ void main() {
     () async {
       final backend = _StubAccountProfilesBackend(
         accountProfiles: [
-          buildAccountProfileModelFromPrimitives(
+          buildAccountProfileCompleteFromPrimitives(
             id: _generateMongoId(),
             name: 'Artist One',
             slug: 'artist-one',
             type: 'artist',
           ),
-          buildAccountProfileModelFromPrimitives(
+          buildAccountProfileCompleteFromPrimitives(
             id: _generateMongoId(),
             name: 'Artist Two',
             slug: 'artist-two',
@@ -193,7 +192,7 @@ void main() {
     () async {
       final backend = _StubAccountProfilesBackend(
         accountProfiles: [
-          buildAccountProfileModelFromPrimitives(
+          buildAccountProfileCompleteFromPrimitives(
             id: _generateMongoId(),
             name: 'Artist One',
             slug: 'artist-one',
@@ -254,7 +253,7 @@ void main() {
       );
       final backend = _StubAccountProfilesBackend(
         accountProfiles: [
-          buildAccountProfileModelFromPrimitives(
+          buildAccountProfileCompleteFromPrimitives(
             id: _generateMongoId(),
             name: 'Artist One',
             slug: 'artist-one',
@@ -313,7 +312,7 @@ void main() {
       );
       final backend = _StubAccountProfilesBackend(
         accountProfiles: [
-          buildAccountProfileModelFromPrimitives(
+          buildAccountProfileCompleteFromPrimitives(
             id: _generateMongoId(),
             name: 'Artist One',
             slug: 'artist-one',
@@ -388,7 +387,7 @@ void main() {
       );
       final backend = _StubAccountProfilesBackend(
         accountProfiles: [
-          buildAccountProfileModelFromPrimitives(
+          buildAccountProfileCompleteFromPrimitives(
             id: _generateMongoId(),
             name: 'Artist One',
             slug: 'artist-one',
@@ -431,7 +430,7 @@ void main() {
       final validId = _generateMongoId();
       final backend = _StubAccountProfilesBackend(
         accountProfiles: [
-          buildAccountProfileModelFromPrimitives(
+          buildAccountProfileCompleteFromPrimitives(
             id: validId,
             name: 'Artist One',
             slug: 'artist-one',
@@ -475,7 +474,7 @@ void main() {
     () async {
       const staleFavoriteId = 'stale-profile-id';
       final backend = _StubAccountProfilesBackend(
-        accountProfiles: const <AccountProfileModel>[],
+        accountProfiles: const <AccountProfileComplete>[],
       );
       final favoritesBackend = _StubFavoriteBackend(favorites: const []);
       final repository = AccountProfilesRepository(
@@ -501,7 +500,7 @@ void main() {
       final validId = _generateMongoId();
       final backend = _StubAccountProfilesBackend(
         accountProfiles: [
-          buildAccountProfileModelFromPrimitives(
+          buildAccountProfileCompleteFromPrimitives(
             id: validId,
             name: 'Artist One',
             slug: 'artist-one',
@@ -566,7 +565,7 @@ void main() {
       final validId = _generateMongoId();
       final backend = _StubAccountProfilesBackend(
         accountProfiles: [
-          buildAccountProfileModelFromPrimitives(
+          buildAccountProfileCompleteFromPrimitives(
             id: validId,
             name: 'Artist One',
             slug: 'artist-one',
@@ -630,7 +629,7 @@ void main() {
       final validId = _generateMongoId();
       final backend = _StubAccountProfilesBackend(
         accountProfiles: [
-          buildAccountProfileModelFromPrimitives(
+          buildAccountProfileCompleteFromPrimitives(
             id: validId,
             name: 'Artist One',
             slug: 'artist-one',
@@ -679,7 +678,7 @@ void main() {
       final validId = _generateMongoId();
       final backend = _StubAccountProfilesBackend(
         accountProfiles: [
-          buildAccountProfileModelFromPrimitives(
+          buildAccountProfileCompleteFromPrimitives(
             id: validId,
             name: 'Artist One',
             slug: 'artist-one',
@@ -727,13 +726,13 @@ void main() {
       final curatorId = _generateMongoId();
       final backend = _StubAccountProfilesBackend(
         accountProfiles: [
-          buildAccountProfileModelFromPrimitives(
+          buildAccountProfileCompleteFromPrimitives(
             id: artistId,
             name: 'Nearby Artist',
             slug: 'nearby-artist',
             type: 'artist',
           ),
-          buildAccountProfileModelFromPrimitives(
+          buildAccountProfileCompleteFromPrimitives(
             id: curatorId,
             name: 'Nearby Curator',
             slug: 'nearby-curator',
@@ -762,7 +761,7 @@ void main() {
     () async {
       final backend = _StubAccountProfilesBackend(
         accountProfiles: [
-          buildAccountProfileModelFromPrimitives(
+          buildAccountProfileCompleteFromPrimitives(
             id: _generateMongoId(),
             name: 'Artist One',
             slug: 'artist-one',
@@ -791,7 +790,7 @@ void main() {
     () async {
       final backend = _StubAccountProfilesBackend(
         accountProfiles: [
-          buildAccountProfileModelFromPrimitives(
+          buildAccountProfileCompleteFromPrimitives(
             id: _generateMongoId(),
             name: 'Dynamic Public Type',
             slug: 'dynamic-public-type',
@@ -822,13 +821,13 @@ void main() {
     () async {
       final backend = _StubAccountProfilesBackend(
         accountProfiles: [
-          buildAccountProfileModelFromPrimitives(
+          buildAccountProfileCompleteFromPrimitives(
             id: _generateMongoId(),
             name: 'Artist One',
             slug: 'artist-one',
             type: 'artist',
           ),
-          buildAccountProfileModelFromPrimitives(
+          buildAccountProfileCompleteFromPrimitives(
             id: _generateMongoId(),
             name: 'Artist Two',
             slug: 'artist-two',
@@ -907,8 +906,8 @@ void main() {
 
       playResponse.complete(
         pagedAccountProfilesResultFromRaw(
-          profiles: <AccountProfileModel>[
-            buildAccountProfileModelFromPrimitives(
+          profiles: <AccountProfileComplete>[
+            buildAccountProfileCompleteFromPrimitives(
               id: _generateMongoId(),
               name: 'Play Final',
               slug: 'play-final',
@@ -929,8 +928,8 @@ void main() {
 
       plResponse.complete(
         pagedAccountProfilesResultFromRaw(
-          profiles: <AccountProfileModel>[
-            buildAccountProfileModelFromPrimitives(
+          profiles: <AccountProfileComplete>[
+            buildAccountProfileCompleteFromPrimitives(
               id: _generateMongoId(),
               name: 'Pl Stale',
               slug: 'pl-stale',
@@ -995,8 +994,8 @@ void main() {
 
       playResponse.complete(
         pagedAccountProfilesResultFromRaw(
-          profiles: <AccountProfileModel>[
-            buildAccountProfileModelFromPrimitives(
+          profiles: <AccountProfileComplete>[
+            buildAccountProfileCompleteFromPrimitives(
               id: _generateMongoId(),
               name: 'Play Final',
               slug: 'play-final',
@@ -1032,13 +1031,13 @@ void main() {
     () async {
       final backend = _StubAccountProfilesBackend(
         accountProfiles: [
-          buildAccountProfileModelFromPrimitives(
+          buildAccountProfileCompleteFromPrimitives(
             id: _generateMongoId(),
             name: 'Artist One',
             slug: 'artist-one',
             type: 'artist',
           ),
-          buildAccountProfileModelFromPrimitives(
+          buildAccountProfileCompleteFromPrimitives(
             id: _generateMongoId(),
             name: 'Curator One',
             slug: 'curator-one',
@@ -1046,14 +1045,14 @@ void main() {
           ),
         ],
         nearbyProfiles: [
-          buildAccountProfileModelFromPrimitives(
+          buildAccountProfileCompleteFromPrimitives(
             id: _generateMongoId(),
             name: 'Nearest Venue',
             slug: 'nearest-venue',
             type: 'artist',
             distanceMeters: 120,
           ),
-          buildAccountProfileModelFromPrimitives(
+          buildAccountProfileCompleteFromPrimitives(
             id: _generateMongoId(),
             name: 'Second Venue',
             slug: 'second-venue',
@@ -1093,16 +1092,16 @@ void main() {
     'discovery nearby stream keeps backend-authoritative nearby types',
     () async {
       final backend = _StubAccountProfilesBackend(
-        accountProfiles: const <AccountProfileModel>[],
+        accountProfiles: const <AccountProfileComplete>[],
         nearbyProfiles: [
-          buildAccountProfileModelFromPrimitives(
+          buildAccountProfileCompleteFromPrimitives(
             id: _generateMongoId(),
             name: 'Nearby Artist',
             slug: 'nearby-artist',
             type: 'artist',
             distanceMeters: 120,
           ),
-          buildAccountProfileModelFromPrimitives(
+          buildAccountProfileCompleteFromPrimitives(
             id: _generateMongoId(),
             name: 'Nearby Curator',
             slug: 'nearby-curator',
@@ -1141,7 +1140,7 @@ void main() {
         outcomesByRequest: <String, List<Object>>{
           '$membersPath|': <Object>[
             _nestedGroupMemberPage(
-              items: <AccountProfileNestedGroupMember>[
+              items: <AccountProfileSummary>[
                 _nestedGroupMember(
                   id: '507f1f77bcf86cd799439081',
                   name: 'Ananda Torres',
@@ -1154,7 +1153,7 @@ void main() {
           '$membersPath|$retryCursor': <Object>[
             StateError('later page failed'),
             _nestedGroupMemberPage(
-              items: <AccountProfileNestedGroupMember>[
+              items: <AccountProfileSummary>[
                 _nestedGroupMember(
                   id: '507f1f77bcf86cd799439082',
                   name: 'Banda Azul',
@@ -1260,11 +1259,11 @@ void main() {
         burstLevel,
         (index) => 'query-${index.toString().padLeft(2, '0')}',
       );
-      final staleSearches = <Completer<AccountProfileNestedGroupMemberPage>>[];
+      final staleSearches = <Completer<AccountProfileSummaryPage>>[];
       final outcomesByRequest = <String, List<Object>>{
         '$membersPath|': <Object>[
           _nestedGroupMemberPage(
-            items: <AccountProfileNestedGroupMember>[
+            items: <AccountProfileSummary>[
               _nestedGroupMember(
                 id: '507f1f77bcf86cd799439081',
                 name: 'Initial Member',
@@ -1276,13 +1275,13 @@ void main() {
         ],
       };
       for (final query in queries.take(queries.length - 1)) {
-        final gate = Completer<AccountProfileNestedGroupMemberPage>();
+        final gate = Completer<AccountProfileSummaryPage>();
         staleSearches.add(gate);
         outcomesByRequest['$membersPath||$query'] = <Object>[gate.future];
       }
       outcomesByRequest['$membersPath||${queries.last}'] = <Object>[
         _nestedGroupMemberPage(
-          items: <AccountProfileNestedGroupMember>[
+          items: <AccountProfileSummary>[
             _nestedGroupMember(
               id: '507f1f77bcf86cd799439082',
               name: 'New Result',
@@ -1329,7 +1328,7 @@ void main() {
       for (final gate in staleSearches.reversed) {
         gate.complete(
           _nestedGroupMemberPage(
-            items: <AccountProfileNestedGroupMember>[
+            items: <AccountProfileSummary>[
               _nestedGroupMember(
                 id: '507f1f77bcf86cd799439083',
                 name: 'Stale Result',
@@ -1398,13 +1397,13 @@ void main() {
 class _StubAccountProfilesBackend implements AccountProfilesBackendContract {
   _StubAccountProfilesBackend({
     required this.accountProfiles,
-    this.nearbyProfiles = const <AccountProfileModel>[],
+    this.nearbyProfiles = const <AccountProfileComplete>[],
     this.discoveryFilterFacets,
     this.discoveryFilterCatalog,
   });
 
-  final List<AccountProfileModel> accountProfiles;
-  final List<AccountProfileModel> nearbyProfiles;
+  final List<AccountProfileComplete> accountProfiles;
+  final List<AccountProfileComplete> nearbyProfiles;
   final DiscoveryFilterRuntimeFacets? discoveryFilterFacets;
   final DiscoveryFilterCatalog? discoveryFilterCatalog;
   List<String>? lastAllowedTypes;
@@ -1434,7 +1433,7 @@ class _StubAccountProfilesBackend implements AccountProfilesBackendContract {
     final start = (page - 1) * pageSize;
     if (start < 0 || start >= accountProfiles.length) {
       return pagedAccountProfilesResultFromRaw(
-        profiles: <AccountProfileModel>[],
+        profiles: <AccountProfileComplete>[],
         hasMore: false,
       );
     }
@@ -1448,13 +1447,13 @@ class _StubAccountProfilesBackend implements AccountProfilesBackendContract {
   }
 
   @override
-  Future<AccountProfileModel?> fetchAccountProfileBySlug(String slug) async {
+  Future<AccountProfileComplete?> fetchAccountProfileBySlug(String slug) async {
     fetchBySlugCalls += 1;
     return accountProfiles.firstWhere((profile) => profile.slug == slug);
   }
 
   @override
-  Future<AccountProfileNestedGroupMemberPage> fetchNestedGroupMembersPageByPath(
+  Future<AccountProfileSummaryPage> fetchNestedGroupMembersPageByPath(
     String membersPath, {
     String? cursor,
     String? search,
@@ -1463,14 +1462,14 @@ class _StubAccountProfilesBackend implements AccountProfilesBackendContract {
     final normalizedSearch = search?.trim();
     if ((normalizedCursor != null && normalizedCursor.isNotEmpty) ||
         (normalizedSearch != null && normalizedSearch.isNotEmpty)) {
-      return const AccountProfileNestedGroupMemberPage.empty();
+      return const AccountProfileSummaryPage.empty();
     }
 
-    return const AccountProfileNestedGroupMemberPage.empty();
+    return const AccountProfileSummaryPage.empty();
   }
 
   @override
-  Future<List<AccountProfileModel>> fetchNearbyAccountProfiles({
+  Future<List<AccountProfileComplete>> fetchNearbyAccountProfiles({
     int pageSize = 10,
     List<String>? typeFilters,
     List<dynamic>? taxonomyFilters,
@@ -1485,7 +1484,7 @@ class _ControllableDiscoveryQueryBackend extends _StubAccountProfilesBackend {
   _ControllableDiscoveryQueryBackend({
     required this.responsesByQuery,
     required this.startedByQuery,
-  }) : super(accountProfiles: const <AccountProfileModel>[]);
+  }) : super(accountProfiles: const <AccountProfileComplete>[]);
 
   final Map<String, Completer<PagedAccountProfilesResult>> responsesByQuery;
   final Map<String, Completer<void>> startedByQuery;
@@ -1529,13 +1528,13 @@ class _ControllableDiscoveryQueryBackend extends _StubAccountProfilesBackend {
 
 class _NestedGroupPaginationBackend extends _StubAccountProfilesBackend {
   _NestedGroupPaginationBackend({required this.outcomesByRequest})
-    : super(accountProfiles: const <AccountProfileModel>[]);
+    : super(accountProfiles: const <AccountProfileComplete>[]);
 
   final Map<String, List<Object>> outcomesByRequest;
   final List<String> requestKeys = <String>[];
 
   @override
-  Future<AccountProfileNestedGroupMemberPage> fetchNestedGroupMembersPageByPath(
+  Future<AccountProfileSummaryPage> fetchNestedGroupMembersPageByPath(
     String membersPath, {
     String? cursor,
     String? search,
@@ -1547,41 +1546,41 @@ class _NestedGroupPaginationBackend extends _StubAccountProfilesBackend {
     requestKeys.add(key);
     final outcomes = outcomesByRequest[key];
     if (outcomes == null || outcomes.isEmpty) {
-      return const AccountProfileNestedGroupMemberPage.empty();
+      return const AccountProfileSummaryPage.empty();
     }
     final outcome = outcomes.removeAt(0);
-    if (outcome is AccountProfileNestedGroupMemberPage) {
+    if (outcome is AccountProfileSummaryPage) {
       return outcome;
     }
-    if (outcome is Future<AccountProfileNestedGroupMemberPage>) {
+    if (outcome is Future<AccountProfileSummaryPage>) {
       return outcome;
     }
     throw outcome;
   }
 }
 
-AccountProfileNestedGroupMember _nestedGroupMember({
+AccountProfileSummary _nestedGroupMember({
   required String id,
   required String name,
   required String slug,
 }) {
-  return AccountProfileNestedGroupMember(
-    idValue: MongoIDValue()..parse(id),
+  return AccountProfileSummary(
+    idValue: AccountProfileTextValue(id),
     nameValue: AccountProfileNameValue()..parse(name),
     slugValue: SlugValue()..parse(slug),
     profileTypeValue: AccountProfileTypeValue('artist'),
   );
 }
 
-AccountProfileNestedGroupMemberPage _nestedGroupMemberPage({
-  required List<AccountProfileNestedGroupMember> items,
+AccountProfileSummaryPage _nestedGroupMemberPage({
+  required List<AccountProfileSummary> items,
   required String? nextCursor,
 }) {
-  return AccountProfileNestedGroupMemberPage(
+  return AccountProfileSummaryPage(
     items: items,
     nextCursorValue: nextCursor == null
         ? null
-        : AccountProfileNestedGroupMemberTextValue(nextCursor),
+        : AccountProfileTextValue(nextCursor),
   );
 }
 
@@ -1848,7 +1847,7 @@ AppData _buildAppData() {
 }
 
 String _generateMongoId() {
-  // 24-char hex string to satisfy MongoIDValue validation in AccountProfileModel.
+  // 24-char hex string to satisfy MongoIDValue validation in AccountProfileComplete.
   return DateTime.now().microsecondsSinceEpoch
       .toRadixString(16)
       .padLeft(24, '0')

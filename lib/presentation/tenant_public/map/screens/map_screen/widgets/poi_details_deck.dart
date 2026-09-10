@@ -9,7 +9,7 @@ import 'package:belluga_now/application/sharing/account_profile_public_share_pay
 import 'package:belluga_now/application/sharing/static_asset_public_share_payload.dart';
 import 'package:belluga_now/application/telemetry/auth_wall_telemetry.dart';
 import 'package:belluga_now/domain/map/city_poi_model.dart';
-import 'package:belluga_now/domain/partners/account_profile_model.dart';
+import 'package:belluga_now/domain/partners/account_profile_complete.dart';
 import 'package:belluga_now/domain/proximity_preferences/proximity_preference.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/map_screen_controller.dart';
@@ -249,7 +249,7 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
   Widget _buildReferencePointPreviewCard(
     BuildContext context, {
     required CityPoiModel poi,
-    required AccountProfileModel profile,
+    required AccountProfileComplete profile,
   }) {
     final colorScheme = Theme.of(context).colorScheme;
     final resolvedVisual = _controller.resolvedVisualForAccountProfile(profile);
@@ -524,14 +524,7 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
 
   String? _resolvePartnerPublicDetailPath(CityPoiModel poi) {
     final profile = _controller.hydratedAccountProfileForPoi(poi);
-    if (profile == null || !profile.canOpenPublicDetail) {
-      return null;
-    }
-    final publicDetailPath = profile.publicDetailPath?.trim();
-    if (publicDetailPath != null && publicDetailPath.isNotEmpty) {
-      return publicDetailPath;
-    }
-    return null;
+    return profile?.publicDetailUrl;
   }
 
   String _resolveStaticAssetRef(CityPoiModel poi) {

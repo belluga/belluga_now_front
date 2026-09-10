@@ -36,7 +36,7 @@ import 'package:belluga_now/domain/schedule/event_delta_model.dart';
 import 'package:belluga_now/domain/schedule/event_occurrence_option.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/event_type_model.dart';
-import 'package:belluga_now/domain/schedule/value_objects/event_linked_account_profile_text_value.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_text_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_occurrence_values.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_type_id_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_is_confirmed_value.dart';
@@ -1321,8 +1321,8 @@ EventOccurrenceOption _buildOccurrenceOption({
   bool isSelected = false,
 }) {
   return EventOccurrenceOption(
-    occurrenceIdValue: EventLinkedAccountProfileTextValue(id),
-    occurrenceSlugValue: EventLinkedAccountProfileTextValue('$id-slug'),
+    occurrenceIdValue: AccountProfileTextValue(id),
+    occurrenceSlugValue: AccountProfileTextValue('$id-slug'),
     dateTimeStartValue: DateTimeValue(isRequired: true)
       ..parse(startAt.toIso8601String()),
     dateTimeEndValue: DomainOptionalDateTimeValue(),

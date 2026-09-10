@@ -1,7 +1,7 @@
-import 'package:belluga_now/domain/partners/value_objects/account_profile_type_value.dart';
-import 'package:belluga_now/domain/partners/value_objects/account_profile_tag_value.dart';
-import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
-import 'package:belluga_now/domain/schedule/value_objects/event_linked_account_profile_text_value.dart';
+import 'package:belluga_now/domain/partners/account_profile_summary.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_text_value.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_fields.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_public_detail_path_value.dart';
 import 'package:belluga_now/domain/value_objects/domain_boolean_value.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
@@ -55,29 +55,29 @@ void main() {
   );
 }
 
-EventLinkedAccountProfile _buildLinkedProfile({
+AccountProfileSummary _buildLinkedProfile({
   required String id,
   required String name,
   required String avatarUrl,
 }) {
-  final taxonomyTerms = EventLinkedAccountProfileTaxonomyTerms()
+  final taxonomyTerms = AccountProfileTaxonomyTerms()
     ..addTerm(
       typeValue: AccountProfileTagValue('genre'),
       nameValue: AccountProfileTagValue('Gênero'),
       valueValue: AccountProfileTagValue('Eletrônica'),
     );
 
-  return EventLinkedAccountProfile(
-    idValue: EventLinkedAccountProfileTextValue(id),
-    displayNameValue: EventLinkedAccountProfileTextValue(name),
+  return AccountProfileSummary(
+    idValue: AccountProfileTextValue(id),
+    nameValue: AccountProfileNameValue()..parse(name),
     profileTypeValue: AccountProfileTypeValue('artist'),
     slugValue: SlugValue()..parse(id),
-    avatarUrlValue: ThumbUriValue(defaultValue: Uri.parse(avatarUrl)),
+    avatarValue: ThumbUriValue(defaultValue: Uri.parse(avatarUrl)),
     canOpenPublicDetailValue: DomainBooleanValue(
       defaultValue: false,
       isRequired: false,
     )..parse('true'),
-    publicDetailPathValue: EventLinkedAccountProfileTextValue('/parceiro/$id'),
+    publicDetailPathValue: AccountProfilePublicDetailPathValue('/parceiro/$id'),
     taxonomyTerms: taxonomyTerms,
   );
 }

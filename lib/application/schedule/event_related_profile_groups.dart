@@ -1,12 +1,10 @@
 import 'package:belluga_now/application/schedule/event_related_profile_group_summary.dart';
-import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
+import 'package:belluga_now/domain/partners/account_profile_summary.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/event_profile_group.dart';
 
-typedef EventRelatedProfileGroupLabelResolver = String Function(
-  String profileType,
-  String fallback,
-);
+typedef EventRelatedProfileGroupLabelResolver =
+    String Function(String profileType, String fallback);
 
 final class EventRelatedProfileGroups {
   EventRelatedProfileGroups._();
@@ -29,8 +27,9 @@ final class EventRelatedProfileGroups {
   }) {
     return fromAggregatedParts(
       eventProfileGroups: event.profileGroups,
-      occurrenceProfileGroups:
-          event.occurrences.map((occurrence) => occurrence.profileGroups),
+      occurrenceProfileGroups: event.occurrences.map(
+        (occurrence) => occurrence.profileGroups,
+      ),
       occurrenceLinkedAccountProfiles: event.occurrences.map(
         (occurrence) => occurrence.linkedAccountProfiles,
       ),
@@ -43,9 +42,9 @@ final class EventRelatedProfileGroups {
   static List<EventRelatedProfileGroupSummary> fromAggregatedParts({
     required List<EventProfileGroup> eventProfileGroups,
     required Iterable<List<EventProfileGroup>> occurrenceProfileGroups,
-    Iterable<List<EventLinkedAccountProfile>> occurrenceLinkedAccountProfiles =
+    Iterable<List<AccountProfileSummary>> occurrenceLinkedAccountProfiles =
         const [],
-    required List<EventLinkedAccountProfile> linkedAccountProfiles,
+    required List<AccountProfileSummary> linkedAccountProfiles,
     String? venueId,
     EventRelatedProfileGroupLabelResolver? labelResolver,
   }) {
@@ -79,7 +78,7 @@ final class EventRelatedProfileGroups {
 
   static List<EventRelatedProfileGroupSummary> fromParts({
     required List<EventProfileGroup> profileGroups,
-    required List<EventLinkedAccountProfile> linkedAccountProfiles,
+    required List<AccountProfileSummary> linkedAccountProfiles,
     String? venueId,
     EventRelatedProfileGroupLabelResolver? labelResolver,
   }) {
@@ -129,21 +128,21 @@ final class EventRelatedProfileGroups {
     return groupedProfiles.entries
         .where((entry) => entry.value.isNotEmpty)
         .map((entry) {
-      final fallback = _humanizeTypeKey(entry.key);
-      final label = labelResolver?.call(entry.key, fallback) ?? fallback;
-      return EventRelatedProfileGroupSummary(
-        label: label.trim().isEmpty ? fallback : label,
-        profiles: entry.value,
-      );
-    }).toList(growable: false);
+          final fallback = _humanizeTypeKey(entry.key);
+          final label = labelResolver?.call(entry.key, fallback) ?? fallback;
+          return EventRelatedProfileGroupSummary(
+            label: label.trim().isEmpty ? fallback : label,
+            profiles: entry.value,
+          );
+        })
+        .toList(growable: false);
   }
 
-  static Map<String, List<EventLinkedAccountProfile>>
-      _legacyGroupedProfilesByType({
-    required List<EventLinkedAccountProfile> linkedAccountProfiles,
+  static Map<String, List<AccountProfileSummary>> _legacyGroupedProfilesByType({
+    required List<AccountProfileSummary> linkedAccountProfiles,
     String? venueId,
   }) {
-    final groupedProfiles = <String, List<EventLinkedAccountProfile>>{};
+    final groupedProfiles = <String, List<AccountProfileSummary>>{};
 
     for (final profile in _nonVenueProfiles(
       linkedAccountProfiles,
@@ -156,7 +155,7 @@ final class EventRelatedProfileGroups {
 
       final bucket = groupedProfiles.putIfAbsent(
         type,
-        () => <EventLinkedAccountProfile>[],
+        () => <AccountProfileSummary>[],
       );
       if (bucket.any((existing) => existing.id == profile.id)) {
         continue;
@@ -164,12 +163,10 @@ final class EventRelatedProfileGroups {
       bucket.add(profile);
     }
 
-    return Map<String, List<EventLinkedAccountProfile>>.unmodifiable(
+    return Map<String, List<AccountProfileSummary>>.unmodifiable(
       groupedProfiles.map(
-        (key, value) => MapEntry(
-          key,
-          List<EventLinkedAccountProfile>.unmodifiable(value),
-        ),
+        (key, value) =>
+            MapEntry(key, List<AccountProfileSummary>.unmodifiable(value)),
       ),
     );
   }
@@ -183,7 +180,7 @@ final class EventRelatedProfileGroups {
 
   static List<EventRelatedProfileGroupSummary> _mergedSummaries({
     required List<EventProfileGroup> profileGroups,
-    required List<EventLinkedAccountProfile> linkedAccountProfiles,
+    required List<AccountProfileSummary> linkedAccountProfiles,
     String? venueId,
   }) {
     final buckets = <_MutableProfileGroupSummary>[];
@@ -238,21 +235,21 @@ final class EventRelatedProfileGroups {
         .toList(growable: false);
   }
 
-  static List<EventLinkedAccountProfile> _profilesForGroup(
+  static List<AccountProfileSummary> _profilesForGroup(
     EventProfileGroup group,
-    List<EventLinkedAccountProfile> linkedAccountProfiles,
+    List<AccountProfileSummary> linkedAccountProfiles,
   ) {
     if (group.profiles.isNotEmpty || group.accountProfileIdValues.isEmpty) {
       return group.profiles;
     }
 
-    final profilesById = <String, EventLinkedAccountProfile>{
+    final profilesById = <String, AccountProfileSummary>{
       for (final profile in linkedAccountProfiles)
         if (profile.id.trim().isNotEmpty) profile.id.trim(): profile,
     };
     return group.accountProfileIdValues
         .map((profileId) => profilesById[profileId.value])
-        .whereType<EventLinkedAccountProfile>()
+        .whereType<AccountProfileSummary>()
         .toList(growable: false);
   }
 
@@ -271,29 +268,32 @@ final class EventRelatedProfileGroups {
         .join(' ');
   }
 
-  static List<EventLinkedAccountProfile> _nonVenueProfiles(
-    List<EventLinkedAccountProfile> profiles, {
+  static List<AccountProfileSummary> _nonVenueProfiles(
+    List<AccountProfileSummary> profiles, {
     String? venueId,
   }) {
     final normalizedVenueId = venueId?.trim();
-    return profiles.where((profile) {
-      if (normalizedVenueId != null &&
-          normalizedVenueId.isNotEmpty &&
-          profile.id == normalizedVenueId) {
-        return false;
-      }
+    return profiles
+        .where((profile) {
+          if (normalizedVenueId != null &&
+              normalizedVenueId.isNotEmpty &&
+              profile.id == normalizedVenueId) {
+            return false;
+          }
 
-      final normalizedPartyType = profile.partyType?.trim().toLowerCase();
-      final normalizedProfileType = profile.profileType.trim().toLowerCase();
-      return normalizedPartyType != 'venue' && normalizedProfileType != 'venue';
-    }).toList(growable: false);
+          final normalizedProfileType = profile.profileType
+              .trim()
+              .toLowerCase();
+          return normalizedProfileType != 'venue';
+        })
+        .toList(growable: false);
   }
 
-  static List<EventLinkedAccountProfile> _dedupeProfiles(
-    List<EventLinkedAccountProfile> profiles,
+  static List<AccountProfileSummary> _dedupeProfiles(
+    List<AccountProfileSummary> profiles,
   ) {
     final seenIds = <String>{};
-    final deduped = <EventLinkedAccountProfile>[];
+    final deduped = <AccountProfileSummary>[];
     for (final profile in profiles) {
       final id = profile.id.trim();
       final identity = id.isEmpty ? profile.displayName.trim() : id;
@@ -318,16 +318,13 @@ final class _MutableProfileGroupSummary {
   final String normalizedLabel;
   final String groupId;
   int order;
-  final List<EventLinkedAccountProfile> _profiles = [];
+  final List<AccountProfileSummary> _profiles = [];
   final Set<String> _seenProfileKeys = {};
 
-  List<EventLinkedAccountProfile> get profiles =>
-      List<EventLinkedAccountProfile>.unmodifiable(_profiles);
+  List<AccountProfileSummary> get profiles =>
+      List<AccountProfileSummary>.unmodifiable(_profiles);
 
-  bool matches({
-    required String normalizedLabel,
-    required String groupId,
-  }) {
+  bool matches({required String normalizedLabel, required String groupId}) {
     if (groupId.isNotEmpty &&
         this.groupId.isNotEmpty &&
         this.groupId == groupId) {
@@ -336,7 +333,7 @@ final class _MutableProfileGroupSummary {
     return this.normalizedLabel == normalizedLabel;
   }
 
-  void addAll(List<EventLinkedAccountProfile> profiles) {
+  void addAll(List<AccountProfileSummary> profiles) {
     for (final profile in profiles) {
       final id = profile.id.trim();
       final identity = id.isEmpty ? profile.displayName.trim() : id;

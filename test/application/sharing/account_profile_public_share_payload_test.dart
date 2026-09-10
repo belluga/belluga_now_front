@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   test('builds authenticated share copy using bio', () {
-    final profile = buildAccountProfileModelFromPrimitives(
+    final profile = buildAccountProfileCompleteFromPrimitives(
       id: '507f1f77bcf86cd799439099',
       name: 'Casa Marracini',
       slug: 'casa-marracini',
@@ -26,7 +26,10 @@ void main() {
       contains('Ananda está te convidando para conhecer Casa Marracini.'),
     );
     expect(payload.message, contains('Resumo principal do perfil.'));
-    expect(payload.message, contains('https://tenant.test/parceiro/casa-marracini'));
+    expect(
+      payload.message,
+      contains('https://tenant.test/parceiro/casa-marracini'),
+    );
     expect(payload.message, isNot(contains('Descrição fallback')));
   });
 
@@ -44,6 +47,9 @@ void main() {
       contains('Ei, vi isso e achei que você gostaria: Casa Marracini.'),
     );
     expect(payload.message, contains('Descrição factual do profile.'));
-    expect(payload.message, contains('https://tenant.test/parceiro/casa-marracini'));
+    expect(
+      payload.message,
+      contains('https://tenant.test/parceiro/casa-marracini'),
+    );
   });
 }

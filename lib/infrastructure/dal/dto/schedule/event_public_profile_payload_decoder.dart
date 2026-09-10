@@ -1,10 +1,10 @@
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
-import 'package:belluga_now/domain/partners/value_objects/account_profile_tag_value.dart';
-import 'package:belluga_now/domain/partners/value_objects/account_profile_type_value.dart';
-import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_fields.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_public_detail_path_value.dart';
+import 'package:belluga_now/domain/partners/account_profile_summary.dart';
 import 'package:belluga_now/domain/schedule/event_profile_group.dart';
-import 'package:belluga_now/domain/schedule/value_objects/event_linked_account_profile_text_value.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_text_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_profile_group_order_value.dart';
 import 'package:belluga_now/domain/value_objects/domain_boolean_value.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
@@ -14,7 +14,7 @@ import 'package:belluga_now/infrastructure/dal/dto/schedule/support/public_media
 final class EventPublicProfilePayloadDecoder {
   EventPublicProfilePayloadDecoder._();
 
-  static List<EventLinkedAccountProfile> resolveLinkedAccountProfiles({
+  static List<AccountProfileSummary> resolveLinkedAccountProfiles({
     required Object? linkedProfilesRaw,
   }) {
     final orderedIds = <String>[];
@@ -61,14 +61,7 @@ final class EventPublicProfilePayloadDecoder {
         existing['slug'],
         _extractProfileSlug(profile),
       );
-      existing['can_open_public_detail'] = _preferTrueBool(
-        existing['can_open_public_detail'],
-        profile['can_open_public_detail'],
-      );
-      existing['public_detail_path'] = _preferNonEmptyString(
-        existing['public_detail_path'],
-        profile['public_detail_path'],
-      );
+      _mergePublicDetailPair(existing: existing, candidate: profile);
       existing['avatar_url'] = _preferNonEmptyString(
         existing['avatar_url'],
         profile['avatar_url'] ?? profile['logo_url'],
@@ -107,16 +100,16 @@ final class EventPublicProfilePayloadDecoder {
       }
     }
 
-    return List<EventLinkedAccountProfile>.unmodifiable(
+    return List<AccountProfileSummary>.unmodifiable(
       orderedIds
           .map((id) => _toLinkedAccountProfile(mergedProfiles[id]!))
-          .whereType<EventLinkedAccountProfile>(),
+          .whereType<AccountProfileSummary>(),
     );
   }
 
   static List<EventProfileGroup> resolveProfileGroups(
     Object? raw, {
-    List<EventLinkedAccountProfile> linkedAccountProfiles = const [],
+    List<AccountProfileSummary> linkedAccountProfiles = const [],
   }) {
     if (raw is! List) {
       return const [];
@@ -144,8 +137,8 @@ final class EventPublicProfilePayloadDecoder {
 
       groups.add(
         EventProfileGroup(
-          idValue: EventLinkedAccountProfileTextValue(id),
-          labelValue: EventLinkedAccountProfileTextValue(label),
+          idValue: AccountProfileTextValue(id),
+          labelValue: AccountProfileTextValue(label),
           orderValue: EventProfileGroupOrderValue(
             _asInt(group['order'] ?? index),
           ),
@@ -153,9 +146,9 @@ final class EventPublicProfilePayloadDecoder {
             membersPath ?? '',
           ),
           memberCountValue: EventProfileGroupMemberCountValue(memberCount),
-          profiles: const <EventLinkedAccountProfile>[],
+          profiles: const <AccountProfileSummary>[],
           accountProfileIdValues: accountProfileIds
-              .map(EventLinkedAccountProfileTextValue.new)
+              .map(AccountProfileTextValue.new)
               .toList(growable: false),
         ),
       );
@@ -178,7 +171,7 @@ final class EventPublicProfilePayloadDecoder {
     );
   }
 
-  static EventLinkedAccountProfile? _toLinkedAccountProfile(
+  static AccountProfileSummary? _toLinkedAccountProfile(
     Map<String, dynamic> profile,
   ) {
     final id = _asString(profile['id'])?.trim() ?? '';
@@ -195,7 +188,7 @@ final class EventPublicProfilePayloadDecoder {
     }
 
     final taxonomyTermsRaw = profile['taxonomy_terms'];
-    final taxonomyTerms = EventLinkedAccountProfileTaxonomyTerms();
+    final taxonomyTerms = AccountProfileTaxonomyTerms();
     if (taxonomyTermsRaw is List) {
       for (final entry in taxonomyTermsRaw) {
         final term = _asMap(entry);
@@ -226,23 +219,28 @@ final class EventPublicProfilePayloadDecoder {
         _asString(profile['profile_type'])?.trim().isNotEmpty == true
         ? _asString(profile['profile_type'])!.trim()
         : (_asString(profile['party_type'])?.trim() ?? '');
+    if (profileType.isEmpty) {
+      return null;
+    }
     final locationCoordinates = _resolveProfileCoordinates(profile);
 
-    return EventLinkedAccountProfile(
-      idValue: EventLinkedAccountProfileTextValue(id),
-      displayNameValue: EventLinkedAccountProfileTextValue(displayName),
+    return AccountProfileSummary(
+      idValue: AccountProfileTextValue(id),
+      nameValue: AccountProfileNameValue()..parse(displayName),
       profileTypeValue: AccountProfileTypeValue(profileType),
+      partyTypeValue: switch (_asString(profile['party_type'])?.trim()) {
+        final value when value != null && value.isNotEmpty =>
+          AccountProfileTextValue(value),
+        _ => null,
+      },
       slugValue: _optionalLinkedAccountProfileSlugValue(profile: profile),
-      avatarUrlValue: _thumbUriValueOrNull(
+      avatarValue: _thumbUriValueOrNull(
         _asNullableString(profile['avatar_url'] ?? profile['logo_url']),
       ),
-      coverUrlValue: _thumbUriValueOrNull(
+      coverValue: _thumbUriValueOrNull(
         _asNullableString(profile['cover_url'] ?? profile['hero_image_url']),
       ),
-      partyTypeValue: _textValueOrNull(
-        _asNullableString(profile['party_type']),
-      ),
-      locationAddressValue: _textValueOrNull(
+      locationAddressValue: _accountProfileLocationAddressValueOrNull(
         _resolveProfileLocationAddress(profile),
       ),
       locationLatitudeValue: _latitudeValueOrNull(locationCoordinates.latitude),
@@ -252,7 +250,7 @@ final class EventPublicProfilePayloadDecoder {
       canOpenPublicDetailValue: _booleanValue(
         _resolveCanOpenPublicDetail(profile),
       ),
-      publicDetailPathValue: _textValueOrNull(
+      publicDetailPathValue: _accountProfilePublicDetailPathValueOrNull(
         _resolvePublicDetailPath(profile),
       ),
       taxonomyTerms: taxonomyTerms,
@@ -274,11 +272,16 @@ final class EventPublicProfilePayloadDecoder {
         profile['profile_slug'];
   }
 
-  static dynamic _preferTrueBool(dynamic current, dynamic candidate) {
-    if (_asBool(current)) {
-      return true;
+  static void _mergePublicDetailPair({
+    required Map<String, dynamic> existing,
+    required Map<String, dynamic> candidate,
+  }) {
+    if (_resolveCanOpenPublicDetail(existing) ||
+        !_resolveCanOpenPublicDetail(candidate)) {
+      return;
     }
-    return _asBool(candidate) ? true : current;
+    existing['can_open_public_detail'] = candidate['can_open_public_detail'];
+    existing['public_detail_path'] = candidate['public_detail_path'];
   }
 
   static ({double? latitude, double? longitude}) _resolveProfileCoordinates(
@@ -352,12 +355,22 @@ final class EventPublicProfilePayloadDecoder {
     return path;
   }
 
-  static EventLinkedAccountProfileTextValue? _textValueOrNull(String? raw) {
+  static AccountProfileLocationAddressValue?
+  _accountProfileLocationAddressValueOrNull(String? raw) {
     final normalized = raw?.trim();
     if (normalized == null || normalized.isEmpty) {
       return null;
     }
-    return EventLinkedAccountProfileTextValue(normalized);
+    return AccountProfileLocationAddressValue()..parse(normalized);
+  }
+
+  static AccountProfilePublicDetailPathValue?
+  _accountProfilePublicDetailPathValueOrNull(String? raw) {
+    final normalized = raw?.trim();
+    if (normalized == null || normalized.isEmpty) {
+      return null;
+    }
+    return AccountProfilePublicDetailPathValue(normalized);
   }
 
   static DomainBooleanValue _booleanValue(bool raw) {

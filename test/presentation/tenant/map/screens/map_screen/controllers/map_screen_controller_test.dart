@@ -52,7 +52,7 @@ import 'package:belluga_now/domain/map/value_objects/poi_type_label_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_tag_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_time_end_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_time_start_value.dart';
-import 'package:belluga_now/domain/partners/account_profile_model.dart';
+import 'package:belluga_now/domain/partners/account_profile_complete.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/domain/proximity_preferences/proximity_preference.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
@@ -413,14 +413,13 @@ class _FakeAccountProfilesRepository
     implements AccountProfilesRepositoryContract {
   int getAccountProfileBySlugCallCount = 0;
   @override
-  final selectedAccountProfileStreamValue = StreamValue<AccountProfileModel?>(
-    defaultValue: null,
-  );
+  final selectedAccountProfileStreamValue =
+      StreamValue<AccountProfileComplete?>(defaultValue: null);
   final List<String> requestedSlugs = <String>[];
-  final Map<String, AccountProfileModel?> profilesBySlug =
-      <String, AccountProfileModel?>{};
-  final Map<String, Completer<AccountProfileModel?>> pendingBySlug =
-      <String, Completer<AccountProfileModel?>>{};
+  final Map<String, AccountProfileComplete?> profilesBySlug =
+      <String, AccountProfileComplete?>{};
+  final Map<String, Completer<AccountProfileComplete?>> pendingBySlug =
+      <String, Completer<AccountProfileComplete?>>{};
 
   @override
   Future<void> init() async {}
@@ -438,16 +437,16 @@ class _FakeAccountProfilesRepository
   }
 
   @override
-  Future<List<AccountProfileModel>> fetchNearbyAccountProfiles({
+  Future<List<AccountProfileComplete>> fetchNearbyAccountProfiles({
     AccountProfilesRepositoryContractPrimInt? pageSize,
     List<AccountProfilesRepositoryContractPrimString>? typeFilters,
     List<dynamic>? taxonomyFilters,
   }) async {
-    return const <AccountProfileModel>[];
+    return const <AccountProfileComplete>[];
   }
 
   @override
-  Future<AccountProfileModel?> getAccountProfileBySlug(
+  Future<AccountProfileComplete?> getAccountProfileBySlug(
     AccountProfilesRepositoryContractPrimString slug,
   ) async {
     getAccountProfileBySlugCallCount += 1;
@@ -473,7 +472,7 @@ class _FakeAccountProfilesRepository
   }
 
   @override
-  void setSelectedAccountProfile(AccountProfileModel? profile) {
+  void setSelectedAccountProfile(AccountProfileComplete? profile) {
     selectedAccountProfileStreamValue.addValue(profile);
   }
 
@@ -495,8 +494,8 @@ class _FakeAccountProfilesRepository
   }
 
   @override
-  List<AccountProfileModel> getFavoriteAccountProfiles() {
-    return const <AccountProfileModel>[];
+  List<AccountProfileComplete> getFavoriteAccountProfiles() {
+    return const <AccountProfileComplete>[];
   }
 
   @override
@@ -2255,7 +2254,7 @@ void main() {
         await localController.loadPois(PoiQuery());
         final poi = localController.filteredPoisStreamValue.value!.single;
 
-        final hydration = Completer<AccountProfileModel?>();
+        final hydration = Completer<AccountProfileComplete?>();
         localAccountProfilesRepository.pendingBySlug['casa-marracini'] =
             hydration;
 
@@ -2270,7 +2269,7 @@ void main() {
         );
 
         hydration.complete(
-          buildAccountProfileModelFromPrimitives(
+          buildAccountProfileCompleteFromPrimitives(
             id: '507f1f77bcf86cd799439011',
             name: 'Casa Marracini',
             slug: 'casa-marracini',
@@ -2354,7 +2353,7 @@ void main() {
       await localController.loadPois(PoiQuery());
       final poi = localController.filteredPoisStreamValue.value!.single;
 
-      final hydration = Completer<AccountProfileModel?>();
+      final hydration = Completer<AccountProfileComplete?>();
       localAccountProfilesRepository.pendingBySlug['casa-marracini'] =
           hydration;
 
@@ -2370,7 +2369,7 @@ void main() {
       expect(localController.selectedPoiLoadingIdStreamValue.value, poi.id);
 
       hydration.complete(
-        buildAccountProfileModelFromPrimitives(
+        buildAccountProfileCompleteFromPrimitives(
           id: '507f1f77bcf86cd799439011',
           name: 'Casa Marracini',
           slug: 'casa-marracini',
@@ -2486,7 +2485,7 @@ void main() {
           poiA,
           poiB,
         ], anchorCoordinate: poiA.coordinate);
-        final hydration = Completer<AccountProfileModel?>();
+        final hydration = Completer<AccountProfileComplete?>();
         localAccountProfilesRepository.pendingBySlug['casa-b'] = hydration;
 
         final selectionFuture = localController.handleClusterPickerPoiSelection(
@@ -2502,7 +2501,7 @@ void main() {
         expect(localController.selectedPoiStreamValue.value, isNull);
 
         hydration.complete(
-          buildAccountProfileModelFromPrimitives(
+          buildAccountProfileCompleteFromPrimitives(
             id: '507f1f77bcf86cd799439023',
             name: 'Casa B',
             slug: 'casa-b',
@@ -2560,7 +2559,7 @@ void main() {
         await localController.loadPois(PoiQuery());
         final poi = localController.filteredPoisStreamValue.value!.single;
 
-        final hydration = Completer<AccountProfileModel?>();
+        final hydration = Completer<AccountProfileComplete?>();
         localAccountProfilesRepository.pendingBySlug['casa-marracini'] =
             hydration;
 
@@ -2571,7 +2570,7 @@ void main() {
         expect(localController.selectedPoiStreamValue.value, isNull);
 
         hydration.complete(
-          buildAccountProfileModelFromPrimitives(
+          buildAccountProfileCompleteFromPrimitives(
             id: '507f1f77bcf86cd799439011',
             name: 'Casa Marracini',
             slug: 'casa-marracini',
@@ -2643,7 +2642,7 @@ void main() {
           localController.clearSelectedPoi();
 
           final poi = localController.filteredPoisStreamValue.value!.single;
-          final hydration = Completer<AccountProfileModel?>();
+          final hydration = Completer<AccountProfileComplete?>();
           localAccountProfilesRepository.pendingBySlug['casa-marracini'] =
               hydration;
 
@@ -2654,7 +2653,7 @@ void main() {
           expect(localController.selectedPoiStreamValue.value, isNull);
 
           hydration.complete(
-            buildAccountProfileModelFromPrimitives(
+            buildAccountProfileCompleteFromPrimitives(
               id: '507f1f77bcf86cd799439011',
               name: 'Casa Marracini',
               slug: 'casa-marracini',
@@ -2795,7 +2794,7 @@ void main() {
         await localController.loadPois(PoiQuery());
         final poi = localController.filteredPoisStreamValue.value!.single;
 
-        final hydration = Completer<AccountProfileModel?>();
+        final hydration = Completer<AccountProfileComplete?>();
         localAccountProfilesRepository.pendingBySlug['casa-marracini'] =
             hydration;
 
@@ -2804,7 +2803,7 @@ void main() {
         localController.clearSelectedPoi(preserveMarkerMemory: false);
 
         hydration.complete(
-          buildAccountProfileModelFromPrimitives(
+          buildAccountProfileCompleteFromPrimitives(
             id: '507f1f77bcf86cd799439011',
             name: 'Casa Marracini',
             slug: 'casa-marracini',
@@ -2870,8 +2869,8 @@ void main() {
       await localController.loadPois(PoiQuery());
       final pois = localController.filteredPoisStreamValue.value!;
 
-      final hydrationA = Completer<AccountProfileModel?>();
-      final hydrationB = Completer<AccountProfileModel?>();
+      final hydrationA = Completer<AccountProfileComplete?>();
+      final hydrationB = Completer<AccountProfileComplete?>();
       localAccountProfilesRepository.pendingBySlug['casa-a'] = hydrationA;
       localAccountProfilesRepository.pendingBySlug['casa-b'] = hydrationB;
 
@@ -2883,7 +2882,7 @@ void main() {
       expect(localController.selectedPoiLoadingIdStreamValue.value, 'poi-b');
 
       hydrationA.complete(
-        buildAccountProfileModelFromPrimitives(
+        buildAccountProfileCompleteFromPrimitives(
           id: '507f1f77bcf86cd799439021',
           name: 'Casa A',
           slug: 'casa-a',
@@ -2897,7 +2896,7 @@ void main() {
       expect(localController.selectedPoiLoadingIdStreamValue.value, 'poi-b');
 
       hydrationB.complete(
-        buildAccountProfileModelFromPrimitives(
+        buildAccountProfileCompleteFromPrimitives(
           id: '507f1f77bcf86cd799439022',
           name: 'Casa B',
           slug: 'casa-b',
@@ -3978,7 +3977,7 @@ void main() {
         });
 
         accountProfilesRepository.profilesBySlug['casa-marracini'] =
-            buildAccountProfileModelFromPrimitives(
+            buildAccountProfileCompleteFromPrimitives(
               id: '507f1f77bcf86cd799439011',
               name: 'Casa Marracini',
               slug: 'casa-marracini',
@@ -5455,7 +5454,7 @@ void main() {
           await localController.onDispose();
         });
         localAccountProfilesRepository.profilesBySlug['casa-marracini'] =
-            buildAccountProfileModelFromPrimitives(
+            buildAccountProfileCompleteFromPrimitives(
               id: '507f1f77bcf86cd799439011',
               name: 'Casa Marracini',
               slug: 'casa-marracini',
@@ -5508,7 +5507,7 @@ void main() {
           await localController.onDispose();
         });
         localAccountProfilesRepository.profilesBySlug['casa-marracini'] =
-            buildAccountProfileModelFromPrimitives(
+            buildAccountProfileCompleteFromPrimitives(
               id: '507f1f77bcf86cd799439011',
               name: 'Casa Marracini',
               slug: 'casa-marracini',
@@ -5615,7 +5614,7 @@ void main() {
         final poi = localController.filteredPoisStreamValue.value!.single;
 
         localAccountProfilesRepository.profilesBySlug['casa-marracini'] =
-            buildAccountProfileModelFromPrimitives(
+            buildAccountProfileCompleteFromPrimitives(
               id: '507f1f77bcf86cd799439011',
               name: 'Casa Marracini',
               slug: 'casa-marracini',
@@ -5640,7 +5639,7 @@ void main() {
         final localAccountProfilesRepository = _FakeAccountProfilesRepository();
         final localStaticAssetsRepository = _FakeStaticAssetsRepository();
         localAccountProfilesRepository.profilesBySlug['casa-marracini'] =
-            buildAccountProfileModelFromPrimitives(
+            buildAccountProfileCompleteFromPrimitives(
               id: '507f1f77bcf86cd799439011',
               name: 'Casa Marracini',
               slug: 'casa-marracini',
@@ -5698,7 +5697,7 @@ void main() {
         final localAccountProfilesRepository = _FakeAccountProfilesRepository();
         final localStaticAssetsRepository = _FakeStaticAssetsRepository();
         localAccountProfilesRepository.profilesBySlug['casa-marracini'] =
-            buildAccountProfileModelFromPrimitives(
+            buildAccountProfileCompleteFromPrimitives(
               id: '507f1f77bcf86cd799439011',
               name: 'Casa Marracini',
               slug: 'casa-marracini',
@@ -5788,7 +5787,7 @@ void main() {
         final localAccountProfilesRepository = _FakeAccountProfilesRepository();
         final localStaticAssetsRepository = _FakeStaticAssetsRepository();
         localAccountProfilesRepository.profilesBySlug['casa-marracini'] =
-            buildAccountProfileModelFromPrimitives(
+            buildAccountProfileCompleteFromPrimitives(
               id: '507f1f77bcf86cd799439011',
               name: 'Casa Marracini',
               slug: 'casa-marracini',
@@ -5854,7 +5853,7 @@ void main() {
         final localAccountProfilesRepository = _FakeAccountProfilesRepository();
         final localStaticAssetsRepository = _FakeStaticAssetsRepository();
         localAccountProfilesRepository.profilesBySlug['casa-marracini'] =
-            buildAccountProfileModelFromPrimitives(
+            buildAccountProfileCompleteFromPrimitives(
               id: '507f1f77bcf86cd799439011',
               name: 'Casa Marracini',
               slug: 'casa-marracini',
@@ -5939,7 +5938,7 @@ void main() {
         final localAccountProfilesRepository = _FakeAccountProfilesRepository();
         final localStaticAssetsRepository = _FakeStaticAssetsRepository();
         localAccountProfilesRepository.profilesBySlug['casa-marracini'] =
-            buildAccountProfileModelFromPrimitives(
+            buildAccountProfileCompleteFromPrimitives(
               id: '507f1f77bcf86cd799439011',
               name: 'Casa Marracini',
               slug: 'casa-marracini',
@@ -6041,7 +6040,7 @@ void main() {
         final localAccountProfilesRepository = _FakeAccountProfilesRepository();
         final localStaticAssetsRepository = _FakeStaticAssetsRepository();
         localAccountProfilesRepository.profilesBySlug['casa-marracini'] =
-            buildAccountProfileModelFromPrimitives(
+            buildAccountProfileCompleteFromPrimitives(
               id: '507f1f77bcf86cd799439011',
               name: 'Casa Marracini',
               slug: 'casa-marracini',
@@ -6116,7 +6115,7 @@ void main() {
         final localAccountProfilesRepository = _FakeAccountProfilesRepository();
         final localStaticAssetsRepository = _FakeStaticAssetsRepository();
         localAccountProfilesRepository.profilesBySlug['casa-marracini'] =
-            buildAccountProfileModelFromPrimitives(
+            buildAccountProfileCompleteFromPrimitives(
               id: '507f1f77bcf86cd799439011',
               name: 'Casa Marracini',
               slug: 'casa-marracini',
@@ -6745,7 +6744,7 @@ void main() {
           accountProfilesRepository,
         );
         accountProfilesRepository.profilesBySlug['casa-marracini'] =
-            buildAccountProfileModelFromPrimitives(
+            buildAccountProfileCompleteFromPrimitives(
               id: '507f1f77bcf86cd799439011',
               name: 'Casa Marracini',
               slug: 'casa-marracini',

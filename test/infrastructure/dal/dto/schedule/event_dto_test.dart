@@ -305,12 +305,11 @@ void main() {
 
     expect(venue, isNotNull);
     expect(venue!.bio, contains('Espaço amplo'));
-    expect(venue.logoImageUrl, contains('/arena/avatar?v=1'));
-    expect(venue.heroImageUrl, contains('/arena/cover?v=2'));
-    expect(
-      venue.taxonomyLabels.map((label) => label.value).toList(growable: false),
-      ['Beach Club'],
-    );
+    expect(venue.avatarUrl, contains('/arena/avatar?v=1'));
+    expect(venue.coverUrl, contains('/arena/cover?v=2'));
+    expect(venue.tags.map((label) => label.value).toList(growable: false), [
+      'Beach Club',
+    ]);
     expect(venue.galleryGroups, hasLength(1));
     expect(venue.galleryGroups.first.items, hasLength(3));
     expect(
@@ -671,6 +670,69 @@ void main() {
     },
   );
 
+  test('keeps duplicate public detail capability and path atomic', () {
+    final dto = EventDTO.fromJson({
+      'event_id': '507f1f77bcf86cd799439158',
+      'slug': 'evt-atomic-profile-navigation',
+      'type': {
+        'id': 'type-1',
+        'name': 'Feira',
+        'slug': 'feira',
+        'description': '',
+      },
+      'title': 'Evento com perfil duplicado',
+      'content': '',
+      'location': 'Guarapari',
+      'date_time_start': '2026-03-03T10:00:00+00:00',
+      'counterpart_preview': [
+        {
+          'id': 'profile-atomic',
+          'display_name': 'Perfil Atômico',
+          'profile_type': 'artist',
+          'can_open_public_detail': true,
+        },
+        {
+          'id': 'profile-atomic',
+          'display_name': 'Perfil Atômico',
+          'profile_type': 'artist',
+          'can_open_public_detail': false,
+          'public_detail_path': '/parceiro/profile-atomic',
+        },
+      ],
+    });
+
+    expect(dto.counterpartPreview.single.publicDetailUrl, isNull);
+  });
+
+  test('uses party type and drops linked profiles without any type', () {
+    final dto = EventDTO.fromJson({
+      'event_id': '507f1f77bcf86cd799439159',
+      'slug': 'evt-linked-profile-types',
+      'type': {
+        'id': 'type-1',
+        'name': 'Feira',
+        'slug': 'feira',
+        'description': '',
+      },
+      'title': 'Evento com tipos canônicos',
+      'content': '',
+      'location': 'Guarapari',
+      'date_time_start': '2026-03-03T10:00:00+00:00',
+      'counterpart_preview': [
+        {
+          'id': 'profile-party-type',
+          'display_name': 'Perfil Party Type',
+          'party_type': 'artist',
+        },
+        {'id': 'profile-without-type', 'display_name': 'Perfil Sem Tipo'},
+      ],
+    });
+
+    expect(dto.counterpartPreview, hasLength(1));
+    expect(dto.counterpartPreview.single.id, 'profile-party-type');
+    expect(dto.counterpartPreview.single.profileType, 'artist');
+  });
+
   test(
     'parses venue navigation contract from explicit public detail fields',
     () {
@@ -689,6 +751,7 @@ void main() {
         'venue': {
           'id': '507f1f77bcf86cd799439057',
           'display_name': 'Venue navegavel',
+          'profile_type': 'venue',
           'slug': 'venue-navegavel',
           'can_open_public_detail': true,
           'public_detail_path': '/parceiro/venue-navegavel',
@@ -721,6 +784,7 @@ void main() {
       'venue': {
         'id': '507f1f77bcf86cd799439059',
         'display_name': 'Venue sem path',
+        'profile_type': 'venue',
         'slug': 'venue-sem-path',
         'can_open_public_detail': true,
       },
@@ -1473,6 +1537,62 @@ void main() {
       domain.programmingItems.first.locationProfile?.locationLng,
       closeTo(-40.495395, 0.000001),
     );
+  });
+
+  test('drops programming account profiles without any profile type', () {
+    final dto = EventDTO.fromJson({
+      'event_id': '507f1f77bcf86cd799439091',
+      'slug': 'programming-with-invalid-profiles',
+      'type': {'id': 'show', 'name': 'Show', 'slug': 'show', 'description': ''},
+      'title': 'Programação inválida',
+      'content': 'Descricao',
+      'location': 'Praca Central',
+      'date_time_start': '2026-03-04T17:00:00+00:00',
+      'linked_account_profiles': const [],
+      'programming_items': [
+        {
+          'time': '17:00',
+          'linked_account_profiles': [
+            {
+              'id': 'artist-1',
+              'display_name': 'Artista sem tipo',
+              'profile_type': '   ',
+              'party_type': '   ',
+            },
+          ],
+          'location_profile': {
+            'id': 'venue-1',
+            'display_name': 'Local sem tipo',
+            'profile_type': '   ',
+            'party_type': '   ',
+          },
+        },
+        {
+          'time': '18:00',
+          'linked_account_profiles': [
+            {
+              'id': 'artist-2',
+              'display_name': 'Artista com fallback',
+              'profile_type': '   ',
+              'party_type': 'artist',
+            },
+          ],
+          'location_profile': {
+            'id': 'venue-2',
+            'display_name': 'Local com fallback',
+            'profile_type': '   ',
+            'party_type': 'venue',
+          },
+        },
+      ],
+    });
+
+    final items = dto.toDomain().programmingItems;
+
+    expect(items.first.linkedAccountProfiles, isEmpty);
+    expect(items.first.locationProfile, isNull);
+    expect(items.last.linkedAccountProfiles.single.profileType, 'artist');
+    expect(items.last.locationProfile?.profileType, 'venue');
   });
 
   test('preserves untimed programming items at the DTO boundary', () {

@@ -13,7 +13,7 @@ import 'package:belluga_now/domain/app_data/app_type.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
-import 'package:belluga_now/domain/partners/account_profile_model.dart';
+import 'package:belluga_now/domain/partners/account_profile_complete.dart';
 import 'package:belluga_now/domain/partners/account_profile_nested_group_member_page.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/domain/repositories/favorite_repository_contract.dart';
@@ -654,11 +654,11 @@ class _NoopAccountProfilesBackend implements AccountProfilesBackendContract {
   }) => throw UnimplementedError();
 
   @override
-  Future<AccountProfileModel?> fetchAccountProfileBySlug(String slug) =>
+  Future<AccountProfileComplete?> fetchAccountProfileBySlug(String slug) =>
       throw UnimplementedError();
 
   @override
-  Future<AccountProfileNestedGroupMemberPage> fetchNestedGroupMembersPageByPath(
+  Future<AccountProfileSummaryPage> fetchNestedGroupMembersPageByPath(
     String membersPath, {
     String? cursor,
     String? search,
@@ -667,14 +667,14 @@ class _NoopAccountProfilesBackend implements AccountProfilesBackendContract {
     final normalizedSearch = search?.trim();
     if ((normalizedCursor != null && normalizedCursor.isNotEmpty) ||
         (normalizedSearch != null && normalizedSearch.isNotEmpty)) {
-      return const AccountProfileNestedGroupMemberPage.empty();
+      return const AccountProfileSummaryPage.empty();
     }
 
-    return const AccountProfileNestedGroupMemberPage.empty();
+    return const AccountProfileSummaryPage.empty();
   }
 
   @override
-  Future<List<AccountProfileModel>> fetchNearbyAccountProfiles({
+  Future<List<AccountProfileComplete>> fetchNearbyAccountProfiles({
     int pageSize = 10,
     List<String>? typeFilters,
     List<dynamic>? taxonomyFilters,

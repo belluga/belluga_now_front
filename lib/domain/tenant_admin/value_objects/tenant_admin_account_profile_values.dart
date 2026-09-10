@@ -3,13 +3,13 @@ import 'package:belluga_now/domain/shared/value_objects/account_profile_contact_
 import 'package:belluga_now/domain/shared/value_objects/account_profile_contact_source_account_profile_id_value.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_name_value.dart';
 import 'package:belluga_now/domain/partners/account_profile_external_link.dart';
+import 'package:belluga_now/domain/partners/account_profile_summary.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_group.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_capabilities.dart';
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
-import 'package:belluga_now/domain/shared/account_profile_contact_source_summary.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_account_profile_aggregate_revision_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_account_profile_external_links_limit_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value_parsers.dart';
@@ -41,8 +41,8 @@ TenantAdminAccountProfile tenantAdminAccountProfileFromRaw({
   String? contactBubbleChannelId,
   List<BellugaContactChannel> effectiveContactChannels =
       const <BellugaContactChannel>[],
-  AccountProfileContactSourceSummary? contactSourceProfile,
-  AccountProfileContactSourceSummary? effectiveContactSourceProfile,
+  AccountProfileSummary? contactSourceProfile,
+  AccountProfileSummary? effectiveContactSourceProfile,
   List<AccountProfileExternalLink> externalLinks =
       const <AccountProfileExternalLink>[],
   int? externalLinksLimit,

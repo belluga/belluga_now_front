@@ -1,7 +1,7 @@
 export 'value_objects/paged_account_profiles_result_values.dart';
 
 import 'package:belluga_discovery_filters/belluga_discovery_filters.dart';
-import 'package:belluga_now/domain/partners/account_profile_model.dart';
+import 'package:belluga_now/domain/partners/account_profile_complete.dart';
 import 'package:belluga_now/domain/value_objects/domain_boolean_value.dart';
 
 class PagedAccountProfilesResult {
@@ -12,7 +12,7 @@ class PagedAccountProfilesResult {
     this.discoveryFilterCatalog,
   });
 
-  final List<AccountProfileModel> profiles;
+  final List<AccountProfileComplete> profiles;
   final DomainBooleanValue hasMoreValue;
   final DiscoveryFilterRuntimeFacets? discoveryFilterFacets;
   final DiscoveryFilterCatalog? discoveryFilterCatalog;

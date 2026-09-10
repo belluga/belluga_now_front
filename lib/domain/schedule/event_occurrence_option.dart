@@ -1,5 +1,5 @@
-import 'package:belluga_now/domain/schedule/value_objects/event_linked_account_profile_text_value.dart';
-import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_text_value.dart';
+import 'package:belluga_now/domain/partners/account_profile_summary.dart';
 import 'package:belluga_now/domain/schedule/event_profile_group.dart';
 import 'package:belluga_now/domain/schedule/event_programming_item.dart';
 import 'package:belluga_now/domain/schedule/event_schedule_display.dart';
@@ -17,11 +17,11 @@ class EventOccurrenceOption {
     required this.isSelectedValue,
     required this.hasLocationOverrideValue,
     required this.programmingCountValue,
-    List<EventLinkedAccountProfile> linkedAccountProfiles = const [],
+    List<AccountProfileSummary> linkedAccountProfiles = const [],
     List<EventProgrammingItem> programmingItems = const [],
     List<EventProfileGroup> profileGroups = const [],
     List<EventTagValue> tags = const [],
-  }) : linkedAccountProfiles = List<EventLinkedAccountProfile>.unmodifiable(
+  }) : linkedAccountProfiles = List<AccountProfileSummary>.unmodifiable(
          linkedAccountProfiles,
        ),
        programmingItems = List<EventProgrammingItem>.unmodifiable(
@@ -30,14 +30,14 @@ class EventOccurrenceOption {
        profileGroups = List<EventProfileGroup>.unmodifiable(profileGroups),
        tagValues = List<EventTagValue>.unmodifiable(tags);
 
-  final EventLinkedAccountProfileTextValue occurrenceIdValue;
-  final EventLinkedAccountProfileTextValue occurrenceSlugValue;
+  final AccountProfileTextValue occurrenceIdValue;
+  final AccountProfileTextValue occurrenceSlugValue;
   final DateTimeValue dateTimeStartValue;
   final DomainOptionalDateTimeValue dateTimeEndValue;
   final EventOccurrenceFlagValue isSelectedValue;
   final EventOccurrenceFlagValue hasLocationOverrideValue;
   final EventProgrammingCountValue programmingCountValue;
-  final List<EventLinkedAccountProfile> linkedAccountProfiles;
+  final List<AccountProfileSummary> linkedAccountProfiles;
   final List<EventProgrammingItem> programmingItems;
   final List<EventProfileGroup> profileGroups;
   final List<EventTagValue> tagValues;
@@ -49,8 +49,7 @@ class EventOccurrenceOption {
   bool get isSelected => isSelectedValue.value;
   bool get hasLocationOverride => hasLocationOverrideValue.value;
   int get programmingCount => programmingCountValue.value;
-  List<EventTagValue> get tags =>
-      List<EventTagValue>.unmodifiable(tagValues);
+  List<EventTagValue> get tags => List<EventTagValue>.unmodifiable(tagValues);
   EventScheduleDisplay get scheduleDisplay {
     final end = dateTimeEnd;
     final endValue = end == null

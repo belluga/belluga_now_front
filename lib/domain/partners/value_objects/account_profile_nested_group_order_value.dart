@@ -2,7 +2,7 @@ import 'package:value_object_pattern/value_object.dart';
 
 class AccountProfileNestedGroupOrderValue extends ValueObject<int> {
   AccountProfileNestedGroupOrderValue([int raw = 0])
-      : super(defaultValue: 0, isRequired: false) {
+    : super(defaultValue: 0, isRequired: false) {
     parse(raw.toString());
   }
 

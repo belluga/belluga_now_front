@@ -1,7 +1,7 @@
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
-import 'package:belluga_now/domain/partners/account_profile_model.dart';
+import 'package:belluga_now/domain/partners/account_profile_complete.dart';
 import 'package:belluga_now/domain/partners/profile_type_capabilities.dart';
 import 'package:belluga_now/domain/proximity_preferences/proximity_preference.dart';
 
@@ -11,7 +11,7 @@ class AccountProfileReferencePointResolver {
   static const String entityNamespace = 'account_profile';
 
   static bool canUseAccountProfile(
-    AccountProfileModel accountProfile, {
+    AccountProfileComplete accountProfile, {
     required ProfileTypeCapabilities? capabilities,
     CityCoordinate? fallbackCoordinate,
   }) {
@@ -26,7 +26,7 @@ class AccountProfileReferencePointResolver {
   }
 
   static FixedLocationReference? buildFromAccountProfile(
-    AccountProfileModel accountProfile, {
+    AccountProfileComplete accountProfile, {
     CityCoordinate? fallbackCoordinate,
   }) {
     final coordinate = _coordinateFor(accountProfile, fallbackCoordinate);
@@ -46,7 +46,7 @@ class AccountProfileReferencePointResolver {
 
   static bool matchesAccountProfile(
     FixedLocationReference? fixedReference,
-    AccountProfileModel accountProfile,
+    AccountProfileComplete accountProfile,
   ) {
     return matchesEntity(
       fixedReference,
@@ -82,17 +82,19 @@ class AccountProfileReferencePointResolver {
     }
 
     final normalizedId = entityId.trim();
-    final idMatches = normalizedId.isNotEmpty &&
+    final idMatches =
+        normalizedId.isNotEmpty &&
         fixedReference.entityId?.trim() == normalizedId;
     final normalizedSlug = entitySlug?.trim();
-    final slugMatches = normalizedSlug != null &&
+    final slugMatches =
+        normalizedSlug != null &&
         normalizedSlug.isNotEmpty &&
         fixedReference.entitySlug?.trim() == normalizedSlug;
     return idMatches || slugMatches;
   }
 
   static CityCoordinate? _coordinateFor(
-    AccountProfileModel accountProfile,
+    AccountProfileComplete accountProfile,
     CityCoordinate? fallbackCoordinate,
   ) {
     final latitude = accountProfile.locationLat;

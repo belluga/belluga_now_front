@@ -2,7 +2,7 @@ import 'package:value_object_pattern/value_object.dart';
 
 class EventProfileGroupOrderValue extends ValueObject<int> {
   EventProfileGroupOrderValue([int raw = 0])
-      : super(defaultValue: 0, isRequired: true) {
+    : super(defaultValue: 0, isRequired: true) {
     parse(raw.toString());
   }
 

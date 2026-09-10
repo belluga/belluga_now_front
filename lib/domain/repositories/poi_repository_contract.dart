@@ -3,7 +3,7 @@ import 'package:belluga_now/domain/map/filters/poi_filter_mode.dart';
 import 'package:belluga_now/domain/map/filters/poi_filter_options.dart';
 import 'package:belluga_now/domain/map/queries/poi_query.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
-import 'package:belluga_now/domain/partners/account_profile_model.dart';
+import 'package:belluga_now/domain/partners/account_profile_complete.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_reference_id_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_reference_type_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_stack_key_value.dart';
@@ -35,10 +35,7 @@ abstract class PoiRepositoryContract {
     required PoiStackKeyValue stackKey,
     required PoiQuery query,
   }) async {
-    final items = await fetchStackItems(
-      stackKey: stackKey,
-      query: query,
-    );
+    final items = await fetchStackItems(stackKey: stackKey, query: query);
     stackItemsStreamValue.addValue(items);
   }
 
@@ -53,7 +50,7 @@ abstract class PoiRepositoryContract {
   void applyFilterMode(PoiFilterMode mode);
   void clearFilters();
 
-  AccountProfileModel? hydratedAccountProfileForPoi(CityPoiModel poi);
+  AccountProfileComplete? hydratedAccountProfileForPoi(CityPoiModel poi);
   EventModel? hydratedEventForPoi(CityPoiModel poi);
   PublicStaticAssetModel? hydratedStaticAssetForPoi(CityPoiModel poi);
 }

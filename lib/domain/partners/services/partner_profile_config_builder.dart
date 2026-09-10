@@ -1,4 +1,4 @@
-import 'package:belluga_now/domain/partners/account_profile_model.dart';
+import 'package:belluga_now/domain/partners/account_profile_complete.dart';
 import 'package:belluga_now/domain/partners/profile_type_capabilities.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_config.dart';
 import 'package:belluga_now/domain/partners/projections/value_objects/partner_projection_text_values.dart';
@@ -8,7 +8,7 @@ class PartnerProfileConfigBuilder {
   PartnerProfileConfigBuilder();
 
   PartnerProfileConfig build(
-    AccountProfileModel partner, {
+    AccountProfileComplete partner, {
     ProfileTypeCapabilities? capabilities,
   }) {
     if (capabilities != null) {
@@ -30,9 +30,7 @@ class PartnerProfileConfigBuilder {
         tabs.add(
           ProfileTabConfig(
             titleValue: partnerProjectionRequiredText('Como Chegar'),
-            modules: [
-              ProfileModuleConfig(id: ProfileModuleId.locationInfo),
-            ],
+            modules: [ProfileModuleConfig(id: ProfileModuleId.locationInfo)],
           ),
         );
       }
@@ -40,16 +38,11 @@ class PartnerProfileConfigBuilder {
         tabs.add(
           ProfileTabConfig(
             titleValue: partnerProjectionRequiredText('Agenda'),
-            modules: [
-              ProfileModuleConfig(id: ProfileModuleId.agendaList),
-            ],
+            modules: [ProfileModuleConfig(id: ProfileModuleId.agendaList)],
           ),
         );
       }
-      return PartnerProfileConfig(
-        partner: partner,
-        tabs: tabs,
-      );
+      return PartnerProfileConfig(partner: partner, tabs: tabs);
     }
 
     switch (partner.type) {
@@ -69,15 +62,10 @@ class PartnerProfileConfigBuilder {
         tabs.add(
           ProfileTabConfig(
             titleValue: partnerProjectionRequiredText('Agenda'),
-            modules: [
-              ProfileModuleConfig(id: ProfileModuleId.agendaList),
-            ],
+            modules: [ProfileModuleConfig(id: ProfileModuleId.agendaList)],
           ),
         );
-        return PartnerProfileConfig(
-          partner: partner,
-          tabs: tabs,
-        );
+        return PartnerProfileConfig(partner: partner, tabs: tabs);
       case 'venue':
         final tabs = <ProfileTabConfig>[];
         if (_hasAboutContent(partner)) {
@@ -94,21 +82,14 @@ class PartnerProfileConfigBuilder {
         tabs.addAll([
           ProfileTabConfig(
             titleValue: partnerProjectionRequiredText('Como Chegar'),
-            modules: [
-              ProfileModuleConfig(id: ProfileModuleId.locationInfo),
-            ],
+            modules: [ProfileModuleConfig(id: ProfileModuleId.locationInfo)],
           ),
           ProfileTabConfig(
             titleValue: partnerProjectionRequiredText('Agenda'),
-            modules: [
-              ProfileModuleConfig(id: ProfileModuleId.agendaList),
-            ],
+            modules: [ProfileModuleConfig(id: ProfileModuleId.agendaList)],
           ),
         ]);
-        return PartnerProfileConfig(
-          partner: partner,
-          tabs: tabs,
-        );
+        return PartnerProfileConfig(partner: partner, tabs: tabs);
       case 'experience_provider':
         return PartnerProfileConfig(
           partner: partner,
@@ -130,9 +111,7 @@ class PartnerProfileConfigBuilder {
             ),
             ProfileTabConfig(
               titleValue: partnerProjectionRequiredText('Dúvidas'),
-              modules: [
-                ProfileModuleConfig(id: ProfileModuleId.faq),
-              ],
+              modules: [ProfileModuleConfig(id: ProfileModuleId.faq)],
             ),
           ],
         );
@@ -169,9 +148,7 @@ class PartnerProfileConfigBuilder {
           tabs: [
             ProfileTabConfig(
               titleValue: partnerProjectionRequiredText('Galeria'),
-              modules: [
-                ProfileModuleConfig(id: ProfileModuleId.photoGallery),
-              ],
+              modules: [ProfileModuleConfig(id: ProfileModuleId.photoGallery)],
             ),
             ProfileTabConfig(
               titleValue: partnerProjectionRequiredText('Recomendações'),
@@ -181,44 +158,39 @@ class PartnerProfileConfigBuilder {
             ),
             ProfileTabConfig(
               titleValue: partnerProjectionRequiredText('Próximos rolês'),
-              modules: [
-                ProfileModuleConfig(id: ProfileModuleId.agendaList),
-              ],
+              modules: [ProfileModuleConfig(id: ProfileModuleId.agendaList)],
             ),
           ],
         );
       default:
-        return PartnerProfileConfig(
-          partner: partner,
-          tabs: const [],
-        );
+        return PartnerProfileConfig(partner: partner, tabs: const []);
     }
   }
 
   bool _hasCapabilityRichText(
-    AccountProfileModel partner,
+    AccountProfileComplete partner,
     ProfileTypeCapabilities capabilities,
   ) {
     return capabilities.hasBio && _hasBio(partner);
   }
 
   bool _hasAboutContentForCapabilities(
-    AccountProfileModel partner,
+    AccountProfileComplete partner,
     ProfileTypeCapabilities capabilities,
   ) {
     return _hasCapabilityRichText(partner, capabilities) ||
         (capabilities.hasGallery && partner.galleryGroups.isNotEmpty);
   }
 
-  bool _hasAboutContent(AccountProfileModel partner) {
+  bool _hasAboutContent(AccountProfileComplete partner) {
     return _hasAnyRichText(partner) || partner.galleryGroups.isNotEmpty;
   }
 
-  bool _hasAnyRichText(AccountProfileModel partner) {
+  bool _hasAnyRichText(AccountProfileComplete partner) {
     return _hasBio(partner);
   }
 
-  bool _hasBio(AccountProfileModel partner) {
+  bool _hasBio(AccountProfileComplete partner) {
     return partner.bioValue?.value.trim().isNotEmpty ?? false;
   }
 }

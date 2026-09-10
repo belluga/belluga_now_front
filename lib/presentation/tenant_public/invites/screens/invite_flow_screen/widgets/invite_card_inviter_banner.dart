@@ -2,10 +2,10 @@ import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/domain/invites/invite_inviter.dart';
 import 'package:belluga_now/domain/invites/invite_inviter_type.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
-import 'package:belluga_now/domain/invites/invite_partner_summary.dart';
+import 'package:belluga_now/domain/partners/account_profile_summary.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_flow_screen/widgets/invite_summary_avatar.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_flow_screen/widgets/inviter_name_label.dart';
-import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_flow_screen/widgets/partner_fallback.dart';
+import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_flow_screen/widgets/account_profile_fallback.dart';
 import 'package:flutter/material.dart';
 
 class InviteCardInviterBanner extends StatelessWidget {
@@ -26,12 +26,14 @@ class InviteCardInviterBanner extends StatelessWidget {
     }
 
     final primary = inviters.first;
-    final others =
-        inviters.length > 1 ? inviters.sublist(1) : <_InviteSummary>[];
+    final others = inviters.length > 1
+        ? inviters.sublist(1)
+        : <_InviteSummary>[];
     final theme = Theme.of(context);
-    final avatarUrl = primary.avatarUrl ??
-        primary.partner?.logoImageUrl ??
-        primary.partner?.heroImageUrl;
+    final avatarUrl =
+        primary.avatarUrl ??
+        primary.accountProfile?.avatarUrl ??
+        primary.accountProfile?.coverUrl;
 
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
@@ -39,10 +41,7 @@ class InviteCardInviterBanner extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            'Voce foi convidado por',
-            style: theme.textTheme.bodySmall,
-          ),
+          Text('Voce foi convidado por', style: theme.textTheme.bodySmall),
           const SizedBox(height: 6),
           Wrap(
             spacing: 8,
@@ -52,10 +51,14 @@ class InviteCardInviterBanner extends StatelessWidget {
             children: [
               InviterNameLabel(
                 name: primary.name,
-                partner: primary.partner,
+                accountProfile: primary.accountProfile,
                 isPreview: isPreview,
-                onTapPartner: primary.partner != null && !isPreview
-                    ? () => _showPartnerSheet(context, primary.partner!)
+                onTapAccountProfile:
+                    primary.accountProfile != null && !isPreview
+                    ? () => _showAccountProfileSheet(
+                        context,
+                        primary.accountProfile!,
+                      )
                     : null,
               ),
               InviteSummaryAvatar(
@@ -109,9 +112,10 @@ class InviteCardInviterBanner extends StatelessWidget {
                 final summary = inviters[index];
                 return ListTile(
                   leading: InviteSummaryAvatar(
-                    avatarUrl: summary.avatarUrl ??
-                        summary.partner?.logoImageUrl ??
-                        summary.partner?.heroImageUrl,
+                    avatarUrl:
+                        summary.avatarUrl ??
+                        summary.accountProfile?.avatarUrl ??
+                        summary.accountProfile?.coverUrl,
                     placeholderText: summary.name.isNotEmpty
                         ? summary.name[0].toUpperCase()
                         : '?',
@@ -120,10 +124,13 @@ class InviteCardInviterBanner extends StatelessWidget {
                   title: Text(summary.name),
                   dense: true,
                   contentPadding: const EdgeInsets.symmetric(vertical: 4),
-                  onTap: summary.partner != null && !isPreview
+                  onTap: summary.accountProfile != null && !isPreview
                       ? () {
                           router.pop();
-                          _showPartnerSheet(context, summary.partner!);
+                          _showAccountProfileSheet(
+                            context,
+                            summary.accountProfile!,
+                          );
                         }
                       : null,
                 );
@@ -172,11 +179,11 @@ class InviteCardInviterBanner extends StatelessWidget {
     return fallback;
   }
 
-  Future<void> _showPartnerSheet(
+  Future<void> _showAccountProfileSheet(
     BuildContext context,
-    InvitePartnerSummary partner,
+    AccountProfileSummary accountProfile,
   ) async {
-    Widget sheetContent = PartnerFallbackView(name: partner.name);
+    final sheetContent = AccountProfileFallbackView(name: accountProfile.name);
     final router = context.router;
 
     await showModalBottomSheet<void>(
@@ -195,13 +202,13 @@ class InviteCardInviterBanner extends StatelessWidget {
                 Positioned(
                   top: 8,
                   right: 8,
-                    child: SafeArea(
-                      child: IconButton(
-                        icon: const Icon(Icons.close),
-                        onPressed: () => router.pop(),
-                      ),
+                  child: SafeArea(
+                    child: IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => router.pop(),
                     ),
                   ),
+                ),
               ],
             ),
           ),
@@ -216,20 +223,20 @@ class _InviteSummary {
     required this.name,
     required this.type,
     this.avatarUrl,
-    this.partner,
+    this.accountProfile,
   });
 
   final String name;
   final InviteInviterType type;
   final String? avatarUrl;
-  final InvitePartnerSummary? partner;
+  final AccountProfileSummary? accountProfile;
 
   factory _InviteSummary.fromInviter(InviteInviter inviter) {
     return _InviteSummary(
       name: inviter.name,
       type: inviter.type,
       avatarUrl: inviter.avatarUrl,
-      partner: inviter.partner,
+      accountProfile: inviter.accountProfile,
     );
   }
 }
