@@ -4,11 +4,15 @@ import 'package:belluga_now/domain/schedule/event_programming_item.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_text_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_occurrence_values.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_fields.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_public_detail_path_value.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/domain_optional_date_time_value.dart';
+import 'package:belluga_now/domain/value_objects/domain_boolean_value.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/widgets/event_programming_section.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/widgets/event_programming_timeline_rail_painter.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_html/flutter_html.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -53,6 +57,7 @@ void main() {
                     ),
                   ],
                   onOccurrenceTap: (_) {},
+                  onProfileTap: (_) {},
                   onLocationTap: (_) {},
                   profileTypeRegistry: null,
                 ),
@@ -79,15 +84,33 @@ void main() {
   );
 
   testWidgets(
-    'programming wraps every linked profile as a complete labeled passive chip',
+    'programming profile chips act only on their canonical public-detail path',
     (tester) async {
+      final semantics = tester.ensureSemantics();
       final profiles = <AccountProfileSummary>[
-        _buildLinkedProfile(id: 'profile-1', name: 'Ananda Torres'),
-        _buildLinkedProfile(id: 'profile-2', name: 'DJ Lua'),
-        _buildLinkedProfile(id: 'profile-3', name: 'Coletivo Sol'),
+        _buildLinkedProfile(
+          id: 'profile-1',
+          name: 'Ananda Torres',
+          slug: 'unrelated-ananda-slug',
+          publicDetailPath: '/perfil/caminho-produtor-ananda',
+        ),
+        _buildLinkedProfile(
+          id: 'profile-2',
+          name: 'DJ Lua',
+          slug: 'unrelated-dj-slug',
+          publicDetailPath: '/perfil/caminho-produtor-dj',
+        ),
+        _buildLinkedProfile(
+          id: 'profile-3',
+          name: 'Coletivo Sol',
+          slug: 'unrelated-coletivo-slug',
+          canOpenPublicDetail: false,
+          publicDetailPath: '/perfil/raw-ineligible-nao-usar',
+        ),
         _buildLinkedProfile(id: 'profile-4', name: 'Casa Norte'),
         _buildLinkedProfile(id: 'profile-5', name: 'Atelie Mar'),
       ];
+      final tappedProfiles = <AccountProfileSummary>[];
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -107,12 +130,19 @@ void main() {
                 ),
               ],
               onOccurrenceTap: (_) {},
+              onProfileTap: tappedProfiles.add,
               onLocationTap: (_) {},
               profileTypeRegistry: null,
             ),
           ),
         ),
       );
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pump();
+      expect(tappedProfiles, [profiles.first]);
 
       for (final profile in profiles) {
         final target = find.byKey(Key('eventProgrammingProfile_${profile.id}'));
@@ -130,10 +160,43 @@ void main() {
           ),
           findsOneWidget,
         );
-        expect(
-          find.descendant(of: target, matching: find.byType(GestureDetector)),
-          findsNothing,
+        final isEligible = profile.publicDetailUrl != null;
+        final actionLabel = 'Abrir perfil de ${profile.displayName}';
+        final action = find.ancestor(
+          of: target,
+          matching: find.byWidgetPredicate(
+            (widget) =>
+                widget is Semantics && widget.properties.label == actionLabel,
+          ),
         );
+        expect(
+          find.ancestor(of: target, matching: find.byType(InkWell)),
+          isEligible ? findsOneWidget : findsNothing,
+        );
+        if (isEligible) {
+          expect(action, findsOneWidget);
+          final actionNode = tester.getSemantics(action);
+          expect(actionNode.flagsCollection.isButton, isTrue);
+          expect(actionNode.label, actionLabel);
+          expect(
+            actionNode.getSemanticsData().hasAction(SemanticsAction.tap),
+            isTrue,
+          );
+          await tester.tap(target);
+          await tester.pump();
+          expect(tappedProfiles, contains(profile));
+        } else {
+          expect(action, findsNothing);
+          final inertNode = tester.getSemantics(target);
+          expect(inertNode.flagsCollection.isButton, isFalse);
+          expect(
+            inertNode.getSemanticsData().hasAction(SemanticsAction.tap),
+            isFalse,
+          );
+          await tester.tap(target, warnIfMissed: false);
+          await tester.pump();
+          expect(tappedProfiles, isNot(contains(profile)));
+        }
       }
       expect(
         find.byKey(const Key('eventProgrammingProfiles_0')),
@@ -146,6 +209,7 @@ void main() {
         hasLength(5),
       );
       expect(find.textContaining('e mais'), findsNothing);
+      semantics.dispose();
     },
   );
 
@@ -173,6 +237,7 @@ void main() {
               ),
             ],
             onOccurrenceTap: (_) {},
+            onProfileTap: (_) {},
             onLocationTap: (_) {},
             profileTypeRegistry: null,
           ),
@@ -215,6 +280,7 @@ void main() {
               ),
             ],
             onOccurrenceTap: (_) {},
+            onProfileTap: (_) {},
             onLocationTap: (_) {},
             profileTypeRegistry: null,
           ),
@@ -255,6 +321,7 @@ void main() {
                 ),
               ],
               onOccurrenceTap: (_) {},
+              onProfileTap: (_) {},
               onLocationTap: (_) {},
               profileTypeRegistry: null,
             ),
@@ -374,6 +441,7 @@ void main() {
                 ),
               ],
               onOccurrenceTap: (_) {},
+              onProfileTap: (_) {},
               onLocationTap: (_) {},
               profileTypeRegistry: null,
             ),
@@ -414,6 +482,7 @@ void main() {
               ),
             ],
             onOccurrenceTap: (_) {},
+            onProfileTap: (_) {},
             onLocationTap: (_) {},
             profileTypeRegistry: null,
           ),
@@ -479,11 +548,21 @@ EventProgrammingItem _buildProgrammingItem({
 AccountProfileSummary _buildLinkedProfile({
   required String id,
   required String name,
+  String? slug,
+  bool canOpenPublicDetail = true,
+  String? publicDetailPath,
 }) {
   return AccountProfileSummary(
     idValue: AccountProfileTextValue(id),
     nameValue: AccountProfileNameValue()..parse(name),
     profileTypeValue: AccountProfileTypeValue('artist'),
-    slugValue: SlugValue()..parse(id),
+    slugValue: SlugValue()..parse(slug ?? id),
+    canOpenPublicDetailValue: DomainBooleanValue(
+      defaultValue: false,
+      isRequired: false,
+    )..parse(canOpenPublicDetail.toString()),
+    publicDetailPathValue: publicDetailPath == null
+        ? null
+        : AccountProfilePublicDetailPathValue(publicDetailPath),
   );
 }

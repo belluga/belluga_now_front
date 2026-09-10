@@ -203,6 +203,7 @@ class _ImmersiveEventDetailScreenState
                                             occurrence,
                                             tab: 'programming',
                                           ),
+                                      onProfileTap: _openLinkedProfile,
                                       onLocationTap:
                                           _openProgrammingLocationMap,
                                     ),

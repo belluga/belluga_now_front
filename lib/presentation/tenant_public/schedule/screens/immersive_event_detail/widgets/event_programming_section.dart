@@ -22,6 +22,7 @@ class EventProgrammingSection extends StatefulWidget {
     required this.items,
     required this.occurrences,
     required this.onOccurrenceTap,
+    required this.onProfileTap,
     required this.onLocationTap,
     required this.profileTypeRegistry,
     this.debugOnOccurrenceCenterAnimationStart,
@@ -31,6 +32,7 @@ class EventProgrammingSection extends StatefulWidget {
   final List<EventProgrammingItem> items;
   final List<EventOccurrenceOption> occurrences;
   final ValueChanged<EventOccurrenceOption> onOccurrenceTap;
+  final ValueChanged<AccountProfileSummary> onProfileTap;
   final ValueChanged<AccountProfileSummary> onLocationTap;
   final ProfileTypeRegistry? profileTypeRegistry;
   @visibleForTesting
@@ -115,6 +117,7 @@ class _EventProgrammingSectionState extends State<EventProgrammingSection> {
                       item: entry.value,
                       itemIndex: entry.key,
                       markerKey: _timelineMarkerKeyFor(entry.key),
+                      onProfileTap: widget.onProfileTap,
                       onLocationTap: widget.onLocationTap,
                       profileTypeRegistry: widget.profileTypeRegistry,
                     ),
@@ -500,6 +503,7 @@ class _ProgrammingTimelineEntry extends StatelessWidget {
     required this.item,
     required this.itemIndex,
     required this.markerKey,
+    required this.onProfileTap,
     required this.onLocationTap,
     required this.profileTypeRegistry,
   });
@@ -510,6 +514,7 @@ class _ProgrammingTimelineEntry extends StatelessWidget {
   final EventProgrammingItem item;
   final int itemIndex;
   final GlobalKey markerKey;
+  final ValueChanged<AccountProfileSummary> onProfileTap;
   final ValueChanged<AccountProfileSummary> onLocationTap;
   final ProfileTypeRegistry? profileTypeRegistry;
 
@@ -549,6 +554,7 @@ class _ProgrammingTimelineEntry extends StatelessWidget {
               child: _ProgrammingCard(
                 item: item,
                 itemIndex: itemIndex,
+                onProfileTap: onProfileTap,
                 onLocationTap: onLocationTap,
                 profileTypeRegistry: profileTypeRegistry,
               ),
@@ -564,12 +570,14 @@ class _ProgrammingCard extends StatelessWidget {
   const _ProgrammingCard({
     required this.item,
     required this.itemIndex,
+    required this.onProfileTap,
     required this.onLocationTap,
     required this.profileTypeRegistry,
   });
 
   final EventProgrammingItem item;
   final int itemIndex;
+  final ValueChanged<AccountProfileSummary> onProfileTap;
   final ValueChanged<AccountProfileSummary> onLocationTap;
   final ProfileTypeRegistry? profileTypeRegistry;
 
@@ -645,6 +653,7 @@ class _ProgrammingCard extends StatelessWidget {
                   for (final profile in item.linkedAccountProfiles)
                     _ProgrammingProfileChip(
                       profile: profile,
+                      onProfileTap: onProfileTap,
                       profileTypeRegistry: profileTypeRegistry,
                     ),
                 ],
@@ -716,10 +725,12 @@ class _ProgrammingLocationLine extends StatelessWidget {
 class _ProgrammingProfileChip extends StatelessWidget {
   const _ProgrammingProfileChip({
     required this.profile,
+    required this.onProfileTap,
     required this.profileTypeRegistry,
   });
 
   final AccountProfileSummary profile;
+  final ValueChanged<AccountProfileSummary> onProfileTap;
   final ProfileTypeRegistry? profileTypeRegistry;
 
   @override
@@ -731,7 +742,10 @@ class _ProgrammingProfileChip extends StatelessWidget {
       avatarUrl: profile.avatarUrl,
       coverUrl: profile.coverUrl,
     );
-    return Container(
+    final onTap = profile.publicDetailUrl == null
+        ? null
+        : () => onProfileTap(profile);
+    final chip = Container(
       key: Key('eventProgrammingProfile_${profile.id}'),
       constraints: BoxConstraints(
         maxWidth: (MediaQuery.sizeOf(context).width - 32)
@@ -763,6 +777,18 @@ class _ProgrammingProfileChip extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+    if (onTap == null) {
+      return chip;
+    }
+    return Semantics(
+      button: true,
+      label: 'Abrir perfil de ${profile.displayName}',
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(999),
+        child: ExcludeSemantics(child: chip),
       ),
     );
   }

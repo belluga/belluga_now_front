@@ -68,6 +68,7 @@ void main() {
                       selectedOccurrenceId = occurrence.occurrenceId;
                     });
                   },
+                  onProfileTap: (_) {},
                   onLocationTap: (_) {},
                   profileTypeRegistry: null,
                 );

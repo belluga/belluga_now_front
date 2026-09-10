@@ -4500,88 +4500,130 @@ void main() {
     },
   );
 
-  testWidgets('event detail programming tab renders occurrence schedule', (
-    tester,
-  ) async {
-    final userEventsRepository = _FakeUserEventsRepository();
-    final invitesRepository = _FakeInvitesRepository();
-    GetIt.I.registerSingleton<ImmersiveEventDetailController>(
-      ImmersiveEventDetailController(
-        userEventsRepository: userEventsRepository,
-        invitesRepository: invitesRepository,
-        authRepository: _FakeAuthRepository(authorized: true),
-      ),
-    );
+  testWidgets(
+    'event detail programming chips push exact paths and keep null targets inert',
+    (tester) async {
+      final userEventsRepository = _FakeUserEventsRepository();
+      final invitesRepository = _FakeInvitesRepository();
+      GetIt.I.registerSingleton<ImmersiveEventDetailController>(
+        ImmersiveEventDetailController(
+          userEventsRepository: userEventsRepository,
+          invitesRepository: invitesRepository,
+          authRepository: _FakeAuthRepository(authorized: true),
+        ),
+      );
 
-    final router = _RecordingStackRouter();
-    final routeData = RouteData(
-      route: _FakeRouteMatch(fullPath: '/agenda/evento/evento-de-teste'),
-      router: router,
-      stackKey: const ValueKey('stack'),
-      pendingChildren: const [],
-      type: const RouteType.material(),
-    );
-    final profile = _buildLinkedAccountProfile(
-      id: 'artist-1',
-      displayName: 'Coral XYZ',
-      profileType: 'artist',
-      slug: 'coral-xyz',
-      avatarUrl: 'https://example.com/avatar.png',
-    );
+      final router = _RecordingStackRouter();
+      final routeData = RouteData(
+        route: _FakeRouteMatch(fullPath: '/agenda/evento/evento-de-teste'),
+        router: router,
+        stackKey: const ValueKey('stack'),
+        pendingChildren: const [],
+        type: const RouteType.material(),
+      );
+      final profile = _buildLinkedAccountProfile(
+        id: 'artist-1',
+        displayName: 'Coral XYZ',
+        profileType: 'artist',
+        slug: 'unrelated-coral-slug',
+        publicDetailPath: '/perfil/caminho-exato-coral',
+        avatarUrl: 'https://example.com/avatar.png',
+      );
+      final ineligibleProfile = _buildLinkedAccountProfile(
+        id: 'artist-2',
+        displayName: 'Artista indisponível',
+        profileType: 'artist',
+        slug: 'unrelated-ineligible-slug',
+        canOpenPublicDetail: false,
+        publicDetailPath: '/perfil/raw-ineligible-nao-usar',
+      );
+      final secondProfile = _buildLinkedAccountProfile(
+        id: 'artist-3',
+        displayName: 'Segundo perfil',
+        profileType: 'artist',
+        slug: 'unrelated-second-slug',
+        publicDetailPath: '/perfil/caminho-exato-segundo',
+      );
 
-    await tester.pumpWidget(
-      StackRouterScope(
-        controller: router,
-        stateHash: 0,
-        child: MaterialApp(
-          home: _routeScopedHome(
-            routeData: routeData,
-            child: ImmersiveEventDetailScreen(
-              event: _buildEvent(
-                programmingItems: [
-                  _buildProgrammingItem(
-                    time: '17:00',
-                    linkedProfiles: [profile],
-                  ),
-                ],
+      await tester.pumpWidget(
+        StackRouterScope(
+          controller: router,
+          stateHash: 0,
+          child: MaterialApp(
+            home: _routeScopedHome(
+              routeData: routeData,
+              child: ImmersiveEventDetailScreen(
+                event: _buildEvent(
+                  programmingItems: [
+                    _buildProgrammingItem(
+                      time: '17:00',
+                      linkedProfiles: [
+                        profile,
+                        secondProfile,
+                        ineligibleProfile,
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
         ),
-      ),
-    );
+      );
 
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 100));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
 
-    expect(find.text('Programação'), findsWidgets);
-    await tester.tap(find.byKey(const Key('immersiveTabLabel_1')));
-    await tester.pumpAndSettle();
+      expect(find.text('Programação'), findsWidgets);
+      await tester.tap(find.byKey(const Key('immersiveTabLabel_1')));
+      await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('eventProgrammingItem_0')), findsOneWidget);
-    expect(find.text('17:00'), findsOneWidget);
-    expect(find.text('Coral XYZ'), findsWidgets);
-    expect(
-      find.byKey(const Key('eventProgrammingProfile_artist-1')),
-      findsOneWidget,
-    );
-    expect(
-      find.descendant(
-        of: find.byKey(const Key('eventProgrammingProfile_artist-1')),
-        matching: find.byType(BellugaNetworkImage),
-      ),
-      findsOneWidget,
-    );
+      expect(find.byKey(const Key('eventProgrammingItem_0')), findsOneWidget);
+      expect(find.text('17:00'), findsOneWidget);
+      expect(find.text('Coral XYZ'), findsWidgets);
+      expect(
+        find.byKey(const Key('eventProgrammingProfile_artist-1')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('eventProgrammingProfile_artist-1')),
+          matching: find.byType(BellugaNetworkImage),
+        ),
+        findsOneWidget,
+      );
 
-    expect(
-      find.descendant(
-        of: find.byKey(const Key('eventProgrammingProfile_artist-1')),
-        matching: find.byType(GestureDetector),
-      ),
-      findsNothing,
-    );
-    expect(router.lastPushedPath, isNull);
-  });
+      final eligibleChip = find.byKey(
+        const Key('eventProgrammingProfile_artist-1'),
+      );
+      final ineligibleChip = find.byKey(
+        const Key('eventProgrammingProfile_artist-2'),
+      );
+      final secondEligibleChip = find.byKey(
+        const Key('eventProgrammingProfile_artist-3'),
+      );
+      expect(
+        find.ancestor(of: eligibleChip, matching: find.byType(InkWell)),
+        findsOneWidget,
+      );
+      expect(
+        find.ancestor(of: ineligibleChip, matching: find.byType(InkWell)),
+        findsNothing,
+      );
+
+      await tester.tap(eligibleChip);
+      await tester.pump();
+      expect(router.lastPushedPath, '/perfil/caminho-exato-coral');
+
+      await tester.tap(secondEligibleChip);
+      await tester.pump();
+      expect(router.lastPushedPath, '/perfil/caminho-exato-segundo');
+
+      await tester.tap(ineligibleChip, warnIfMissed: false);
+      await tester.pump();
+      expect(router.lastPushedPath, '/perfil/caminho-exato-segundo');
+    },
+  );
 
   testWidgets(
     'event detail programming centers the selected occurrence when there is room',
@@ -4696,6 +4738,7 @@ void main() {
                       selectedOccurrenceId = occurrence.occurrenceId;
                     });
                   },
+                  onProfileTap: (_) {},
                   onLocationTap: (_) {},
                   profileTypeRegistry: null,
                 ),
@@ -4763,6 +4806,7 @@ void main() {
                       });
                     });
                   },
+                  onProfileTap: (_) {},
                   onLocationTap: (_) {},
                   profileTypeRegistry: null,
                   debugOnOccurrenceCenterAnimationStart: () {
@@ -4834,6 +4878,7 @@ void main() {
                         });
                       });
                     },
+                    onProfileTap: (_) {},
                     onLocationTap: (_) {},
                     profileTypeRegistry: null,
                     debugOnOccurrenceCenterAnimationStart: () {
@@ -5020,14 +5065,14 @@ void main() {
         );
         await tester.tap(target, warnIfMissed: false);
         await tester.pump();
-        expect(router.lastPushedPath, isNull);
+        expect(router.lastPushedPath, profile.publicDetailUrl);
       }
       expect(
         find.byKey(const Key('eventProgrammingProfiles_0')),
         findsOneWidget,
       );
       expect(find.textContaining('e mais'), findsNothing);
-      expect(router.lastPushedPath, isNull);
+      expect(router.lastPushedPath, profiles.last.publicDetailUrl);
     },
   );
 
