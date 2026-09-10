@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:belluga_now/domain/partners/account_profile_external_link.dart';
 import 'package:belluga_now/infrastructure/dal/decoders/account_profile_external_link_decoder.dart';
 import 'package:belluga_now/presentation/tenant_public/partners/widgets/account_profile_external_link_strip.dart';
@@ -84,14 +86,10 @@ void main() {
     final instagramButton = tester.widget<IconButton>(instagram);
     expect(instagramButton.tooltip, 'Instagram');
     final colorScheme = Theme.of(tester.element(instagram)).colorScheme;
-    expect(
-      instagramButton.style?.backgroundColor?.resolve(const {}),
-      colorScheme.secondaryContainer,
-    );
-    expect(
-      instagramButton.style?.foregroundColor?.resolve(const {}),
-      colorScheme.onSecondaryContainer,
-    );
+    final background = _materialUnder(tester, instagram).color;
+    final foreground = _iconColorUnder(tester, instagram);
+    expect(background, colorScheme.secondaryContainer);
+    expect(_contrastRatio(background!, foreground), greaterThanOrEqualTo(4.5));
     final instagramIcon = tester.widget<Icon>(
       find.descendant(of: instagram, matching: find.byType(Icon)),
     );
@@ -139,4 +137,79 @@ void main() {
 
     expect(opened, AccountProfileExternalLinkType.values);
   });
+
+  testWidgets(
+    'keeps the derived background and resolves an accessible icon foreground',
+    (tester) async {
+      final link = AccountProfileExternalLinkRegistry.validateMutation(
+        id: AccountProfileExternalLinkIdValue('instagram'),
+        type: AccountProfileExternalLinkType.instagram,
+        url: AccountProfileExternalLinkUrlValue(
+          'https://instagram.com/belluga',
+        ),
+      );
+      final schemes = <ColorScheme>[
+        ColorScheme.light().copyWith(
+          secondaryContainer: const Color(0xfff5f5f5),
+          onSecondaryContainer: const Color(0xfff5f5f5),
+        ),
+        ColorScheme.dark().copyWith(
+          secondaryContainer: const Color(0xff121212),
+          onSecondaryContainer: const Color(0xff121212),
+        ),
+      ];
+
+      for (final scheme in schemes) {
+        await tester.pumpWidget(
+          MaterialApp(
+            key: ValueKey('accountContrast-${scheme.brightness}'),
+            theme: ThemeData(colorScheme: scheme),
+            home: Scaffold(
+              body: AccountProfileExternalLinkStrip(
+                links: [link],
+                onOpen: (_) {},
+              ),
+            ),
+          ),
+        );
+
+        final button = find.byKey(
+          const ValueKey('accountProfileExternalLink-instagram'),
+        );
+        final background = _materialUnder(tester, button).color;
+        final foreground = _iconColorUnder(tester, button);
+
+        expect(background, scheme.secondaryContainer);
+        expect(
+          _contrastRatio(background!, foreground),
+          greaterThanOrEqualTo(4.5),
+        );
+      }
+    },
+  );
+}
+
+Material _materialUnder(WidgetTester tester, Finder finder) {
+  return tester
+      .widgetList<Material>(
+        find.descendant(of: finder, matching: find.byType(Material)),
+      )
+      .last;
+}
+
+Color _iconColorUnder(WidgetTester tester, Finder finder) {
+  final icon = find.descendant(of: finder, matching: find.byType(Icon));
+  return IconTheme.of(tester.element(icon)).color!;
+}
+
+double _contrastRatio(Color background, Color foreground) {
+  final light = math.max(
+    background.computeLuminance(),
+    foreground.computeLuminance(),
+  );
+  final dark = math.min(
+    background.computeLuminance(),
+    foreground.computeLuminance(),
+  );
+  return (light + 0.05) / (dark + 0.05);
 }

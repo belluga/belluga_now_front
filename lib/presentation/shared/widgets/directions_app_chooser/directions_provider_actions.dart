@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:belluga_now/application/extensions/compute_on_color.dart';
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_app_chooser_contract.dart';
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_launch_target.dart';
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_provider_brand_asset.dart';
@@ -175,14 +176,18 @@ class _DirectionProviderButton extends StatelessWidget {
           );
 
     final theme = Theme.of(context);
+    final unbrandedBackgroundColor = compact
+        ? theme.colorScheme.surfaceContainerHighest
+        : theme.colorScheme.secondaryContainer;
     final ButtonStyle buttonStyle;
     if (compact) {
       buttonStyle =
           (brand == null
                   ? FilledButton.styleFrom(
-                      backgroundColor:
-                          theme.colorScheme.surfaceContainerHighest,
-                      foregroundColor: theme.colorScheme.onSurface,
+                      backgroundColor: unbrandedBackgroundColor,
+                      foregroundColor: enabled
+                          ? unbrandedBackgroundColor.computeIconColor(context)
+                          : null,
                     )
                   : FilledButton.styleFrom(
                       backgroundColor: brand!.backgroundColor,
@@ -205,6 +210,10 @@ class _DirectionProviderButton extends StatelessWidget {
               );
     } else if (brand == null) {
       buttonStyle = FilledButton.styleFrom(
+        backgroundColor: unbrandedBackgroundColor,
+        foregroundColor: enabled
+            ? unbrandedBackgroundColor.computeIconColor(context)
+            : null,
         minimumSize: Size(0, height),
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         padding: EdgeInsets.symmetric(horizontal: label.isEmpty ? 8 : 10),
