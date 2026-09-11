@@ -842,8 +842,9 @@ PagedFavoriteResumesResult _pagedFavoriteResumesResultFromRaw({
 FavoriteResume _favoriteResume({
   required String title,
   required String? slug,
+  String targetId = 'favorite-target-id',
   String? targetType,
-  String? profileType,
+  String profileType = 'artist',
   String? coverUrl,
   bool canOpenPublicDetail = false,
   String? publicDetailPath,
@@ -864,6 +865,7 @@ FavoriteResume _favoriteResume({
     assetPathValue: AssetPathValue()
       ..parse('assets/images/placeholder_avatar.png'),
     targetType: targetType,
+    targetId: targetId,
     profileType: profileType,
     coverImageUriValue: coverImageUriValue,
     canOpenPublicDetail: canOpenPublicDetail,
