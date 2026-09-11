@@ -270,6 +270,152 @@ void main() {
     expect(_iconButton(tester, 'Remover grupo').onPressed, isNotNull);
     expect(_iconButton(tester, 'Remover foto').onPressed, isNotNull);
   });
+
+  testWidgets(
+    'busy keeps drafts editable while every gallery submission is inert',
+    (tester) async {
+      await _pumpEditor(
+        tester,
+        groups: [
+          _group('group-1', itemCount: 2),
+          _group('group-2', itemCount: 1),
+        ],
+        maxGroups: 3,
+        maxItems: 3,
+        busy: true,
+      );
+
+      final submissionFields = <String>[
+        'tenantAdminGalleryGroupSubtitle_group-1',
+        'tenantAdminGalleryItemTitle_group-1-item-0',
+        'tenantAdminGalleryItemDescription_group-1-item-0',
+      ];
+      for (final key in submissionFields) {
+        final field = tester.widget<EditableText>(
+          find.descendant(
+            of: find.byKey(Key(key)),
+            matching: find.byType(EditableText),
+          ),
+        );
+        expect(field.readOnly, isFalse, reason: key);
+        expect(field.onSubmitted, isNull, reason: key);
+      }
+      await tester.enterText(
+        find.byKey(const Key('tenantAdminGalleryItemTitle_group-1-item-0')),
+        'Rascunho durante mutation',
+      );
+      expect(
+        _fieldText(tester, 'tenantAdminGalleryItemTitle_group-1-item-0'),
+        'Rascunho durante mutation',
+      );
+
+      expect(
+        _button(tester, 'tenantAdminEditAddGalleryGroupButton').onPressed,
+        isNull,
+      );
+      expect(
+        _button(tester, 'tenantAdminGalleryGroupAddPhoto_group-1').onPressed,
+        isNull,
+      );
+      expect(
+        _button(tester, 'tenantAdminGalleryGroupAddYoutube_group-1').onPressed,
+        isNull,
+      );
+      expect(
+        _button(
+          tester,
+          'tenantAdminGalleryItemReplace_group-1-item-0',
+        ).onPressed,
+        isNull,
+      );
+      for (final tooltip in <String>[
+        'Mover para cima',
+        'Mover para baixo',
+        'Remover grupo',
+        'Remover foto',
+      ]) {
+        for (final button in tester.widgetList<IconButton>(
+          find.byWidgetPredicate(
+            (widget) => widget is IconButton && widget.tooltip == tooltip,
+          ),
+        )) {
+          expect(button.onPressed, isNull, reason: tooltip);
+        }
+      }
+
+      await _pumpEditor(
+        tester,
+        groups: [
+          _group('group-1', itemCount: 2),
+          _group('group-2', itemCount: 1),
+        ],
+        maxGroups: 3,
+        maxItems: 3,
+      );
+      for (final key in submissionFields) {
+        final field = tester.widget<EditableText>(
+          find.descendant(
+            of: find.byKey(Key(key)),
+            matching: find.byType(EditableText),
+          ),
+        );
+        expect(field.onSubmitted, isNotNull, reason: key);
+      }
+      expect(
+        _button(
+          tester,
+          'tenantAdminGalleryItemReplace_group-1-item-0',
+        ).onPressed,
+        isNotNull,
+      );
+      expect(
+        _button(tester, 'tenantAdminEditAddGalleryGroupButton').onPressed,
+        isNotNull,
+      );
+      expect(
+        _button(tester, 'tenantAdminGalleryGroupAddPhoto_group-1').onPressed,
+        isNotNull,
+      );
+      expect(
+        _button(tester, 'tenantAdminGalleryGroupAddYoutube_group-1').onPressed,
+        isNotNull,
+      );
+      expect(
+        _scopedIconButton(
+          tester,
+          ancestorKey: 'tenantAdminGalleryGroup_group-1',
+          tooltip: 'Mover para baixo',
+        ).onPressed,
+        isNotNull,
+      );
+      expect(
+        _scopedIconButton(
+          tester,
+          ancestorKey: 'tenantAdminGalleryGroup_group-2',
+          tooltip: 'Mover para cima',
+        ).onPressed,
+        isNotNull,
+      );
+      expect(
+        _scopedIconButton(
+          tester,
+          ancestorKey: 'tenantAdminGalleryItem_group-1-item-0',
+          tooltip: 'Mover para baixo',
+        ).onPressed,
+        isNotNull,
+      );
+      expect(
+        _scopedIconButton(
+          tester,
+          ancestorKey: 'tenantAdminGalleryItem_group-1-item-1',
+          tooltip: 'Mover para cima',
+        ).onPressed,
+        isNotNull,
+      );
+      expect(_iconButton(tester, 'Remover grupo').onPressed, isNotNull);
+      expect(_iconButton(tester, 'Remover foto').onPressed, isNotNull);
+    },
+  );
 }
 
 Future<void> _pumpEditor(
@@ -277,6 +423,7 @@ Future<void> _pumpEditor(
   required List<TenantAdminAccountProfileGalleryGroupDraft> groups,
   required int maxGroups,
   required int maxItems,
+  bool busy = false,
   Map<String, String> fieldErrors = const {},
   String? operationError,
   ValueNotifier<Map<String, String>>? fieldErrorsNotifier,
@@ -293,7 +440,7 @@ Future<void> _pumpEditor(
         groups: groups,
         maxGroups: maxGroups,
         maxItemsPerGallery: maxItems,
-        busy: false,
+        busy: busy,
         fieldErrors: errors,
         operationError: operationError,
         resolveInputValue: (fieldPath, authoritativeValue) =>
@@ -362,6 +509,21 @@ IconButton _iconButton(WidgetTester tester, String tooltip) =>
         matching: find.byType(IconButton),
       ),
     );
+
+IconButton _scopedIconButton(
+  WidgetTester tester, {
+  required String ancestorKey,
+  required String tooltip,
+}) => tester.widget<IconButton>(
+  find
+      .descendant(
+        of: find.byKey(Key(ancestorKey)),
+        matching: find.byWidgetPredicate(
+          (widget) => widget is IconButton && widget.tooltip == tooltip,
+        ),
+      )
+      .first,
+);
 
 String _fieldText(WidgetTester tester, String key) => tester
     .widget<EditableText>(
