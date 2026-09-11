@@ -26,8 +26,8 @@ class TenantHomeScreen extends StatefulWidget {
 }
 
 class _TenantHomeScreenState extends State<TenantHomeScreen> {
-  late final TenantHomeController _controller =
-      GetIt.I.get<TenantHomeController>();
+  late final TenantHomeController _controller = GetIt.I
+      .get<TenantHomeController>();
 
   @override
   void initState() {
@@ -57,9 +57,9 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
     BuildContext context,
     HomeAgendaSectionSlots slots,
   ) {
-    return NestedScrollView(
-      controller: _controller.scrollController,
-      headerSliverBuilder: (context, innerBoxIsScrolled) => [
+    return slots.scrollViewBuilder(
+      scrollController: _controller.scrollController,
+      headerSlivers: [
         StreamValueBuilder<HomeLocationStatusState?>(
           streamValue: _controller.homeLocationStatusStreamValue,
           onNullWidget: _buildHomeAppBar(null),
@@ -71,9 +71,7 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                SectionHeader(
-                  title: 'Seus Favoritos',
-                ),
+                SectionHeader(title: 'Seus Favoritos'),
                 const FavoritesSectionBuilder(),
                 InvitesBannerBuilder(
                   margin: const EdgeInsets.only(top: 12),
@@ -99,7 +97,6 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
         ),
         ...slots.headerSlivers,
       ],
-      body: slots.body,
     );
   }
 
@@ -161,7 +158,8 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
   }
 
   Future<void> _requestExit() async {
-    final shouldExit = await showDialog<bool>(
+    final shouldExit =
+        await showDialog<bool>(
           context: context,
           builder: (context) => AlertDialog(
             title: const Text('Sair do app?'),

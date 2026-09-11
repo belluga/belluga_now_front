@@ -9,8 +9,8 @@ import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/models/immersive_hero_action.dart';
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/models/immersive_tab_item.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:visibility_detector/visibility_detector.dart';
 
 void main() {
   test('ImmersiveHeroAction resolves active icon and foreground color', () {
@@ -41,10 +41,6 @@ void main() {
   });
 
   TestWidgetsFlutterBinding.ensureInitialized();
-
-  setUpAll(() {
-    VisibilityDetectorController.instance.updateInterval = Duration.zero;
-  });
 
   testWidgets(
     'hero viewport fraction controls the shared sliver app bar height',
@@ -214,15 +210,8 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 16));
 
-      final nestedScrollView = tester.state<NestedScrollViewState>(
-        find.byType(NestedScrollView),
-      );
-      nestedScrollView.outerController.jumpTo(
-        nestedScrollView.outerController.position.maxScrollExtent,
-      );
-      nestedScrollView.innerController.jumpTo(
-        nestedScrollView.innerController.position.maxScrollExtent,
-      );
+      final scrollPosition = _immersiveScrollPosition(tester);
+      scrollPosition.jumpTo(scrollPosition.maxScrollExtent);
       await tester.pump();
 
       final terminalAction = find.byKey(
@@ -413,6 +402,281 @@ void main() {
       }
     },
   );
+
+  testWidgets('distant tab navigation crosses a lazy sliver body', (
+    tester,
+  ) async {
+    var builtItems = 0;
+    await _pumpImmersiveScreen(
+      tester,
+      ImmersiveDetailScreen(
+        title: 'Profile',
+        backPolicy: _FakeBackPolicy(),
+        heroContent: Container(color: Colors.black),
+        tabs: [
+          ImmersiveTabItem(
+            title: 'Sobre',
+            content: const SizedBox(height: 900, child: Text('Sobre body')),
+          ),
+          ImmersiveTabItem(
+            title: 'Agenda',
+            sliversBuilder: (_) => [
+              SliverFixedExtentList.builder(
+                itemExtent: 120,
+                itemCount: 100,
+                itemBuilder: (_, index) {
+                  builtItems += 1;
+                  return Text('Lazy item $index');
+                },
+              ),
+            ],
+          ),
+          ImmersiveTabItem(
+            title: 'Como Chegar',
+            content: const SizedBox(
+              height: 500,
+              child: Text('Distant destination'),
+            ),
+          ),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+    final scrollPosition = _immersiveScrollPosition(tester);
+    final initialOffset = scrollPosition.pixels;
+
+    await tester.tap(find.byKey(const Key('immersiveTab_2')));
+    await tester.pumpAndSettle();
+
+    final destination = find.text('Distant destination');
+    final tabBottom = tester
+        .getBottomLeft(find.byKey(const Key('immersiveTabSelected_2')))
+        .dy;
+    final viewportBottom = tester
+        .getRect(find.byKey(const Key('immersiveScrollView')))
+        .bottom;
+    expect(destination, findsOneWidget);
+    expect(scrollPosition.pixels, greaterThan(initialOffset + 500));
+    expect(tester.getTopLeft(destination).dy, closeTo(tabBottom, 8));
+    expect(tester.getTopLeft(destination).dy, lessThan(viewportBottom));
+    expect(builtItems, lessThan(100));
+  });
+
+  testWidgets('mixed tabs preserve box minimum and sliver natural extent', (
+    tester,
+  ) async {
+    final boxTab = ImmersiveTabItem(
+      title: 'Box',
+      content: const SizedBox(
+        key: Key('shortBoxContent'),
+        height: 40,
+        child: Text('Short box'),
+      ),
+    );
+    final sliverTab = ImmersiveTabItem(
+      title: 'Sliver',
+      sliversBuilder: (_) => const [
+        SliverToBoxAdapter(
+          child: SizedBox(
+            key: Key('shortSliverContent'),
+            height: 60,
+            child: Text('Short sliver'),
+          ),
+        ),
+      ],
+    );
+    final boundaryTab = ImmersiveTabItem(
+      title: 'Boundary',
+      content: const SizedBox(
+        key: Key('boundaryBoxContent'),
+        height: 40,
+        child: Text('Boundary body'),
+      ),
+    );
+    await _pumpImmersiveScreen(
+      tester,
+      ImmersiveDetailScreen(
+        title: 'Profile',
+        backPolicy: _FakeBackPolicy(),
+        heroContent: Container(color: Colors.black),
+        tabs: [boxTab, sliverTab, boundaryTab],
+      ),
+    );
+    await tester.pumpAndSettle();
+    final scrollable = find
+        .descendant(
+          of: find.byKey(const Key('immersiveScrollView')),
+          matching: find.byType(Scrollable),
+        )
+        .first;
+    double revealOffset(Finder finder) {
+      final renderObject = tester.renderObject<RenderBox>(finder);
+      return RenderAbstractViewport.of(
+        renderObject,
+      ).getOffsetToReveal(renderObject, 0).offset;
+    }
+
+    await tester.scrollUntilVisible(
+      find.text('Short box'),
+      100,
+      scrollable: scrollable,
+    );
+    final boxStart = revealOffset(find.byKey(const Key('shortBoxContent')));
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('shortSliverContent')),
+      100,
+      scrollable: scrollable,
+    );
+    final sliverStart = revealOffset(
+      find.byKey(const Key('shortSliverContent')),
+    );
+    await tester.scrollUntilVisible(
+      find.text('Boundary body'),
+      100,
+      scrollable: scrollable,
+    );
+    final nextTabStart = revealOffset(
+      find.byKey(const Key('boundaryBoxContent')),
+    );
+    final scrollViewHeight = tester
+        .getSize(find.byKey(const Key('immersiveScrollView')))
+        .height;
+    const pinnedChromeHeight = kToolbarHeight + 48;
+    final expectedBoxMinimum = scrollViewHeight - pinnedChromeHeight;
+
+    expect(sliverStart - boxStart, closeTo(expectedBoxMinimum, 1));
+    expect(
+      nextTabStart - sliverStart,
+      closeTo(
+        tester.getSize(find.byKey(const Key('shortSliverContent'))).height,
+        1,
+      ),
+      reason: 'Sliver tabs must end at their natural content boundary.',
+    );
+  });
+
+  testWidgets('sliver content swipe routes from its section range', (
+    tester,
+  ) async {
+    var firstTabSwipeCount = 0;
+    var secondTabSwipeCount = 0;
+    await _pumpImmersiveScreen(
+      tester,
+      ImmersiveDetailScreen(
+        title: 'Profile',
+        backPolicy: _FakeBackPolicy(),
+        heroContent: Container(color: Colors.black),
+        tabs: [
+          ImmersiveTabItem(
+            title: 'First',
+            onHorizontalSwipeEnd:
+                ({
+                  required direction,
+                  required activateTab,
+                  required currentTabIndex,
+                }) {
+                  firstTabSwipeCount += 1;
+                  return true;
+                },
+            content: const SizedBox(height: 200),
+          ),
+          ImmersiveTabItem(
+            title: 'Sliver',
+            onHorizontalSwipeEnd:
+                ({
+                  required direction,
+                  required activateTab,
+                  required currentTabIndex,
+                }) {
+                  secondTabSwipeCount += 1;
+                  return true;
+                },
+            sliversBuilder: (_) => const [
+              SliverToBoxAdapter(
+                child: SizedBox(
+                  key: Key('sliverSwipeOrigin'),
+                  height: 500,
+                  child: ColoredBox(color: Colors.blue),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final scrollable = find
+        .descendant(
+          of: find.byKey(const Key('immersiveScrollView')),
+          matching: find.byType(Scrollable),
+        )
+        .first;
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('sliverSwipeOrigin')),
+      40,
+      scrollable: scrollable,
+    );
+    expect(find.byKey(const Key('immersiveTabSelected_0')), findsOneWidget);
+
+    final contentRect = tester.getRect(
+      find.byKey(const Key('sliverSwipeOrigin')),
+    );
+    final surfaceRect = tester.getRect(
+      find.byKey(const Key('immersiveSwipeSurface')),
+    );
+    final visibleContentRect = contentRect.intersect(surfaceRect);
+    expect(visibleContentRect.isEmpty, isFalse);
+    await tester.flingFrom(
+      visibleContentRect.center,
+      const Offset(-300, 0),
+      1000,
+    );
+    await tester.pumpAndSettle();
+
+    expect(firstTabSwipeCount, 0);
+    expect(secondTabSwipeCount, 1);
+  });
+
+  testWidgets('unmount during active tab animation has no late effect', (
+    tester,
+  ) async {
+    var secondActivationCount = 0;
+    await _pumpImmersiveScreen(
+      tester,
+      ImmersiveDetailScreen(
+        title: 'Profile',
+        backPolicy: _FakeBackPolicy(),
+        heroContent: Container(color: Colors.black),
+        tabs: [
+          ImmersiveTabItem(
+            title: 'First',
+            content: const SizedBox(height: 900),
+          ),
+          ImmersiveTabItem(
+            title: 'Second',
+            onActivated: () => secondActivationCount += 1,
+            content: const SizedBox(height: 900),
+          ),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('immersiveTab_1')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    final scrollPosition = _immersiveScrollPosition(tester);
+    expect(scrollPosition.pixels, greaterThan(0));
+    expect(scrollPosition.isScrollingNotifier.value, isTrue);
+    expect(secondActivationCount, 1);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(secondActivationCount, 1);
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets(
     'initial tab index scrolls to the requested section after first layout',
@@ -649,16 +913,8 @@ void main() {
       await tester.pumpAndSettle();
       expect(secondTabActivationCount, 0);
 
-      final nestedScrollView = tester.state<NestedScrollViewState>(
-        find.byType(NestedScrollView),
-      );
-      nestedScrollView.outerController.jumpTo(
-        nestedScrollView.outerController.position.maxScrollExtent,
-      );
-      await tester.pump();
-      nestedScrollView.innerController.jumpTo(
-        nestedScrollView.innerController.position.maxScrollExtent,
-      );
+      final scrollPosition = _immersiveScrollPosition(tester);
+      scrollPosition.jumpTo(scrollPosition.maxScrollExtent);
       await tester.pumpAndSettle();
 
       expect(secondTabActivationCount, 1);
@@ -1059,6 +1315,46 @@ void main() {
     },
   );
 
+  testWidgets('sliver tab boundary measurement waits until layout completes', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await _pumpImmersiveScreen(
+      tester,
+      ImmersiveDetailScreen(
+        title: 'Profile',
+        backPolicy: _FakeBackPolicy(),
+        heroContent: Container(color: Colors.black),
+        tabs: [
+          ImmersiveTabItem(
+            title: 'Agenda',
+            sliversBuilder: (_) => const [
+              SliverToBoxAdapter(child: SizedBox(height: 1000)),
+            ],
+          ),
+          ImmersiveTabItem(
+            title: 'Como Chegar',
+            sliversBuilder: (_) => const [
+              SliverToBoxAdapter(child: SizedBox(height: 500)),
+            ],
+          ),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+
+    tester.view.physicalSize = const Size(390, 700);
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('system back delegates to the configured back policy', (
     tester,
   ) async {
@@ -1114,6 +1410,14 @@ Future<void> _pumpImmersiveScreen(
       routerDelegate: router.delegate(),
     ),
   );
+}
+
+ScrollPosition _immersiveScrollPosition(WidgetTester tester) {
+  final scrollable = find.descendant(
+    of: find.byKey(const Key('immersiveScrollView')),
+    matching: find.byType(Scrollable),
+  );
+  return tester.state<ScrollableState>(scrollable.first).position;
 }
 
 class _FakeBackPolicy implements RouteBackPolicy {

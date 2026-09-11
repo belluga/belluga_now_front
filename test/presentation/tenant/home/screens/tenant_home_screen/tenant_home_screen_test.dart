@@ -18,7 +18,9 @@ import 'package:belluga_now/presentation/tenant_public/widgets/section_header.da
 import 'package:belluga_now/domain/upcoming_ocurrence/projections/upcoming_ocurrence_resume.dart';
 import 'package:belluga_now/domain/favorite/projections/favorite_resume.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
+import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';
+import 'package:belluga_now/infrastructure/dal/dto/schedule/event_dto.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/models/invite_filter.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
@@ -35,10 +37,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
+import 'package:intl/intl.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart' as mockito;
 import 'package:stream_value/core/stream_value.dart';
 
+import '../../../../../support/sticky_date_header_test_support.dart';
 import 'tenant_home_screen_test.mocks.dart';
 import 'package:belluga_now/testing/invite_model_factory.dart';
 
@@ -518,6 +522,85 @@ void main() {
     expect(find.text('Nenhum evento disponível no momento'), findsOneWidget);
   });
 
+  testWidgets('TenantHomeScreen keeps one date pinned below complete chrome', (
+    tester,
+  ) async {
+    final dates = List<DateTime>.generate(
+      4,
+      (index) => DateTime.utc(2030, 5, 15 + index, 18),
+    );
+    final events = [
+      for (var dateIndex = 0; dateIndex < dates.length; dateIndex++)
+        for (var eventIndex = 0; eventIndex < 2; eventIndex++)
+          _buildHomeAgendaEvent(
+            occurrenceId:
+                '507f1f77bcf86cd799439${(940 + dateIndex * 2 + eventIndex).toString()}',
+            slug: 'home-sticky-$dateIndex-$eventIndex',
+            title: 'Home sticky $dateIndex-$eventIndex',
+            startDateTime: dates[dateIndex].add(Duration(hours: eventIndex)),
+          ),
+      for (var eventIndex = 0; eventIndex < 2; eventIndex++)
+        _buildHomeAgendaEvent(
+          occurrenceId: '507f1f77bcf86cd799439${(950 + eventIndex).toString()}',
+          slug: 'home-sticky-fourth-tail-$eventIndex',
+          title: 'Home sticky fourth tail $eventIndex',
+          startDateTime: dates[3].add(Duration(hours: 2 + eventIndex)),
+        ),
+    ];
+    const catalog = DiscoveryFilterCatalog(
+      surface: 'home.events',
+      filters: <DiscoveryFilterCatalogItem>[
+        DiscoveryFilterCatalogItem(
+          key: 'shows',
+          label: 'Shows',
+          entities: <String>{'event'},
+        ),
+      ],
+    );
+    mockAgendaController.setDiscoveryFilters(
+      catalog,
+      const DiscoveryFilterSelection(primaryKeys: <String>{'shows'}),
+    );
+    mockito
+        .when(mockAgendaController.displayStateStreamValue)
+        .thenReturn(
+          StreamValue<TenantHomeAgendaDisplayState?>(
+            defaultValue: TenantHomeAgendaDisplayState(events: events),
+          ),
+        );
+    mockito
+        .when(mockAgendaController.defaultEventImageUri)
+        .thenReturn(Uri.parse('http://example.com/default-event.jpg'));
+    final router = MockStackRouter();
+    _stubMockRouterRoot(router);
+    mockito.when(router.push(mockito.any)).thenAnswer((_) async => null);
+
+    await tester.pumpWidget(_buildRoutedTenantHomeApp(router));
+    await tester.pumpAndSettle();
+
+    await expectStickyDateHeaderTransitions(
+      tester: tester,
+      scrollable: find.byKey(const Key('homeAgendaScrollView')),
+      pinnedChrome: find
+          .ancestor(
+            of: find.byWidgetPredicate(
+              (widget) =>
+                  widget is DiscoveryFilterBar &&
+                  widget.autoRevealSelectedChips,
+            ),
+            matching: find.byWidgetPredicate(
+              (widget) =>
+                  widget is Padding &&
+                  widget.padding == const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            ),
+          )
+          .first,
+      dateLabels: dates
+          .map((date) => DateFormat.MMMMEEEEd().format(date).toUpperCase())
+          .toList(growable: false),
+    );
+  });
+
   testWidgets('tenant home keeps invite-only empty state generic', (
     tester,
   ) async {
@@ -931,6 +1014,38 @@ void main() {
     expect(router.popCallCount, 1);
     expect(find.text('Sair do app?'), findsNothing);
   });
+}
+
+EventModel _buildHomeAgendaEvent({
+  required String occurrenceId,
+  required String title,
+  required String slug,
+  required DateTime startDateTime,
+}) {
+  return EventDTO.fromJson({
+    'event_id': occurrenceId.replaceRange(23, 24, '0'),
+    'occurrence_id': occurrenceId,
+    'slug': slug,
+    'title': title,
+    'content': 'Conteudo',
+    'type': {
+      'id': 'type-1',
+      'name': 'Show',
+      'slug': 'show',
+      'description': null,
+    },
+    'location': {
+      'mode': 'physical',
+      'display_name': 'Praia do Morro',
+      'geo': {
+        'type': 'Point',
+        'coordinates': [-40.495395, -20.671339],
+      },
+    },
+    'date_time_start': startDateTime.toIso8601String(),
+    'counterpart_preview': const [],
+    'tags': const ['music'],
+  }).toDomain();
 }
 
 class _TestHttpOverrides extends HttpOverrides {

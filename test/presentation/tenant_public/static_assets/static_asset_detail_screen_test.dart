@@ -30,159 +30,163 @@ void main() {
   });
 
   testWidgets(
-      'static asset detail is share-only and renders Sobre + Como Chegar',
-      (tester) async {
-    final asset = PublicStaticAssetModel(
-      idValue: PublicStaticAssetIdValue(defaultValue: 'asset-1'),
-      profileTypeValue: PublicStaticAssetTypeValue(defaultValue: 'beach'),
-      displayNameValue:
-          PublicStaticAssetNameValue(defaultValue: 'Praia das Virtudes'),
-      slugValue: SlugValue()..parse('praia-das-virtudes'),
-      contentValue: PublicStaticAssetDescriptionValue(
-        defaultValue: '<p>Quiosques, píer e acesso fácil.</p>',
-        isRequired: false,
-      ),
-      locationLatitudeValue: LatitudeValue(isRequired: false)
-        ..parse('-20.6701'),
-      locationLongitudeValue: LongitudeValue(isRequired: false)
-        ..parse('-40.5001'),
-    );
-    final controller = StaticAssetDetailController(
-      appData: _buildAppData(),
-    );
-    GetIt.I.registerSingleton<StaticAssetDetailController>(controller);
-    final router = _RecordingStackRouter();
-
-    await tester.pumpWidget(
-      _buildRoutedTestApp(
-        router: router,
-        child: StaticAssetDetailScreen(
-          asset: asset,
+    'static asset detail is share-only and renders Sobre + Como Chegar',
+    (tester) async {
+      final asset = PublicStaticAssetModel(
+        idValue: PublicStaticAssetIdValue(defaultValue: 'asset-1'),
+        profileTypeValue: PublicStaticAssetTypeValue(defaultValue: 'beach'),
+        displayNameValue: PublicStaticAssetNameValue(
+          defaultValue: 'Praia das Virtudes',
         ),
-      ),
-    );
-    await tester.pumpAndSettle();
+        slugValue: SlugValue()..parse('praia-das-virtudes'),
+        contentValue: PublicStaticAssetDescriptionValue(
+          defaultValue: '<p>Quiosques, píer e acesso fácil.</p>',
+          isRequired: false,
+        ),
+        locationLatitudeValue: LatitudeValue(isRequired: false)
+          ..parse('-20.6701'),
+        locationLongitudeValue: LongitudeValue(isRequired: false)
+          ..parse('-40.5001'),
+      );
+      final controller = StaticAssetDetailController(appData: _buildAppData());
+      GetIt.I.registerSingleton<StaticAssetDetailController>(controller);
+      final router = _RecordingStackRouter();
 
-    expect(find.byKey(const Key('staticAssetShareAction')), findsOneWidget);
-    expect(find.byKey(const Key('staticAssetWhatsappAction')), findsOneWidget);
-    expect(find.byKey(const Key('accountProfileFavoriteAction')), findsNothing);
-    expect(
-      tester.widget<Text>(find.byKey(const Key('immersiveTabLabel_0'))).data,
-      'Sobre',
-    );
-    expect(
-      tester.widget<Text>(find.byKey(const Key('immersiveTabLabel_1'))).data,
-      'Como Chegar',
-    );
-    expect(find.text('Quiosques, píer e acesso fácil.'), findsOneWidget);
-    expect(find.text('Traçar rota'), findsNothing);
-    expect(find.byKey(const Key('staticAssetMainWazeButton')), findsOneWidget);
-    expect(find.byKey(const Key('staticAssetMainUberButton')), findsOneWidget);
-    expect(
-      find.byKey(const Key('staticAssetMainOtherDirectionsButton')),
-      findsOneWidget,
-    );
-  });
+      await tester.pumpWidget(
+        _buildRoutedTestApp(
+          router: router,
+          child: StaticAssetDetailScreen(asset: asset),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('staticAssetShareAction')), findsOneWidget);
+      expect(
+        find.byKey(const Key('staticAssetWhatsappAction')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('accountProfileFavoriteAction')),
+        findsNothing,
+      );
+      expect(
+        tester.widget<Text>(find.byKey(const Key('immersiveTabLabel_0'))).data,
+        'Sobre',
+      );
+      expect(
+        tester.widget<Text>(find.byKey(const Key('immersiveTabLabel_1'))).data,
+        'Como Chegar',
+      );
+      expect(find.text('Quiosques, píer e acesso fácil.'), findsOneWidget);
+      expect(find.text('Traçar rota'), findsNothing);
+
+      await tester.tap(find.byKey(const Key('immersiveTabLabel_1')));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const Key('staticAssetMainWazeButton')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('staticAssetMainUberButton')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('staticAssetMainOtherDirectionsButton')),
+        findsOneWidget,
+      );
+    },
+  );
 
   testWidgets(
-      'static asset detail visible back falls back to discovery when no history exists',
-      (tester) async {
-    final controller = StaticAssetDetailController(
-      appData: _buildAppData(),
-    );
-    GetIt.I.registerSingleton<StaticAssetDetailController>(controller);
-    final router = _RecordingStackRouter()..canPopResult = false;
+    'static asset detail visible back falls back to discovery when no history exists',
+    (tester) async {
+      final controller = StaticAssetDetailController(appData: _buildAppData());
+      GetIt.I.registerSingleton<StaticAssetDetailController>(controller);
+      final router = _RecordingStackRouter()..canPopResult = false;
 
-    await tester.pumpWidget(
-      _buildRoutedTestApp(
-        router: router,
-        child: StaticAssetDetailScreen(
-          asset: _buildStaticAsset(),
+      await tester.pumpWidget(
+        _buildRoutedTestApp(
+          router: router,
+          child: StaticAssetDetailScreen(asset: _buildStaticAsset()),
         ),
-      ),
-    );
-    await tester.pumpAndSettle();
+      );
+      await tester.pumpAndSettle();
 
-    await tester.tap(find.byIcon(Icons.arrow_back).first);
-    await tester.pumpAndSettle();
+      await tester.tap(find.byIcon(Icons.arrow_back).first);
+      await tester.pumpAndSettle();
 
-    expect(router.canPopCallCount, 1);
-    expect(router.popCallCount, 0);
-    expect(router.replaceAllRoutes, hasLength(1));
-    expect(
-      router.replaceAllRoutes.single.single.routeName,
-      DiscoveryRoute.name,
-    );
-  });
+      expect(router.canPopCallCount, 1);
+      expect(router.popCallCount, 0);
+      expect(router.replaceAllRoutes, hasLength(1));
+      expect(
+        router.replaceAllRoutes.single.single.routeName,
+        DiscoveryRoute.name,
+      );
+    },
+  );
 
   testWidgets(
-      'static asset detail system back falls back to discovery when no history exists',
-      (tester) async {
-    final controller = StaticAssetDetailController(
-      appData: _buildAppData(),
-    );
-    GetIt.I.registerSingleton<StaticAssetDetailController>(controller);
-    final router = _RecordingStackRouter()..canPopResult = false;
+    'static asset detail system back falls back to discovery when no history exists',
+    (tester) async {
+      final controller = StaticAssetDetailController(appData: _buildAppData());
+      GetIt.I.registerSingleton<StaticAssetDetailController>(controller);
+      final router = _RecordingStackRouter()..canPopResult = false;
 
-    await tester.pumpWidget(
-      _buildRoutedTestApp(
-        router: router,
-        child: StaticAssetDetailScreen(
-          asset: _buildStaticAsset(),
+      await tester.pumpWidget(
+        _buildRoutedTestApp(
+          router: router,
+          child: StaticAssetDetailScreen(asset: _buildStaticAsset()),
         ),
-      ),
-    );
-    await tester.pumpAndSettle();
+      );
+      await tester.pumpAndSettle();
 
-    final popScope = tester.widget<PopScope<dynamic>>(
-      find.byWidgetPredicate((widget) => widget is PopScope),
-    );
-    popScope.onPopInvokedWithResult?.call(false, null);
-    await tester.pumpAndSettle();
+      final popScope = tester.widget<PopScope<dynamic>>(
+        find.byWidgetPredicate((widget) => widget is PopScope),
+      );
+      popScope.onPopInvokedWithResult?.call(false, null);
+      await tester.pumpAndSettle();
 
-    expect(router.canPopCallCount, 1);
-    expect(router.popCallCount, 0);
-    expect(router.replaceAllRoutes, hasLength(1));
-    expect(
-      router.replaceAllRoutes.single.single.routeName,
-      DiscoveryRoute.name,
-    );
-  });
+      expect(router.canPopCallCount, 1);
+      expect(router.popCallCount, 0);
+      expect(router.replaceAllRoutes, hasLength(1));
+      expect(
+        router.replaceAllRoutes.single.single.routeName,
+        DiscoveryRoute.name,
+      );
+    },
+  );
 
   testWidgets(
-      'static asset detail visible back pops when previous history exists',
-      (tester) async {
-    final controller = StaticAssetDetailController(
-      appData: _buildAppData(),
-    );
-    GetIt.I.registerSingleton<StaticAssetDetailController>(controller);
-    final router = _RecordingStackRouter()..canPopResult = true;
+    'static asset detail visible back pops when previous history exists',
+    (tester) async {
+      final controller = StaticAssetDetailController(appData: _buildAppData());
+      GetIt.I.registerSingleton<StaticAssetDetailController>(controller);
+      final router = _RecordingStackRouter()..canPopResult = true;
 
-    await tester.pumpWidget(
-      _buildRoutedTestApp(
-        router: router,
-        child: StaticAssetDetailScreen(
-          asset: _buildStaticAsset(),
+      await tester.pumpWidget(
+        _buildRoutedTestApp(
+          router: router,
+          child: StaticAssetDetailScreen(asset: _buildStaticAsset()),
         ),
-      ),
-    );
-    await tester.pumpAndSettle();
+      );
+      await tester.pumpAndSettle();
 
-    await tester.tap(find.byIcon(Icons.arrow_back).first);
-    await tester.pumpAndSettle();
+      await tester.tap(find.byIcon(Icons.arrow_back).first);
+      await tester.pumpAndSettle();
 
-    expect(router.canPopCallCount, 1);
-    expect(router.popCallCount, 1);
-    expect(router.replaceAllRoutes, isEmpty);
-  });
+      expect(router.canPopCallCount, 1);
+      expect(router.popCallCount, 1);
+      expect(router.replaceAllRoutes, isEmpty);
+    },
+  );
 
-  testWidgets('static asset share and WhatsApp actions use public payloads',
-      (tester) async {
+  testWidgets('static asset share and WhatsApp actions use public payloads', (
+    tester,
+  ) async {
     final sharedParams = <ShareParams>[];
     final launchedUris = <Uri>[];
-    final controller = StaticAssetDetailController(
-      appData: _buildAppData(),
-    );
+    final controller = StaticAssetDetailController(appData: _buildAppData());
     GetIt.I.registerSingleton<StaticAssetDetailController>(controller);
 
     await tester.pumpWidget(
@@ -240,10 +244,7 @@ AppData _buildAppData() {
         'type': 'artist',
         'label': 'Artist',
         'allowed_taxonomies': [],
-        'capabilities': {
-          'is_favoritable': true,
-          'is_poi_enabled': true,
-        },
+        'capabilities': {'is_favoritable': true, 'is_poi_enabled': true},
       },
     ],
     'domains': ['https://tenant.test'],
@@ -264,11 +265,7 @@ AppData _buildAppData() {
           'default_meters': 15000,
           'max_meters': 50000,
         },
-        'default_origin': {
-          'lat': -20.0,
-          'lng': -40.0,
-          'label': 'Centro',
-        },
+        'default_origin': {'lat': -20.0, 'lng': -40.0, 'label': 'Centro'},
         'filters': <Map<String, dynamic>>[],
       },
     },
@@ -293,8 +290,9 @@ PublicStaticAssetModel _buildStaticAsset() {
   return PublicStaticAssetModel(
     idValue: PublicStaticAssetIdValue(defaultValue: 'asset-1'),
     profileTypeValue: PublicStaticAssetTypeValue(defaultValue: 'beach'),
-    displayNameValue:
-        PublicStaticAssetNameValue(defaultValue: 'Praia das Virtudes'),
+    displayNameValue: PublicStaticAssetNameValue(
+      defaultValue: 'Praia das Virtudes',
+    ),
     slugValue: SlugValue()..parse('praia-das-virtudes'),
     contentValue: PublicStaticAssetDescriptionValue(
       defaultValue: '<p>Quiosques, píer e acesso fácil.</p>',
@@ -385,12 +383,11 @@ class _FakeRouteMatch extends Fake implements RouteMatch {
     String? name,
     Map<String, dynamic>? meta,
     PageRouteInfo<dynamic>? pageRouteInfo,
-  })  : name = name ?? StaticAssetDetailRoute.name,
-        meta = meta ??
-            canonicalRouteMeta(
-              family: CanonicalRouteFamily.staticAssetDetail,
-            ),
-        pageRouteInfo = pageRouteInfo ?? const DiscoveryRoute();
+  }) : name = name ?? StaticAssetDetailRoute.name,
+       meta =
+           meta ??
+           canonicalRouteMeta(family: CanonicalRouteFamily.staticAssetDetail),
+       pageRouteInfo = pageRouteInfo ?? const DiscoveryRoute();
 
   @override
   final String name;

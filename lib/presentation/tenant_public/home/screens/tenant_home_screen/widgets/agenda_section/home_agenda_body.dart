@@ -20,11 +20,15 @@ class HomeAgendaBody extends StatefulWidget {
     required this.controller,
     required this.catalog,
     required this.selection,
+    required this.headerSlivers,
+    required this.scrollController,
   });
 
   final TenantHomeAgendaController controller;
   final DiscoveryFilterCatalog catalog;
   final DiscoveryFilterSelection selection;
+  final List<Widget> headerSlivers;
+  final ScrollController scrollController;
 
   @override
   State<HomeAgendaBody> createState() => _HomeAgendaBodyState();
@@ -97,10 +101,16 @@ class _HomeAgendaBodyState extends State<HomeAgendaBody> {
             selection.isNotEmpty;
         return StreamValueBuilder<TenantHomeAgendaDisplayState?>(
           streamValue: controller.displayStateStreamValue,
-          onNullWidget: _buildFirstFetchLoading(
-            theme: theme,
-            colorScheme: colorScheme,
-            controller: controller,
+          onNullWidget: _buildScrollView(
+            bodySlivers: [
+              _fillRemaining(
+                _buildFirstFetchLoading(
+                  theme: theme,
+                  colorScheme: colorScheme,
+                  controller: controller,
+                ),
+              ),
+            ],
           ),
           builder: (context, displayState) {
             final resumes = displayState!.events
@@ -118,48 +128,61 @@ class _HomeAgendaBodyState extends State<HomeAgendaBody> {
               streamValue: controller.isPageLoadingStreamValue,
               builder: (context, isPageLoading) {
                 if (isInitialLoading && resumes.isEmpty) {
-                  return Center(
-                    child: StreamValueBuilder<String>(
-                      streamValue: controller.initialLoadingLabelStreamValue,
-                      builder: (context, loadingLabel) {
-                        return Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const CircularProgressIndicator(),
-                            const SizedBox(height: 16),
-                            Text(
-                              loadingLabel.isEmpty
-                                  ? 'Carregando agenda...'
-                                  : loadingLabel,
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: colorScheme.onSurfaceVariant,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
-                        );
-                      },
-                    ),
+                  return _buildScrollView(
+                    bodySlivers: [
+                      _fillRemaining(
+                        Center(
+                          child: StreamValueBuilder<String>(
+                            streamValue:
+                                controller.initialLoadingLabelStreamValue,
+                            builder: (context, loadingLabel) {
+                              return Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const CircularProgressIndicator(),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    loadingLabel.isEmpty
+                                        ? 'Carregando agenda...'
+                                        : loadingLabel,
+                                    style: theme.textTheme.bodyMedium?.copyWith(
+                                      color: colorScheme.onSurfaceVariant,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ],
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                    ],
                   );
                 }
 
                 if (resumes.isEmpty) {
                   if (isPageLoading) {
-                    return Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const CircularProgressIndicator(),
-                          const SizedBox(height: 16),
-                          Text(
-                            'Buscando eventos perto de você...',
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: colorScheme.onSurfaceVariant,
+                    return _buildScrollView(
+                      bodySlivers: [
+                        _fillRemaining(
+                          Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const CircularProgressIndicator(),
+                                const SizedBox(height: 16),
+                                Text(
+                                  'Buscando eventos perto de você...',
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: colorScheme.onSurfaceVariant,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
                             ),
-                            textAlign: TextAlign.center,
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     );
                   }
 
@@ -170,26 +193,32 @@ class _HomeAgendaBodyState extends State<HomeAgendaBody> {
                             ) ??
                             'Nenhum resultado encontrado'
                       : 'Nenhum evento disponível no momento';
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.search_off,
-                          size: 64,
-                          color: colorScheme.onSurfaceVariant.withAlpha(
-                            (0.5 * 255).floor(),
+                  return _buildScrollView(
+                    bodySlivers: [
+                      _fillRemaining(
+                        Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.search_off,
+                                size: 64,
+                                color: colorScheme.onSurfaceVariant.withAlpha(
+                                  (0.5 * 255).floor(),
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                emptyLabel,
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  color: colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        const SizedBox(height: 16),
-                        Text(
-                          emptyLabel,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            color: colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   );
                 }
 
@@ -201,40 +230,48 @@ class _HomeAgendaBodyState extends State<HomeAgendaBody> {
                       child: NotificationListener<ScrollNotification>(
                         onNotification: (notification) =>
                             _handleAgendaScroll(notification, controller),
-                        child: DateGroupedEventList(
-                          primary: true,
-                          events: resumes,
-                          isConfirmed: (event) =>
-                              controller.isOccurrenceConfirmed(
-                                event.selectedOccurrenceId ?? '',
-                              ),
-                          pendingInvitesCount: (event) =>
-                              controller.pendingInviteCount(
-                                event.selectedOccurrenceId ?? '',
-                              ),
-                          distanceLabel: controller.distanceLabelFor,
-                          statusIconSize: 22,
-                          highlightNowEvents: true,
-                          highlightTodayEvents: true,
-                          sortDescending: showHistory,
-                          footer: isPageLoading
-                              ? const Padding(
-                                  padding: EdgeInsets.symmetric(vertical: 16),
-                                  child: Center(
-                                    child: SizedBox(
-                                      width: 24,
-                                      height: 24,
-                                      child: CircularProgressIndicator(),
-                                    ),
+                        child: Builder(
+                          builder: (context) {
+                            final eventList = DateGroupedEventList(
+                              events: resumes,
+                              isConfirmed: (event) =>
+                                  controller.isOccurrenceConfirmed(
+                                    event.selectedOccurrenceId ?? '',
                                   ),
-                                )
-                              : null,
-                          onEventSelected: (event) {
-                            context.router.push(
-                              ImmersiveEventDetailRoute(
-                                eventSlug: event.slug,
-                                occurrenceId: event.selectedOccurrenceId,
-                              ),
+                              pendingInvitesCount: (event) =>
+                                  controller.pendingInviteCount(
+                                    event.selectedOccurrenceId ?? '',
+                                  ),
+                              distanceLabel: controller.distanceLabelFor,
+                              statusIconSize: 22,
+                              highlightNowEvents: true,
+                              highlightTodayEvents: true,
+                              sortDescending: showHistory,
+                              footer: isPageLoading
+                                  ? const Padding(
+                                      padding: EdgeInsets.symmetric(
+                                        vertical: 16,
+                                      ),
+                                      child: Center(
+                                        child: SizedBox(
+                                          width: 24,
+                                          height: 24,
+                                          child: CircularProgressIndicator(),
+                                        ),
+                                      ),
+                                    )
+                                  : null,
+                              onEventSelected: (event) {
+                                context.router.push(
+                                  ImmersiveEventDetailRoute(
+                                    eventSlug: event.slug,
+                                    occurrenceId: event.selectedOccurrenceId,
+                                  ),
+                                );
+                              },
+                            );
+                            return _buildScrollView(
+                              bodySlivers: eventList.buildSlivers(context),
                             );
                           },
                         ),
@@ -248,6 +285,18 @@ class _HomeAgendaBodyState extends State<HomeAgendaBody> {
         );
       },
     );
+  }
+
+  Widget _buildScrollView({required List<Widget> bodySlivers}) {
+    return CustomScrollView(
+      key: const Key('homeAgendaScrollView'),
+      controller: widget.scrollController,
+      slivers: [...widget.headerSlivers, ...bodySlivers],
+    );
+  }
+
+  Widget _fillRemaining(Widget child) {
+    return SliverFillRemaining(hasScrollBody: false, child: child);
   }
 
   bool _handleAgendaScroll(

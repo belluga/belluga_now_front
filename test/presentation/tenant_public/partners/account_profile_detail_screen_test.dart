@@ -39,6 +39,7 @@ import 'package:belluga_now/presentation/shared/widgets/account_profile_overlapp
 import 'package:belluga_now/presentation/shared/widgets/public_rich_text_html.dart';
 import 'package:belluga_now/presentation/tenant_public/widgets/upcoming_ocurrence_card.dart';
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/immersive_detail_screen.dart';
+import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/widgets/immersive_tab_bar.dart';
 import 'package:belluga_now/presentation/shared/promotion/screens/app_promotion_screen/controllers/app_promotion_screen_controller.dart';
 import 'package:belluga_now/presentation/shared/promotion/screens/app_promotion_screen/controllers/app_promotion_store_platform.dart';
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_app_chooser_contract.dart';
@@ -57,6 +58,8 @@ import 'package:stream_value/core/stream_value.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:value_object_pattern/domain/value_objects/mongo_id_value.dart';
 import 'package:visibility_detector/visibility_detector.dart';
+
+import '../../../support/sticky_date_header_test_support.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -196,7 +199,10 @@ void main() {
       'https://tenant.test/gallery/thumb.jpg',
     );
 
-    await tester.drag(find.byType(NestedScrollView), const Offset(0, -320));
+    await tester.drag(
+      find.byKey(const Key('immersiveScrollView')),
+      const Offset(0, -320),
+    );
     await tester.pumpAndSettle();
 
     final galleryItemRect = tester.getRect(galleryItem);
@@ -1226,6 +1232,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Acontecendo Agora'), findsOneWidget);
+      await _scrollAccountUntilVisible(tester, find.text('Próximos Eventos'));
       expect(find.text('Próximos Eventos'), findsWidgets);
       expect(find.text('Favoritar'), findsOneWidget);
       expect(find.text('Ver detalhes do evento'), findsNothing);
@@ -1493,7 +1500,10 @@ void main() {
       findsOneWidget,
     );
 
-    await tester.drag(find.byType(NestedScrollView), const Offset(0, -700));
+    await tester.drag(
+      find.byKey(const Key('immersiveScrollView')),
+      const Offset(0, -700),
+    );
     await tester.pumpAndSettle();
 
     final collapsedTitle = tester.widget<Text>(
@@ -1552,9 +1562,15 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.drag(find.byType(NestedScrollView), const Offset(0, -1000));
+      await tester.drag(
+        find.byKey(const Key('immersiveScrollView')),
+        const Offset(0, -1000),
+      );
       await tester.pumpAndSettle();
-      await tester.drag(find.byType(NestedScrollView), const Offset(0, -1000));
+      await tester.drag(
+        find.byKey(const Key('immersiveScrollView')),
+        const Offset(0, -1000),
+      );
       await tester.pumpAndSettle();
 
       expect(find.byKey(const Key('immersiveCollapsedTitle')), findsOneWidget);
@@ -1648,6 +1664,12 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    await _scrollAccountUntilVisible(
+      tester,
+      find.byKey(
+        const Key('accountProfileAgendaCardHeadline_507f1f77bcf86cd799439122'),
+      ),
+    );
     final futureCard = tester
         .widgetList<UpcomingOcurrenceCard>(find.byType(UpcomingOcurrenceCard))
         .last;
@@ -1803,58 +1825,51 @@ void main() {
     expect(find.text('Próximos Eventos'), findsOneWidget);
   });
 
-  testWidgets(
-    'Account Profile Agenda renders a visible local-date header for each upcoming date',
-    (tester) async {
-      final repository = _FakeAccountProfilesRepository();
-      final controller = AccountProfileDetailController(
-        accountProfilesRepository: repository,
-      );
-      GetIt.I.registerSingleton<AccountProfileDetailController>(controller);
-      final profile = _buildArtistWithTwoUpcomingDates();
-      final firstDate = profile.agendaEvents.first.startDateTime;
-      final secondDate = profile.agendaEvents[1].startDateTime;
+  testWidgets('Account Profile Agenda pins and pushes four date headers', (
+    tester,
+  ) async {
+    final repository = _FakeAccountProfilesRepository();
+    final controller = AccountProfileDetailController(
+      accountProfilesRepository: repository,
+    );
+    GetIt.I.registerSingleton<AccountProfileDetailController>(controller);
+    final profile = _buildArtistWithFourUpcomingDates();
+    final dates =
+        profile.agendaEvents
+            .map(
+              (event) => DateTime(
+                event.startDateTime.year,
+                event.startDateTime.month,
+                event.startDateTime.day,
+              ),
+            )
+            .toSet()
+            .toList(growable: false)
+          ..sort();
+    final dateLabels = dates
+        .map((date) => DateFormat.MMMMEEEEd().format(date).toUpperCase())
+        .toList(growable: false);
 
-      await tester.pumpWidget(
-        _buildRoutedTestApp(
-          router: _RecordingStackRouter(),
-          child: AccountProfileDetailScreen(accountProfile: profile),
-        ),
-      );
-      await tester.pumpAndSettle();
+    await tester.pumpWidget(
+      _buildRoutedTestApp(
+        router: _RecordingStackRouter(),
+        child: AccountProfileDetailScreen(accountProfile: profile),
+      ),
+    );
+    await tester.pumpAndSettle();
 
-      expect(find.text('Próximos Eventos'), findsOneWidget);
-      expect(
-        find.text(DateFormat.MMMMEEEEd().format(firstDate).toUpperCase()),
-        findsOneWidget,
-      );
-      final firstDateHeader = tester.widget<Text>(
-        find.text(DateFormat.MMMMEEEEd().format(firstDate).toUpperCase()),
-      );
-      expect(firstDateHeader.maxLines, 1);
-      expect(firstDateHeader.softWrap, isFalse);
-      expect(
-        find.text(DateFormat.MMMMEEEEd().format(secondDate).toUpperCase()),
-        findsOneWidget,
-      );
-      expect(
-        find.byKey(
-          const Key(
-            'accountProfileAgendaCardHeadline_507f1f77bcf86cd799439231',
-          ),
-        ),
-        findsOneWidget,
-      );
-      expect(
-        find.byKey(
-          const Key(
-            'accountProfileAgendaCardHeadline_507f1f77bcf86cd799439232',
-          ),
-        ),
-        findsOneWidget,
-      );
-    },
-  );
+    expect(find.text('Próximos Eventos'), findsOneWidget);
+    expect(find.text(dateLabels.first), findsOneWidget);
+    final firstDateHeader = tester.widget<Text>(find.text(dateLabels.first));
+    expect(firstDateHeader.maxLines, 1);
+    expect(firstDateHeader.softWrap, isFalse);
+    await expectStickyDateHeaderTransitions(
+      tester: tester,
+      scrollable: find.byKey(const Key('immersiveScrollView')),
+      pinnedChrome: find.byType(ImmersiveTabBar),
+      dateLabels: dateLabels,
+    );
+  });
 
   testWidgets(
     'live-only agenda renders the occurrence only in Acontecendo Agora',
@@ -1914,13 +1929,21 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Acontecendo Agora'), findsOneWidget);
-      expect(find.text('Próximos Eventos'), findsOneWidget);
       expect(
         find.byKey(
           const Key('accountProfileAgendaLiveCard_507f1f77bcf86cd799439121'),
         ),
         findsOneWidget,
       );
+      await _scrollAccountUntilVisible(
+        tester,
+        find.byKey(
+          const Key(
+            'accountProfileAgendaCardHeadline_507f1f77bcf86cd799439122',
+          ),
+        ),
+      );
+      expect(find.text('Próximos Eventos'), findsOneWidget);
       expect(
         find.byKey(
           const Key(
@@ -1960,13 +1983,21 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Acontecendo Agora'), findsOneWidget);
-      expect(find.text('Próximos Eventos'), findsOneWidget);
       expect(
         find.byKey(
           const Key('accountProfileAgendaLiveCard_507f1f77bcf86cd799439221'),
         ),
         findsOneWidget,
       );
+      await _scrollAccountUntilVisible(
+        tester,
+        find.byKey(
+          const Key(
+            'accountProfileAgendaCardHeadline_507f1f77bcf86cd799439222',
+          ),
+        ),
+      );
+      expect(find.text('Próximos Eventos'), findsOneWidget);
       expect(
         find.byKey(
           const Key(
@@ -3271,6 +3302,19 @@ void main() {
   });
 }
 
+Future<void> _scrollAccountUntilVisible(
+  WidgetTester tester,
+  Finder target,
+) async {
+  final scrollView = find.byKey(const Key('immersiveScrollView'));
+  final scrollable = find.descendant(
+    of: scrollView,
+    matching: find.byType(Scrollable),
+  );
+  await tester.scrollUntilVisible(target, 300, scrollable: scrollable.first);
+  await tester.pumpAndSettle();
+}
+
 Widget _buildAutoRouteTestApp({required Widget child, ThemeData? theme}) {
   final router = RootStackRouter.build(
     routes: [
@@ -3894,9 +3938,11 @@ AccountProfileComplete _buildArtistRecurringOccurrenceProfile() {
   );
 }
 
-AccountProfileComplete _buildArtistWithTwoUpcomingDates() {
+AccountProfileComplete _buildArtistWithFourUpcomingDates() {
   final firstDate = DateTime.utc(2030, 5, 15, 18);
   final secondDate = DateTime.utc(2030, 5, 16, 18);
+  final thirdDate = DateTime.utc(2030, 5, 17, 18);
+  final fourthDate = DateTime.utc(2030, 5, 18, 18);
   return buildAccountProfileCompleteFromPrimitives(
     id: '507f1f77bcf86cd799439011',
     name: 'Cafe de la Musique',
@@ -3916,6 +3962,62 @@ AccountProfileComplete _buildArtistWithTwoUpcomingDates() {
         artistNames: const ['Marco Aurélio'],
         artistIds: const ['507f1f77bcf86cd799439099'],
         imageUri: Uri.parse('https://example.com/agenda-em-dois-dias.jpg'),
+      ),
+      buildPartnerEventView(
+        eventId: '507f1f77bcf86cd799439031',
+        occurrenceId: '507f1f77bcf86cd799439233',
+        slug: 'agenda-em-quatro-dias',
+        title: 'Agenda em Quatro Dias',
+        eventTypeLabel: 'Show',
+        location: 'Deck Principal',
+        venueTitle: 'Cafe de la Musique',
+        venueId: '507f1f77bcf86cd799439011',
+        startDateTime: thirdDate,
+        artistNames: const ['Marco Aurélio'],
+        artistIds: const ['507f1f77bcf86cd799439099'],
+        imageUri: Uri.parse('https://example.com/agenda-em-quatro-dias.jpg'),
+      ),
+      buildPartnerEventView(
+        eventId: '507f1f77bcf86cd799439031',
+        occurrenceId: '507f1f77bcf86cd799439234',
+        slug: 'agenda-em-quatro-dias-final',
+        title: 'Agenda em Quatro Dias Final',
+        eventTypeLabel: 'Show',
+        location: 'Deck Principal',
+        venueTitle: 'Cafe de la Musique',
+        venueId: '507f1f77bcf86cd799439011',
+        startDateTime: fourthDate,
+        artistNames: const ['Marco Aurélio'],
+        artistIds: const ['507f1f77bcf86cd799439099'],
+        imageUri: Uri.parse('https://example.com/agenda-em-quatro-dias.jpg'),
+      ),
+      buildPartnerEventView(
+        eventId: '507f1f77bcf86cd799439031',
+        occurrenceId: '507f1f77bcf86cd799439235',
+        slug: 'agenda-em-quatro-dias-extra-1',
+        title: 'Agenda em Quatro Dias Extra 1',
+        eventTypeLabel: 'Show',
+        location: 'Deck Principal',
+        venueTitle: 'Cafe de la Musique',
+        venueId: '507f1f77bcf86cd799439011',
+        startDateTime: fourthDate.add(const Duration(hours: 1)),
+        artistNames: const ['Marco Aurélio'],
+        artistIds: const ['507f1f77bcf86cd799439099'],
+        imageUri: Uri.parse('https://example.com/agenda-em-quatro-dias.jpg'),
+      ),
+      buildPartnerEventView(
+        eventId: '507f1f77bcf86cd799439031',
+        occurrenceId: '507f1f77bcf86cd799439236',
+        slug: 'agenda-em-quatro-dias-extra-2',
+        title: 'Agenda em Quatro Dias Extra 2',
+        eventTypeLabel: 'Show',
+        location: 'Deck Principal',
+        venueTitle: 'Cafe de la Musique',
+        venueId: '507f1f77bcf86cd799439011',
+        startDateTime: fourthDate.add(const Duration(hours: 2)),
+        artistNames: const ['Marco Aurélio'],
+        artistIds: const ['507f1f77bcf86cd799439099'],
+        imageUri: Uri.parse('https://example.com/agenda-em-quatro-dias.jpg'),
       ),
       buildPartnerEventView(
         eventId: '507f1f77bcf86cd799439031',

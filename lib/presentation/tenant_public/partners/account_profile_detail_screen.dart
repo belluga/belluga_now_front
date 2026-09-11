@@ -862,6 +862,16 @@ class _AccountProfileDetailScreenState
     ProfileTabConfig tab,
     Map<ProfileModuleId, Object?> moduleData,
   ) {
+    final hasAgendaList = tab.modules.any(
+      (module) => module.id == ProfileModuleId.agendaList,
+    );
+    if (hasAgendaList) {
+      return ImmersiveTabItem(
+        title: tab.title,
+        sliversBuilder: (context) =>
+            _buildModulesAsSlivers(tab.modules, moduleData),
+      );
+    }
     final content = _buildModules(tab.modules, moduleData);
     final normalizedTitle = tab.title.trim().toLowerCase();
 
@@ -1661,73 +1671,85 @@ class _AccountProfileDetailScreenState
     );
   }
 
-  Widget _agendaList(
+  List<Widget> _agendaSlivers(
     AccountProfileComplete accountProfile,
     AccountProfileAgendaPresentation? presentation,
   ) {
     if (presentation == null || presentation.isEmpty) {
-      return Padding(
-        padding: const EdgeInsets.all(16),
-        child: Text(
-          'Nenhum evento disponível por enquanto.',
-          style: Theme.of(context).textTheme.bodyMedium,
+      return [
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Text(
+              'Nenhum evento disponível por enquanto.',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+          ),
+        ),
+      ];
+    }
+
+    final slivers = <Widget>[];
+    if (presentation.liveOccurrences.isNotEmpty) {
+      slivers.add(
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+          sliver: SliverList.list(
+            children: [
+              Text(
+                'Acontecendo Agora',
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 14),
+              for (final event in presentation.liveOccurrences)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 14),
+                  child: _buildAgendaLiveHighlightCard(accountProfile, event),
+                ),
+              const SizedBox(height: 28),
+            ],
+          ),
         ),
       );
     }
 
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (presentation.liveOccurrences.isNotEmpty) ...[
-            Text(
-              'Acontecendo Agora',
-              style: Theme.of(
-                context,
-              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900),
-            ),
-            const SizedBox(height: 14),
-            ...presentation.liveOccurrences.map(
-              (event) => Padding(
-                padding: const EdgeInsets.only(bottom: 14),
-                child: _buildAgendaLiveHighlightCard(accountProfile, event),
-              ),
-            ),
-            const SizedBox(height: 28),
-          ],
-          if (presentation.upcomingOccurrences.isNotEmpty) ...[
-            Text(
+    if (presentation.upcomingOccurrences.isNotEmpty) {
+      slivers.add(
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            child: Text(
               'Próximos Eventos',
               style: Theme.of(
                 context,
               ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900),
             ),
-            const SizedBox(height: 14),
-            DateGroupedEventList(
-              events: presentation.upcomingOccurrences,
-              onEventSelected: _openUpcomingAgendaOccurrence,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              primary: false,
-              highlightNowEvents: false,
-              keyNamespace: 'accountProfileAgendaCard',
-              padding: EdgeInsets.zero,
-              showVenueAddress: false,
-              scaleDateHeaderToFit: true,
-              isConfirmed: (event) => _controller.isOccurrenceConfirmed(
-                event.selectedOccurrenceId ?? '',
-              ),
-              pendingInvitesCount: (event) => _controller.pendingInviteCount(
-                event.selectedOccurrenceId ?? '',
-              ),
-              distanceLabel: (event) =>
-                  _controller.distanceLabelFor(accountProfile, event),
-            ),
-          ],
-        ],
-      ),
-    );
+          ),
+        ),
+      );
+      slivers.addAll(
+        DateGroupedEventList(
+          events: presentation.upcomingOccurrences,
+          onEventSelected: _openUpcomingAgendaOccurrence,
+          highlightNowEvents: false,
+          keyNamespace: 'accountProfileAgendaCard',
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          showVenueAddress: false,
+          scaleDateHeaderToFit: true,
+          isConfirmed: (event) => _controller.isOccurrenceConfirmed(
+            event.selectedOccurrenceId ?? '',
+          ),
+          pendingInvitesCount: (event) =>
+              _controller.pendingInviteCount(event.selectedOccurrenceId ?? ''),
+          distanceLabel: (event) =>
+              _controller.distanceLabelFor(accountProfile, event),
+        ).buildSlivers(context),
+      );
+    }
+
+    return slivers;
   }
 
   void _openUpcomingAgendaOccurrence(UpcomingOcurrenceResume event) {
@@ -3054,6 +3076,26 @@ class _AccountProfileDetailScreenState
     );
   }
 
+  List<Widget> _buildModulesAsSlivers(
+    List<ProfileModuleConfig> modules,
+    Map<ProfileModuleId, Object?> moduleData,
+  ) {
+    return [
+      for (final module in modules)
+        if (module.id == ProfileModuleId.agendaList)
+          ..._agendaSlivers(
+            widget.accountProfile,
+            moduleData[module.id] is AccountProfileAgendaPresentation
+                ? moduleData[module.id] as AccountProfileAgendaPresentation
+                : null,
+          )
+        else
+          SliverToBoxAdapter(
+            child: _buildModule(module, moduleData[module.id]),
+          ),
+    ];
+  }
+
   Widget _buildModule(ProfileModuleConfig module, dynamic data) {
     switch (module.id) {
       case ProfileModuleId.socialScore:
@@ -3061,9 +3103,8 @@ class _AccountProfileDetailScreenState
       case ProfileModuleId.agendaCarousel:
         return _artistHighlights(data is List<PartnerEventView> ? data : null);
       case ProfileModuleId.agendaList:
-        return _agendaList(
-          widget.accountProfile,
-          data is AccountProfileAgendaPresentation ? data : null,
+        throw StateError(
+          'Agenda modules must be rendered through the sliver path.',
         );
       case ProfileModuleId.musicPlayer:
         return _musicPlayer(data is List<PartnerMediaView> ? data : null);

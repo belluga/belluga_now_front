@@ -49,70 +49,7 @@ class DateGroupedEventList extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-
-    final now = DateTime.now();
-
-    // Partition events into "now" and date groups
-    final nowEvents = <UpcomingOcurrenceResume>[];
-    final Map<String, List<UpcomingOcurrenceResume>> groupedEvents = {};
-
-    bool isHappeningNow(UpcomingOcurrenceResume event) {
-      final start = event.startDateTime;
-      final end = event.endDateTime ?? start.add(defaultEventDuration);
-      if (end.isBefore(start)) {
-        return false;
-      }
-      return start.isBefore(now) || start.isAtSameMomentAs(now)
-          ? now.isBefore(end) || now.isAtSameMomentAs(end)
-          : false;
-    }
-
-    for (var event in events) {
-      if (highlightNowEvents && isHappeningNow(event)) {
-        nowEvents.add(event);
-        continue;
-      }
-      final dateKey = DateFormat('yyyy-MM-dd').format(event.startDateTime);
-      groupedEvents.putIfAbsent(dateKey, () => []);
-      groupedEvents[dateKey]!.add(event);
-    }
-
-    // Sort dates
-    final sortedDates = groupedEvents.keys.toList()
-      ..sort((a, b) => sortDescending ? b.compareTo(a) : a.compareTo(b));
-
-    // Sort "now" events consistently
-    nowEvents.sort(_compareEvents);
-
-    final sections = <_EventSection>[];
-    if (highlightNowEvents && nowEvents.isNotEmpty) {
-      sections.add(
-        _EventSection(
-          label: 'AGORA',
-          events: nowEvents,
-          tag: null,
-          isNow: true,
-          date: null,
-        ),
-      );
-    }
-
-    for (final key in sortedDates) {
-      final date = DateTime.parse(key);
-      final dateEvents = List<UpcomingOcurrenceResume>.from(
-        groupedEvents[key] ?? const [],
-      )..sort(_compareEvents);
-      final tag = highlightTodayEvents ? _tagForDate(date, now) : null;
-      sections.add(
-        _EventSection(
-          label: DateFormat.MMMMEEEEd().format(date).toUpperCase(),
-          events: dateEvents,
-          tag: tag,
-          isNow: false,
-          date: date,
-        ),
-      );
-    }
+    final sections = _buildSections(DateTime.now());
 
     return ListView.builder(
       primary: primary,
@@ -129,123 +66,261 @@ class DateGroupedEventList extends StatelessWidget {
         }
 
         final section = sections[index];
-        final dateEvents = section.events;
-
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Date / tag divider
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 20),
-              child: section.isNow
-                  ? Center(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 8,
-                        ),
-                        decoration: BoxDecoration(
-                          color: colorScheme.errorContainer,
-                          borderRadius: BorderRadius.circular(26),
-                          boxShadow: [
-                            BoxShadow(
-                              color: colorScheme.errorContainer.withValues(
-                                alpha: 0.18,
-                              ),
-                              blurRadius: 10,
-                              offset: const Offset(0, 6),
-                            ),
-                          ],
-                        ),
-                        child: Text(
-                          section.label,
-                          style:
-                              theme.textTheme.labelLarge?.copyWith(
-                                color: colorScheme.onErrorContainer,
-                                fontWeight: FontWeight.w900,
-                                letterSpacing: 1.2,
-                              ) ??
-                              TextStyle(
-                                color: colorScheme.onErrorContainer,
-                                fontWeight: FontWeight.w900,
-                                letterSpacing: 1.2,
-                              ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    )
-                  : Column(
-                      children: [
-                        if (section.tag != null)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 6,
-                              ),
-                              decoration: BoxDecoration(
-                                color: colorScheme.secondaryContainer,
-                                borderRadius: BorderRadius.circular(24),
-                              ),
-                              child: Text(
-                                section.tag!,
-                                style:
-                                    theme.textTheme.labelLarge?.copyWith(
-                                      color: colorScheme.onSecondaryContainer,
-                                      fontWeight: FontWeight.w800,
-                                      letterSpacing: 1.2,
-                                    ) ??
-                                    TextStyle(
-                                      color: colorScheme.onSecondaryContainer,
-                                      fontWeight: FontWeight.w800,
-                                      letterSpacing: 1.2,
-                                    ),
-                                textAlign: TextAlign.center,
-                              ),
-                            ),
-                          ),
-                        _DateSectionHeader(
-                          label: section.label,
-                          scaleToFit: scaleDateHeaderToFit,
-                        ),
-                      ],
-                    ),
+            _buildSectionHeader(
+              theme: theme,
+              colorScheme: colorScheme,
+              section: section,
             ),
-            // Events for this date
-            ...dateEvents.asMap().entries.map((entry) {
-              final event = entry.value;
-              final cardIdentity = _cardIdentityFor(
-                event: event,
+            ...section.events.asMap().entries.map(
+              (entry) => _buildEventCard(
+                event: entry.value,
                 sectionIndex: index,
                 eventIndex: entry.key,
-              );
-              final cardId =
-                  event.selectedOccurrenceId?.trim().isNotEmpty == true
-                  ? event.selectedOccurrenceId!.trim()
-                  : cardIdentity;
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 16),
-                child: UpcomingOcurrenceCard.fromUpcomingOcurrenceResume(
-                  key: ValueKey<String>(
-                    'date-grouped-event-card-$cardIdentity',
-                  ),
-                  event: event,
-                  onTap: () => onEventSelected(event),
-                  isConfirmed: isConfirmed?.call(event) ?? false,
-                  pendingInvitesCount: pendingInvitesCount?.call(event) ?? 0,
-                  distanceLabel: distanceLabel?.call(event),
-                  statusIconSize: statusIconSize ?? 24,
-                  keyNamespace: keyNamespace,
-                  cardId: cardId,
-                  showVenueAddress: showVenueAddress,
-                ),
-              );
-            }),
+              ),
+            ),
           ],
         );
       },
     );
+  }
+
+  /// Sliver facade for surfaces whose owning viewport is already sliver-based.
+  ///
+  /// The box facade in [build] remains the default used by Event Search.
+  List<Widget> buildSlivers(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final sections = _buildSections(DateTime.now());
+    final slivers = <Widget>[];
+
+    for (var sectionIndex = 0; sectionIndex < sections.length; sectionIndex++) {
+      final section = sections[sectionIndex];
+      final header = _buildSectionHeader(
+        theme: theme,
+        colorScheme: colorScheme,
+        section: section,
+      );
+      final eventList = SliverList.builder(
+        itemCount: section.events.length,
+        itemBuilder: (context, eventIndex) => _buildEventCard(
+          event: section.events[eventIndex],
+          sectionIndex: sectionIndex,
+          eventIndex: eventIndex,
+        ),
+      );
+
+      if (section.isNow) {
+        slivers
+          ..add(
+            SliverPadding(
+              padding: padding,
+              sliver: SliverToBoxAdapter(child: header),
+            ),
+          )
+          ..add(SliverPadding(padding: padding, sliver: eventList));
+        continue;
+      }
+
+      slivers.add(
+        SliverPadding(
+          padding: padding,
+          sliver: SliverMainAxisGroup(
+            slivers: [
+              PinnedHeaderSliver(
+                child: ColoredBox(color: colorScheme.surface, child: header),
+              ),
+              eventList,
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (footer case final footer?) {
+      slivers.add(
+        SliverPadding(
+          padding: padding,
+          sliver: SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 24),
+              child: footer,
+            ),
+          ),
+        ),
+      );
+    }
+
+    return slivers;
+  }
+
+  Widget _buildSectionHeader({
+    required ThemeData theme,
+    required ColorScheme colorScheme,
+    required _EventSection section,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 20),
+      child: section.isNow
+          ? Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: colorScheme.errorContainer,
+                  borderRadius: BorderRadius.circular(26),
+                  boxShadow: [
+                    BoxShadow(
+                      color: colorScheme.errorContainer.withValues(alpha: 0.18),
+                      blurRadius: 10,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: Text(
+                  section.label,
+                  style:
+                      theme.textTheme.labelLarge?.copyWith(
+                        color: colorScheme.onErrorContainer,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.2,
+                      ) ??
+                      TextStyle(
+                        color: colorScheme.onErrorContainer,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.2,
+                      ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            )
+          : Column(
+              children: [
+                if (section.tag != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: colorScheme.secondaryContainer,
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                      child: Text(
+                        section.tag!,
+                        style:
+                            theme.textTheme.labelLarge?.copyWith(
+                              color: colorScheme.onSecondaryContainer,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 1.2,
+                            ) ??
+                            TextStyle(
+                              color: colorScheme.onSecondaryContainer,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 1.2,
+                            ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+                _DateSectionHeader(
+                  label: section.label,
+                  scaleToFit: scaleDateHeaderToFit,
+                ),
+              ],
+            ),
+    );
+  }
+
+  Widget _buildEventCard({
+    required UpcomingOcurrenceResume event,
+    required int sectionIndex,
+    required int eventIndex,
+  }) {
+    final cardIdentity = _cardIdentityFor(
+      event: event,
+      sectionIndex: sectionIndex,
+      eventIndex: eventIndex,
+    );
+    final cardId = event.selectedOccurrenceId?.trim().isNotEmpty == true
+        ? event.selectedOccurrenceId!.trim()
+        : cardIdentity;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: UpcomingOcurrenceCard.fromUpcomingOcurrenceResume(
+        key: ValueKey<String>('date-grouped-event-card-$cardIdentity'),
+        event: event,
+        onTap: () => onEventSelected(event),
+        isConfirmed: isConfirmed?.call(event) ?? false,
+        pendingInvitesCount: pendingInvitesCount?.call(event) ?? 0,
+        distanceLabel: distanceLabel?.call(event),
+        statusIconSize: statusIconSize ?? 24,
+        keyNamespace: keyNamespace,
+        cardId: cardId,
+        showVenueAddress: showVenueAddress,
+      ),
+    );
+  }
+
+  List<_EventSection> _buildSections(DateTime now) {
+    final nowEvents = <UpcomingOcurrenceResume>[];
+    final groupedEvents = <String, List<UpcomingOcurrenceResume>>{};
+
+    for (final event in events) {
+      if (highlightNowEvents && _isHappeningNow(event, now)) {
+        nowEvents.add(event);
+        continue;
+      }
+      final dateKey = DateFormat('yyyy-MM-dd').format(event.startDateTime);
+      groupedEvents.putIfAbsent(dateKey, () => []).add(event);
+    }
+
+    final sortedDates = groupedEvents.keys.toList()
+      ..sort((a, b) => sortDescending ? b.compareTo(a) : a.compareTo(b));
+    nowEvents.sort(_compareEvents);
+
+    return [
+      if (highlightNowEvents && nowEvents.isNotEmpty)
+        _EventSection(
+          label: 'AGORA',
+          events: nowEvents,
+          tag: null,
+          isNow: true,
+          date: null,
+        ),
+      for (final key in sortedDates)
+        _dateSection(key: key, events: groupedEvents[key]!, now: now),
+    ];
+  }
+
+  _EventSection _dateSection({
+    required String key,
+    required List<UpcomingOcurrenceResume> events,
+    required DateTime now,
+  }) {
+    final date = DateTime.parse(key);
+    final dateEvents = List<UpcomingOcurrenceResume>.from(events)
+      ..sort(_compareEvents);
+    return _EventSection(
+      label: DateFormat.MMMMEEEEd().format(date).toUpperCase(),
+      events: dateEvents,
+      tag: highlightTodayEvents ? _tagForDate(date, now) : null,
+      isNow: false,
+      date: date,
+    );
+  }
+
+  bool _isHappeningNow(UpcomingOcurrenceResume event, DateTime now) {
+    final start = event.startDateTime;
+    final end = event.endDateTime ?? start.add(defaultEventDuration);
+    if (end.isBefore(start)) return false;
+    return !start.isAfter(now) && !now.isAfter(end);
   }
 
   String _cardIdentityFor({

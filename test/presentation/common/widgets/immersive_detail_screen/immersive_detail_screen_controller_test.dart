@@ -146,7 +146,7 @@ void main() {
     controller.dispose();
   });
 
-  test('logs section_viewed when tab visibility changes', () async {
+  test('logs section_viewed when tab boundary changes', () async {
     final telemetryRepository = _FakeTelemetryRepository();
     final controller = ImmersiveDetailScreenController(
       tabItems: [
@@ -157,13 +157,9 @@ void main() {
       telemetryRepository: telemetryRepository,
     );
 
-    controller.onTabVisibilityChanged(0, 0.3);
-    expect(telemetryRepository.events, isEmpty);
-
-    controller.onTabVisibilityChanged(0, 0.4);
-    expect(telemetryRepository.events, isEmpty);
-
-    controller.onTabVisibilityChanged(1, 0.6);
+    controller.onTabBoundaryChanged(0);
+    controller.onTabBoundaryChanged(0);
+    controller.onTabBoundaryChanged(1);
     await _flushMicrotasks();
     expect(telemetryRepository.events, hasLength(1));
     expect(telemetryRepository.events.first.eventName, 'section_viewed');
@@ -215,6 +211,60 @@ void main() {
       controller.dispose();
     },
   );
+
+  testWidgets('latest overlapping tab intent owns programmatic scroll', (
+    tester,
+  ) async {
+    final tabs = <ImmersiveTabItem>[
+      ImmersiveTabItem(title: 'First', content: const SizedBox.shrink()),
+      ImmersiveTabItem(title: 'Second', content: const SizedBox.shrink()),
+      ImmersiveTabItem(title: 'Third', content: const SizedBox.shrink()),
+    ];
+    final controller = ImmersiveDetailScreenController(tabItems: tabs);
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: CustomScrollView(
+          controller: controller.scrollController,
+          slivers: [
+            for (final tab in tabs)
+              SliverToBoxAdapter(child: SizedBox(key: tab.key, height: 700)),
+          ],
+        ),
+      ),
+    );
+    controller.scrollController.jumpTo(400);
+
+    controller.onTabTapped(0);
+    await tester.pump(const Duration(milliseconds: 100));
+    controller.onTabTapped(2);
+    await tester.pump();
+
+    controller.onTabBoundaryChanged(1);
+    expect(
+      controller.currentTabIndexStreamValue.value,
+      2,
+      reason: 'An older cancelled scroll must not release the latest intent.',
+    );
+  });
+
+  testWidgets('missing target settles after layout', (tester) async {
+    final controller = ImmersiveDetailScreenController(
+      tabItems: [
+        ImmersiveTabItem(title: 'First', content: const SizedBox.shrink()),
+        ImmersiveTabItem(title: 'Missing', content: const SizedBox.shrink()),
+      ],
+    );
+
+    controller.onTabTapped(1);
+    await tester.pump();
+    await tester.pump();
+    controller.onTabBoundaryChanged(0);
+    expect(controller.currentTabIndexStreamValue.value, 0);
+
+    controller.dispose();
+  });
 }
 
 Future<void> _flushMicrotasks() async {

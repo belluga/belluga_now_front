@@ -63,10 +63,13 @@ void main() {
     HttpOverrides.global = null;
   });
 
-  testWidgets('Home agenda filters (invites, confirmed) hide text search',
-      (tester) async {
+  testWidgets('Home agenda filters (invites, confirmed) hide text search', (
+    tester,
+  ) async {
     debugPrint('Home agenda test: start');
     final harness = _AgendaFiltersHarness();
+    final scrollController = ScrollController();
+    addTearDown(scrollController.dispose);
     await harness.register();
 
     await tester.pumpWidget(
@@ -74,11 +77,9 @@ void main() {
         home: Scaffold(
           body: HomeAgendaSection(
             builder: (context, slots) {
-              return NestedScrollView(
-                headerSliverBuilder: (context, innerBoxIsScrolled) => [
-                  ...slots.headerSlivers,
-                ],
-                body: slots.body,
+              return slots.scrollViewBuilder(
+                headerSlivers: slots.headerSlivers,
+                scrollController: scrollController,
               );
             },
           ),
@@ -107,10 +108,7 @@ void main() {
       harness.pendingInviteEventId,
       const {},
     );
-    expect(
-      controller.pendingInviteCount(harness.pendingInviteOccurrenceId),
-      1,
-    );
+    expect(controller.pendingInviteCount(harness.pendingInviteOccurrenceId), 1);
     expect(
       controller.isOccurrenceConfirmed(harness.pendingInviteOccurrenceId),
       isFalse,
@@ -127,15 +125,10 @@ void main() {
     await _pumpFor(tester);
     controller.setInviteFilter(InviteFilter.confirmedOnly);
     await _pumpFor(tester);
-    _expectOnlyInviteFiltered(
-      controller.displayedEvents!,
-      '',
-      {harness.pendingInviteEventId},
-    );
-    expect(
-      controller.pendingInviteCount(harness.pendingInviteOccurrenceId),
-      0,
-    );
+    _expectOnlyInviteFiltered(controller.displayedEvents!, '', {
+      harness.pendingInviteEventId,
+    });
+    expect(controller.pendingInviteCount(harness.pendingInviteOccurrenceId), 0);
     expect(
       controller.isOccurrenceConfirmed(harness.pendingInviteOccurrenceId),
       isTrue,
@@ -153,89 +146,87 @@ void main() {
   });
 
   testWidgets(
-      'Agenda screen filters (past, invites, confirmed) hide text search',
-      (tester) async {
-    debugPrint('Agenda screen test: start');
-    final harness = _AgendaFiltersHarness();
-    await harness.register(forAgendaScreen: true);
+    'Agenda screen filters (past, invites, confirmed) hide text search',
+    (tester) async {
+      debugPrint('Agenda screen test: start');
+      final harness = _AgendaFiltersHarness();
+      await harness.register(forAgendaScreen: true);
 
-    await _pumpEventSearchScreen(tester);
+      await _pumpEventSearchScreen(tester);
 
-    await _pumpFor(tester);
-    debugPrint('Agenda screen test: widget pumped');
-    await _waitForDisplayedEvents(
-      tester,
-      harness.agendaController.displayedEventsStreamValue,
-    );
+      await _pumpFor(tester);
+      debugPrint('Agenda screen test: widget pumped');
+      await _waitForDisplayedEvents(
+        tester,
+        harness.agendaController.displayedEventsStreamValue,
+      );
 
-    final controller = harness.agendaController;
-    expect(controller.displayedEventsStreamValue.value, isNotEmpty);
-    debugPrint('Agenda screen test: initial events ready');
+      final controller = harness.agendaController;
+      expect(controller.displayedEventsStreamValue.value, isNotEmpty);
+      debugPrint('Agenda screen test: initial events ready');
 
-    controller.toggleHistory();
-    await _pumpFor(tester);
-    for (final event in controller.displayedEventsStreamValue.value) {
+      controller.toggleHistory();
+      await _pumpFor(tester);
+      for (final event in controller.displayedEventsStreamValue.value) {
+        expect(event.startDateTime.isBefore(DateTime.now()), isTrue);
+      }
+      debugPrint('Agenda screen test: past filter checked');
+
+      controller.toggleHistory();
+      await _pumpFor(tester);
+
+      controller.setInviteFilter(InviteFilter.pendingOnly);
+      await _pumpFor(tester);
+      _expectOnlyInviteFiltered(
+        controller.displayedEventsStreamValue.value,
+        harness.pendingInviteEventId,
+        const {},
+      );
       expect(
-        event.startDateTime.isBefore(DateTime.now()),
+        controller.pendingInviteCount(harness.pendingInviteOccurrenceId),
+        1,
+      );
+      expect(
+        controller.isOccurrenceConfirmed(harness.pendingInviteOccurrenceId),
+        isFalse,
+      );
+      debugPrint('Agenda screen test: invite filter checked');
+
+      harness.invitesRepository.acceptInvite(
+        invitesRepoString(
+          harness.pendingInviteEventId,
+          defaultValue: '',
+          isRequired: true,
+        ),
+      );
+      await _pumpFor(tester);
+      controller.setInviteFilter(InviteFilter.confirmedOnly);
+      await _pumpFor(tester);
+      _expectOnlyInviteFiltered(
+        controller.displayedEventsStreamValue.value,
+        '',
+        {harness.pendingInviteEventId},
+      );
+      expect(
+        controller.pendingInviteCount(harness.pendingInviteOccurrenceId),
+        0,
+      );
+      expect(
+        controller.isOccurrenceConfirmed(harness.pendingInviteOccurrenceId),
         isTrue,
       );
-    }
-    debugPrint('Agenda screen test: past filter checked');
+      debugPrint('Agenda screen test: confirmed filter checked');
 
-    controller.toggleHistory();
-    await _pumpFor(tester);
+      controller.setInviteFilter(InviteFilter.none);
+      await _pumpFor(tester);
+      expect(find.byTooltip('Buscar eventos'), findsNothing);
+      expect(find.byKey(const ValueKey('searchField')), findsNothing);
+      debugPrint('Agenda screen test: search affordance hidden');
 
-    controller.setInviteFilter(InviteFilter.pendingOnly);
-    await _pumpFor(tester);
-    _expectOnlyInviteFiltered(
-      controller.displayedEventsStreamValue.value,
-      harness.pendingInviteEventId,
-      const {},
-    );
-    expect(
-      controller.pendingInviteCount(harness.pendingInviteOccurrenceId),
-      1,
-    );
-    expect(
-      controller.isOccurrenceConfirmed(harness.pendingInviteOccurrenceId),
-      isFalse,
-    );
-    debugPrint('Agenda screen test: invite filter checked');
-
-    harness.invitesRepository.acceptInvite(
-      invitesRepoString(
-        harness.pendingInviteEventId,
-        defaultValue: '',
-        isRequired: true,
-      ),
-    );
-    await _pumpFor(tester);
-    controller.setInviteFilter(InviteFilter.confirmedOnly);
-    await _pumpFor(tester);
-    _expectOnlyInviteFiltered(
-      controller.displayedEventsStreamValue.value,
-      '',
-      {harness.pendingInviteEventId},
-    );
-    expect(
-      controller.pendingInviteCount(harness.pendingInviteOccurrenceId),
-      0,
-    );
-    expect(
-      controller.isOccurrenceConfirmed(harness.pendingInviteOccurrenceId),
-      isTrue,
-    );
-    debugPrint('Agenda screen test: confirmed filter checked');
-
-    controller.setInviteFilter(InviteFilter.none);
-    await _pumpFor(tester);
-    expect(find.byTooltip('Buscar eventos'), findsNothing);
-    expect(find.byKey(const ValueKey('searchField')), findsNothing);
-    debugPrint('Agenda screen test: search affordance hidden');
-
-    harness.dispose();
-    debugPrint('Agenda screen test: done');
-  });
+      harness.dispose();
+      debugPrint('Agenda screen test: done');
+    },
+  );
 }
 
 void _expectOnlyInviteFiltered(
@@ -262,20 +253,21 @@ String _eventId(Object event) {
 
 class _AgendaFiltersHarness {
   _AgendaFiltersHarness()
-      : pendingInviteEventId = _pendingInviteEventId,
-        pendingInviteOccurrenceId = _pendingInviteOccurrenceId,
-        scheduleRepository = _TestScheduleRepository(_buildEvents()),
-        userEventsRepository = _TestUserEventsRepository(),
-        invitesRepository = _TestInvitesRepository(_buildInvites()),
-        userLocationRepository = _TestUserLocationRepository(),
-        appDataRepository = AppDataRepository(
-          backend: _TestAppDataBackend(),
-          localInfoSource: _TestAppDataLocalInfoSource(),
-        );
+    : pendingInviteEventId = _pendingInviteEventId,
+      pendingInviteOccurrenceId = _pendingInviteOccurrenceId,
+      scheduleRepository = _TestScheduleRepository(_buildEvents()),
+      userEventsRepository = _TestUserEventsRepository(),
+      invitesRepository = _TestInvitesRepository(_buildInvites()),
+      userLocationRepository = _TestUserLocationRepository(),
+      appDataRepository = AppDataRepository(
+        backend: _TestAppDataBackend(),
+        localInfoSource: _TestAppDataLocalInfoSource(),
+      );
 
   static final String _pendingInviteEventId = _mongoIdForSeed('event-invite');
-  static final String _pendingInviteOccurrenceId =
-      _mongoIdForSeed('event-invite-occurrence');
+  static final String _pendingInviteOccurrenceId = _mongoIdForSeed(
+    'event-invite-occurrence',
+  );
   final String pendingInviteEventId;
   final String pendingInviteOccurrenceId;
   final _TestScheduleRepository scheduleRepository;
@@ -353,27 +345,30 @@ class _AgendaFiltersHarness {
 
 class _TestScheduleRepository extends IntegrationTestScheduleRepositoryFake {
   _TestScheduleRepository(List<EventModel> events)
-      : super(
-          seededEvents: events,
-          queryResolver: ({
-            required List<EventModel> seededEvents,
-            required bool showPastOnly,
-            required bool liveNowOnly,
-            String? searchQuery,
-            required bool confirmedOnly,
-            double? originLat,
-            double? originLng,
-            double? maxDistanceMeters,
-          }) {
-            final now = DateTime.now();
-            final filtered = seededEvents.where((event) {
-              final start = event.dateTimeStart.value!;
-              final isPast = start.isBefore(now);
-              return showPastOnly == isPast;
-            }).toList(growable: false);
-            return List<EventModel>.unmodifiable(filtered);
-          },
-        );
+    : super(
+        seededEvents: events,
+        queryResolver:
+            ({
+              required List<EventModel> seededEvents,
+              required bool showPastOnly,
+              required bool liveNowOnly,
+              String? searchQuery,
+              required bool confirmedOnly,
+              double? originLat,
+              double? originLng,
+              double? maxDistanceMeters,
+            }) {
+              final now = DateTime.now();
+              final filtered = seededEvents
+                  .where((event) {
+                    final start = event.dateTimeStart.value!;
+                    final isPast = start.isBefore(now);
+                    return showPastOnly == isPast;
+                  })
+                  .toList(growable: false);
+              return List<EventModel>.unmodifiable(filtered);
+            },
+      );
 }
 
 class _TestUserEventsRepository implements UserEventsRepositoryContract {
@@ -381,13 +376,14 @@ class _TestUserEventsRepository implements UserEventsRepositoryContract {
   void clearCurrentIdentityState() {}
 
   final StreamValue<Set<UserEventsRepositoryContractPrimString>>
-      _confirmedOccurrenceIdsStream =
+  _confirmedOccurrenceIdsStream =
       StreamValue<Set<UserEventsRepositoryContractPrimString>>(
-          defaultValue: const {});
+        defaultValue: const {},
+      );
 
   @override
   StreamValue<Set<UserEventsRepositoryContractPrimString>>
-      get confirmedOccurrenceIdsStream => _confirmedOccurrenceIdsStream;
+  get confirmedOccurrenceIdsStream => _confirmedOccurrenceIdsStream;
 
   @override
   Future<void> confirmEventAttendance(
@@ -406,12 +402,12 @@ class _TestUserEventsRepository implements UserEventsRepositoryContract {
 
   @override
   UserEventsRepositoryContractPrimBool isOccurrenceConfirmed(
-          UserEventsRepositoryContractPrimString occurrenceId) =>
-      userEventsRepoBool(
-        _confirmedOccurrenceIdsStream.value.contains(occurrenceId),
-        defaultValue: false,
-        isRequired: true,
-      );
+    UserEventsRepositoryContractPrimString occurrenceId,
+  ) => userEventsRepoBool(
+    _confirmedOccurrenceIdsStream.value.contains(occurrenceId),
+    defaultValue: false,
+    isRequired: true,
+  );
 
   @override
   Future<void> unconfirmEventAttendance(
@@ -436,12 +432,13 @@ class _TestInvitesRepository extends InvitesRepositoryContract {
 
   @override
   Future<InviteAcceptResult> acceptInvite(
-      InvitesRepositoryContractPrimString inviteId) async {
+    InvitesRepositoryContractPrimString inviteId,
+  ) async {
     final matchedInvite = _pendingInvites.cast<InviteModel?>().firstWhere(
-          (invite) =>
-              invite?.id == inviteId.value || invite?.eventId == inviteId.value,
-          orElse: () => null,
-        );
+      (invite) =>
+          invite?.id == inviteId.value || invite?.eventId == inviteId.value,
+      orElse: () => null,
+    );
     final resolvedEventId = matchedInvite?.eventId ?? inviteId.value;
     final resolvedOccurrenceId = matchedInvite?.occurrenceId ?? resolvedEventId;
     _pendingInvites = _pendingInvites
@@ -452,17 +449,13 @@ class _TestInvitesRepository extends InvitesRepositoryContract {
         .toList(growable: false);
     pendingInvitesStreamValue.addValue(_pendingInvites);
     await GetIt.I.get<UserEventsRepositoryContract>().confirmEventAttendance(
-          userEventsRepoString(
-            resolvedEventId,
-            defaultValue: '',
-            isRequired: true,
-          ),
-          occurrenceId: userEventsRepoString(
-            resolvedOccurrenceId,
-            defaultValue: '',
-            isRequired: true,
-          ),
-        );
+      userEventsRepoString(resolvedEventId, defaultValue: '', isRequired: true),
+      occurrenceId: userEventsRepoString(
+        resolvedOccurrenceId,
+        defaultValue: '',
+        isRequired: true,
+      ),
+    );
     return buildInviteAcceptResult(
       inviteId: matchedInvite?.id ?? inviteId.value,
       status: 'accepted',
@@ -488,10 +481,10 @@ class _TestInvitesRepository extends InvitesRepositoryContract {
   }
 
   @override
-  Future<List<InviteModel>> fetchInvites(
-          {InvitesRepositoryContractPrimInt? page,
-          InvitesRepositoryContractPrimInt? pageSize}) async =>
-      _pendingInvites;
+  Future<List<InviteModel>> fetchInvites({
+    InvitesRepositoryContractPrimInt? page,
+    InvitesRepositoryContractPrimInt? pageSize,
+  }) async => _pendingInvites;
 
   @override
   Future<InviteRuntimeSettings> fetchSettings() async =>
@@ -504,41 +497,42 @@ class _TestInvitesRepository extends InvitesRepositoryContract {
 
   @override
   Future<InviteDeclineResult> declineInvite(
-          InvitesRepositoryContractPrimString inviteId) async =>
-      buildInviteDeclineResult(
-        inviteId: inviteId.value,
-        status: 'declined',
-        groupHasOtherPending: false,
-      );
+    InvitesRepositoryContractPrimString inviteId,
+  ) async => buildInviteDeclineResult(
+    inviteId: inviteId.value,
+    status: 'declined',
+    groupHasOtherPending: false,
+  );
   @override
   Future<List<InviteContactMatch>> importContacts(
     InviteContacts contacts,
-  ) async =>
-      const [];
+  ) async => const [];
 
   @override
   Future<InviteShareCodeResult> createShareCode({
     required InvitesRepositoryContractPrimString eventId,
     InvitesRepositoryContractPrimString? occurrenceId,
     InvitesRepositoryContractPrimString? accountProfileId,
-  }) async =>
-      buildInviteShareCodeResult(
-        code: 'test-share-code',
-        eventId: eventId.value,
-        occurrenceId: occurrenceId?.value ?? 'occurrence-1',
-      );
+  }) async => buildInviteShareCodeResult(
+    code: 'test-share-code',
+    eventId: eventId.value,
+    occurrenceId: occurrenceId?.value ?? 'occurrence-1',
+  );
 
   @override
   Future<List<SentInviteStatus>> getSentInvitesForOccurrence(
-      InvitesRepositoryContractPrimString eventSlug) async {
+    InvitesRepositoryContractPrimString eventSlug,
+  ) async {
     return const [];
   }
 
   @override
-  Future<void> sendInvites(InvitesRepositoryContractPrimString eventSlug,
-      InviteRecipients recipients,
-      {InvitesRepositoryContractPrimString? occurrenceId,
-      InvitesRepositoryContractPrimString? message}) async {}
+  Future<void> sendInvites(
+    InvitesRepositoryContractPrimString eventSlug,
+    InviteRecipients recipients, {
+    InvitesRepositoryContractPrimString? occurrenceId,
+    InvitesRepositoryContractPrimString? message,
+  }) async {}
 }
 
 class _TestUserLocationRepository implements UserLocationRepositoryContract {
@@ -549,12 +543,15 @@ class _TestUserLocationRepository implements UserLocationRepositoryContract {
 
   final StreamValue<CityCoordinate?> _locationStream =
       StreamValue<CityCoordinate?>(defaultValue: _defaultCoordinate);
-  final StreamValue<DateTime?> _nullDateStream =
-      StreamValue<DateTime?>(defaultValue: null);
-  final StreamValue<double?> _nullDoubleStream =
-      StreamValue<double?>(defaultValue: null);
-  final StreamValue<String?> _nullStringStream =
-      StreamValue<String?>(defaultValue: null);
+  final StreamValue<DateTime?> _nullDateStream = StreamValue<DateTime?>(
+    defaultValue: null,
+  );
+  final StreamValue<double?> _nullDoubleStream = StreamValue<double?>(
+    defaultValue: null,
+  );
+  final StreamValue<String?> _nullStringStream = StreamValue<String?>(
+    defaultValue: null,
+  );
 
   @override
   StreamValue<String?> get lastKnownAddressStreamValue => _nullStringStream;
@@ -562,8 +559,9 @@ class _TestUserLocationRepository implements UserLocationRepositoryContract {
   @override
   @override
   final StreamValue<LocationResolutionPhase>
-      locationResolutionPhaseStreamValue = StreamValue<LocationResolutionPhase>(
-          defaultValue: LocationResolutionPhase.unknown);
+  locationResolutionPhaseStreamValue = StreamValue<LocationResolutionPhase>(
+    defaultValue: LocationResolutionPhase.unknown,
+  );
 
   @override
   StreamValue<DateTime?> get lastKnownCapturedAtStreamValue => _nullDateStream;
@@ -585,8 +583,7 @@ class _TestUserLocationRepository implements UserLocationRepositoryContract {
   Future<String?> resolveUserLocation({
     Object? timeout,
     UserLocationRepositoryContractBoolValue? requestPermissionIfNeededValue,
-  }) async =>
-      null;
+  }) async => null;
 
   @override
   Future<bool> refreshIfPermitted({Object? minInterval}) async => false;
@@ -594,8 +591,7 @@ class _TestUserLocationRepository implements UserLocationRepositoryContract {
   @override
   Future<bool> startTracking({
     LocationTrackingMode mode = LocationTrackingMode.mapForeground,
-  }) async =>
-      false;
+  }) async => false;
 
   @override
   Future<void> stopTracking() async {}
@@ -622,12 +618,8 @@ class _TestAppDataBackend implements AppDataBackendContract {
         'primary_seed_color': '#009688',
         'secondary_seed_color': '#3F51B5',
       },
-      telemetry: const {
-        'trackers': [],
-      },
-      telemetryContext: const {
-        'location_freshness_minutes': 5,
-      },
+      telemetry: const {'trackers': []},
+      telemetryContext: const {'location_freshness_minutes': 5},
       push: const {
         'enabled': true,
         'types': ['event'],
@@ -640,12 +632,12 @@ class _TestAppDataBackend implements AppDataBackendContract {
 class _TestAppDataLocalInfoSource extends AppDataLocalInfoSource {
   @override
   Future<AppDataLocalInfoDTO> getInfo() async => AppDataLocalInfoDTO(
-        platformTypeValue: PlatformTypeValue(defaultValue: AppType.mobile),
-        port: null,
-        hostname: '',
-        href: '',
-        device: 'guarappari-device-test',
-      );
+    platformTypeValue: PlatformTypeValue(defaultValue: AppType.mobile),
+    port: null,
+    hostname: '',
+    href: '',
+    device: 'guarappari-device-test',
+  );
 }
 
 List<EventModel> _buildEvents() {
@@ -768,12 +760,12 @@ class _TestTenantHomeAgendaController extends TenantHomeAgendaController {
     required AppDataRepository appDataRepository,
     required LocationOriginServiceContract locationOriginService,
   }) : super(
-          scheduleRepository: scheduleRepository,
-          userEventsRepository: userEventsRepository,
-          invitesRepository: invitesRepository,
-          appDataRepository: appDataRepository,
-          locationOriginService: locationOriginService,
-        );
+         scheduleRepository: scheduleRepository,
+         userEventsRepository: userEventsRepository,
+         invitesRepository: invitesRepository,
+         appDataRepository: appDataRepository,
+         locationOriginService: locationOriginService,
+       );
 
   bool _disposed = false;
 
@@ -794,13 +786,13 @@ class _TestEventSearchScreenController extends EventSearchScreenController {
     required AppDataRepository appDataRepository,
     required LocationOriginServiceContract locationOriginService,
   }) : super(
-          scheduleRepository: scheduleRepository,
-          userEventsRepository: userEventsRepository,
-          invitesRepository: invitesRepository,
-          userLocationRepository: userLocationRepository,
-          appDataRepository: appDataRepository,
-          locationOriginService: locationOriginService,
-        );
+         scheduleRepository: scheduleRepository,
+         userEventsRepository: userEventsRepository,
+         invitesRepository: invitesRepository,
+         userLocationRepository: userLocationRepository,
+         appDataRepository: appDataRepository,
+         locationOriginService: locationOriginService,
+       );
 
   bool _disposed = false;
 
@@ -1051,9 +1043,7 @@ Future<void> _pumpEventSearchScreen(WidgetTester tester) async {
     route: _FakeRouteMatch(
       name: EventSearchRoute.name,
       fullPath: '/agenda',
-      meta: canonicalRouteMeta(
-        family: CanonicalRouteFamily.eventSearch,
-      ),
+      meta: canonicalRouteMeta(family: CanonicalRouteFamily.eventSearch),
     ),
     router: router,
     stackKey: const ValueKey('stack'),
