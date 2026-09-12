@@ -2235,6 +2235,10 @@ void main() {
   testWidgets(
     'keeps every public nested group tab when multiple groups are present',
     (tester) async {
+      await GetIt.I.reset(dispose: false);
+      GetIt.I.registerSingleton<AppData>(
+        _buildAppData(venueContactChannelsEnabled: true),
+      );
       tester.view.devicePixelRatio = 1.0;
       tester.view.physicalSize = const Size(430, 900);
       addTearDown(() {
@@ -2252,10 +2256,10 @@ void main() {
         _buildRoutedTestApp(
           router: _RecordingStackRouter(),
           child: AccountProfileDetailScreen(
-            accountProfile: _buildVenueFullProfile().copyWith(
+            accountProfile: _buildVenueFullProfile(withContact: true).copyWith(
               nestedProfileGroupValues: [
-                _buildNestedAccountProfileGroup(),
                 _buildSecondaryNestedAccountProfileGroup(),
+                _buildNestedAccountProfileGroup(),
               ],
             ),
           ),
@@ -2268,12 +2272,19 @@ void main() {
       );
 
       expect(
-        immersiveDetail.tabs.map((tab) => tab.title),
-        containsAll(<String>['Parceiros', 'Novo grupo 3']),
+        immersiveDetail.tabs.map((tab) => tab.title).toList(growable: false),
+        <String>[
+          'Sobre',
+          'Agenda',
+          'Parceiros',
+          'Novo grupo 3',
+          'Como Chegar',
+          'Contato',
+        ],
       );
-      expect(find.byKey(const Key('immersiveTabLabel_4')), findsOneWidget);
+      expect(find.byKey(const Key('immersiveTabLabel_3')), findsOneWidget);
       expect(
-        tester.widget<Text>(find.byKey(const Key('immersiveTabLabel_4'))).data,
+        tester.widget<Text>(find.byKey(const Key('immersiveTabLabel_3'))).data,
         'Novo grupo 3',
       );
       expect(
@@ -2302,12 +2313,12 @@ void main() {
           child: AccountProfileDetailScreen(
             accountProfile:
                 _buildArtistProfileWithContact(
-                  withAgenda: true,
-                  withBio: true,
+                  withAgenda: false,
+                  withBio: false,
                 ).copyWith(
                   nestedProfileGroupValues: [
-                    _buildNestedAccountProfileGroup(),
                     _buildSecondaryNestedAccountProfileGroup(),
+                    _buildNestedAccountProfileGroup(),
                   ],
                 ),
           ),
@@ -2322,10 +2333,7 @@ void main() {
           .map((tab) => tab.title)
           .toList(growable: false);
 
-      expect(
-        tabTitles,
-        containsAll(<String>['Agenda', 'Parceiros', 'Novo grupo 3', 'Contato']),
-      );
+      expect(tabTitles, <String>['Parceiros', 'Novo grupo 3', 'Contato']);
       expect(immersiveDetail.tabs.last.title, 'Contato');
     },
   );
@@ -4114,7 +4122,15 @@ AccountProfileComplete _buildVenueWithPlainTextBioProfile() {
   );
 }
 
-AccountProfileComplete _buildVenueFullProfile() {
+AccountProfileComplete _buildVenueFullProfile({bool withContact = false}) {
+  final whatsappChannel = BellugaContactChannel(
+    id: 'venue-whatsapp-primary',
+    type: BellugaContactChannelType.whatsapp,
+    value: '+55 (27) 98888-8888',
+  );
+  final contactChannels = withContact
+      ? <BellugaContactChannel>[whatsappChannel]
+      : const <BellugaContactChannel>[];
   return buildAccountProfileCompleteFromPrimitives(
     id: '507f1f77bcf86cd799439055',
     name: 'Ponta da Fruta',
@@ -4124,6 +4140,9 @@ AccountProfileComplete _buildVenueFullProfile() {
     locationLat: -20.7532,
     locationLng: -40.6067,
     agendaEvents: _buildRestaurantAgendaEvents(),
+    contactChannels: contactChannels,
+    effectiveContactChannels: contactChannels,
+    contactBubbleChannelId: withContact ? whatsappChannel.id : null,
   );
 }
 
@@ -4439,6 +4458,7 @@ AppData _buildAppData({
   bool restaurantReferenceLocationEnabled = false,
   bool artistContactChannelsEnabled = false,
   bool artistExternalLinksEnabled = false,
+  bool venueContactChannelsEnabled = false,
 }) {
   final remoteData = {
     'name': 'Tenant Test',
@@ -4481,6 +4501,7 @@ AppData _buildAppData({
           'has_events': true,
           'has_bio': true,
           'has_gallery': true,
+          'has_contact_channels': venueContactChannelsEnabled,
         },
       },
       {

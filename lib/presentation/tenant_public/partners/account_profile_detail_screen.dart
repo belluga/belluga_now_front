@@ -838,19 +838,32 @@ class _AccountProfileDetailScreenState
     final agenda = _agendaPresentationFromModuleData(moduleData);
     final locationView = _locationFromModuleData(moduleData);
 
-    final tabs = config.tabs
-        .where(
-          (tab) =>
-              _shouldRenderTab(tab, agenda: agenda, location: locationView),
-        )
-        .map((tab) => _buildConfiguredTab(tab, moduleData))
-        .toList();
+    final leadingTabs = <ImmersiveTabItem>[];
+    final agendaTabs = <ImmersiveTabItem>[];
+    final directionsTabs = <ImmersiveTabItem>[];
+    for (final tab in config.tabs.where(
+      (tab) => _shouldRenderTab(tab, agenda: agenda, location: locationView),
+    )) {
+      final item = _buildConfiguredTab(tab, moduleData);
+      if (tab.modules.any(
+        (module) => module.id == ProfileModuleId.agendaList,
+      )) {
+        agendaTabs.add(item);
+      } else if (tab.modules.any(
+        (module) => module.id == ProfileModuleId.locationInfo,
+      )) {
+        directionsTabs.add(item);
+      } else {
+        leadingTabs.add(item);
+      }
+    }
 
-    tabs.sort(
-      (left, right) =>
-          _tabOrderRank(left.title).compareTo(_tabOrderRank(right.title)),
-    );
-    tabs.addAll(_buildNestedProfileGroupTabs(accountProfile));
+    final tabs = <ImmersiveTabItem>[
+      ...leadingTabs,
+      ...agendaTabs,
+      ..._buildNestedProfileGroupTabs(accountProfile),
+      ...directionsTabs,
+    ];
     if (_controller.shouldRenderContactTab(accountProfile)) {
       tabs.add(_buildContactTab(accountProfile));
     }
@@ -906,23 +919,6 @@ class _AccountProfileDetailScreenState
           ),
         )
         .toList(growable: false);
-  }
-
-  int _tabOrderRank(String title) {
-    final normalized = title.trim().toLowerCase();
-    if (normalized == 'sobre') {
-      return 0;
-    }
-    if (normalized == 'fale conosco') {
-      return 1;
-    }
-    if (normalized == 'agenda' || normalized == 'eventos') {
-      return 2;
-    }
-    if (normalized.contains('chegar')) {
-      return 3;
-    }
-    return 100;
   }
 
   bool _shouldRenderTab(

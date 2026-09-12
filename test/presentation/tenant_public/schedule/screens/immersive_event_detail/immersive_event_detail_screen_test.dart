@@ -56,6 +56,7 @@ import 'package:belluga_now/domain/value_objects/domain_boolean_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_profile_group_order_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_is_confirmed_value.dart';
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
+import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/immersive_detail_screen.dart';
 import 'package:belluga_now/presentation/shared/widgets/account_profile_overlapping_identity_card.dart';
 import 'package:belluga_now/presentation/shared/promotion/screens/app_promotion_screen/controllers/app_promotion_screen_controller.dart';
 import 'package:belluga_now/presentation/shared/promotion/screens/app_promotion_screen/controllers/app_promotion_store_platform.dart';
@@ -4175,6 +4176,13 @@ void main() {
       expect(find.text('O Local'), findsNothing);
       expect(find.text('Como Chegar'), findsNothing);
       expect(find.byKey(const Key('immersiveTabLabel_0')), findsOneWidget);
+      final immersiveDetail = tester.widget<ImmersiveDetailScreen>(
+        find.byType(ImmersiveDetailScreen),
+      );
+      expect(
+        immersiveDetail.tabs.map((tab) => tab.title).toList(growable: false),
+        <String>['Sobre'],
+      );
     },
   );
 
@@ -4397,19 +4405,20 @@ void main() {
           _buildProgrammingItem(time: '20:00', title: 'Feira da segunda data'),
         ];
         return _buildEvent(
+          venue: _buildVenueResume(),
           linkedProfiles: [band, exhibitor],
           profileGroups: [
-            _buildProfileGroup(
-              id: 'bandas',
-              label: 'Bandas',
-              membersPath: bandasMembersPath,
-              memberCount: 1,
-            ),
             _buildProfileGroup(
               id: 'expositores',
               label: 'Expositores',
               order: 1,
               membersPath: expositoresMembersPath,
+              memberCount: 1,
+            ),
+            _buildProfileGroup(
+              id: 'bandas',
+              label: 'Bandas',
+              membersPath: bandasMembersPath,
               memberCount: 1,
             ),
           ],
@@ -4480,6 +4489,12 @@ void main() {
       await tester.pump(const Duration(milliseconds: 450));
       await tester.pumpAndSettle();
 
+      ImmersiveDetailScreen immersiveDetail() => tester
+          .widget<ImmersiveDetailScreen>(find.byType(ImmersiveDetailScreen));
+      expect(
+        immersiveDetail().tabs.map((tab) => tab.title).toList(growable: false),
+        <String>['Sobre', 'Programação', 'Bandas', 'Expositores', 'O Local'],
+      );
       expect(find.text('Bandas'), findsWidgets);
       expect(find.text('Expositores'), findsWidgets);
       await _tapImmersiveTab(tester, 2);
@@ -4495,6 +4510,10 @@ void main() {
       expect(selectedOccurrenceId, 'occ-2');
       expect(find.text('Bandas'), findsWidgets);
       expect(find.text('Expositores'), findsWidgets);
+      expect(
+        immersiveDetail().tabs.map((tab) => tab.title).toList(growable: false),
+        <String>['Sobre', 'Programação', 'Bandas', 'Expositores', 'O Local'],
+      );
       expect(find.text('Feira da segunda data'), findsOneWidget);
       expect(find.text('Show da primeira data'), findsNothing);
     },
