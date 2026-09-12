@@ -105,6 +105,28 @@ void main() {
     );
   });
 
+  test('rejects malformed scalar in home favorites pin readback', () async {
+    final adapter = _RoutingAdapter(
+      homeFavoritesPinnedProfilePayload: const <String, dynamic>{
+        'data': {
+          'setting_type': 'home_favorites_pinned_profile',
+          'value': <String, dynamic>{'account_profile_id': ''},
+          'availability': 'unset',
+          'selected_profile': null,
+        },
+      },
+    );
+    final repository = TenantAdminSettingsRepository(
+      dio: Dio()..httpClientAdapter = adapter,
+      tenantScope: _MutableTenantScope('https://tenant-a.test'),
+    );
+
+    await expectLater(
+      repository.fetchHomeFavoritesPinnedProfile(),
+      throwsA(isA<FormatException>()),
+    );
+  });
+
   test('fetchFirebaseSettings parses firebase response', () async {
     final adapter = _RoutingAdapter();
     final scope = _MutableTenantScope('https://tenant-a.test');

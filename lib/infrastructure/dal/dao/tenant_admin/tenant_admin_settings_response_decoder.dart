@@ -47,17 +47,23 @@ class TenantAdminSettingsResponseDecoder {
     }
     final value = Map<String, dynamic>.from(valueRaw);
     final selectedRaw = payload['selected_profile'];
-    final accountProfileId = _normalizeOptionalText(
-      value['account_profile_id'],
-    );
-    final availability = _normalizeOptionalText(payload['availability']);
     final selected = selectedRaw is Map
         ? Map<String, dynamic>.from(selectedRaw)
         : null;
-    final selectedId = _normalizeOptionalText(selected?['id']);
-    final selectedDisplayName = _normalizeOptionalText(
-      selected?['display_name'],
-    );
+    final accountProfileIdRaw = value['account_profile_id'];
+    final selectedIdRaw = selected?['id'];
+    final selectedDisplayNameRaw = selected?['display_name'];
+    if (!_isNullOrNonEmptyString(accountProfileIdRaw) ||
+        !_isNullOrNonEmptyString(selectedIdRaw) ||
+        !_isNullOrNonEmptyString(selectedDisplayNameRaw)) {
+      throw const FormatException(
+        'Unexpected home favorites pinned profile settings value shape.',
+      );
+    }
+    final accountProfileId = _normalizeOptionalText(accountProfileIdRaw);
+    final availability = _normalizeOptionalText(payload['availability']);
+    final selectedId = _normalizeOptionalText(selectedIdRaw);
+    final selectedDisplayName = _normalizeOptionalText(selectedDisplayNameRaw);
     final isValid = switch (availability) {
       'unset' => accountProfileId == null && selectedRaw == null,
       'unavailable' => accountProfileId != null && selectedRaw == null,
@@ -1232,6 +1238,10 @@ class TenantAdminSettingsResponseDecoder {
       return null;
     }
     return normalized;
+  }
+
+  bool _isNullOrNonEmptyString(Object? raw) {
+    return raw == null || (raw is String && raw.trim().isNotEmpty);
   }
 
   int? _parseInt(Object? value) {
