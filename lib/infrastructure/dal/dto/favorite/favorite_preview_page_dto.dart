@@ -4,8 +4,10 @@ class FavoritePreviewPageDTO {
   const FavoritePreviewPageDTO({
     required this.items,
     required this.hasMore,
+    this.pinned,
   });
 
   final List<FavoritePreviewDTO> items;
   final bool hasMore;
+  final FavoritePreviewDTO? pinned;
 }

@@ -41,6 +41,7 @@ import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_lo
 import 'package:belluga_now/presentation/tenant_admin/organizations/controllers/tenant_admin_organizations_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/profile_types/controllers/tenant_admin_profile_types_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/controllers/tenant_admin_settings_controller.dart';
+import 'package:belluga_now/presentation/tenant_admin/settings/controllers/tenant_admin_home_favorites_pinned_profile_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/shell/controllers/tenant_admin_shell_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/shell/controllers/tenant_admin_shell_login_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/static_assets/controllers/tenant_admin_static_assets_controller.dart';
@@ -152,6 +153,9 @@ class TenantAdminModule extends ModuleContract {
     );
     registerFactory<TenantAdminSettingsController>(
       () => TenantAdminSettingsController(),
+    );
+    registerFactory<TenantAdminHomeFavoritesPinnedProfileController>(
+      () => TenantAdminHomeFavoritesPinnedProfileController(),
     );
     registerLazySingleton<TenantAdminDiscoveryFiltersController>(
       () => TenantAdminDiscoveryFiltersController(),
@@ -580,6 +584,14 @@ class TenantAdminModule extends ModuleContract {
         AutoRoute(
           path: 'settings/domains',
           page: TenantAdminSettingsDomainsRoute.page,
+          meta: canonicalRouteMeta(
+            family: CanonicalRouteFamily.tenantAdminSettingsInternal,
+            chromeMode: RouteChromeMode.scopedSectionAppBar,
+          ),
+        ),
+        AutoRoute(
+          path: 'settings/home-favorites-pinned-profile',
+          page: TenantAdminHomeFavoritesPinnedProfileRoute.page,
           meta: canonicalRouteMeta(
             family: CanonicalRouteFamily.tenantAdminSettingsInternal,
             chromeMode: RouteChromeMode.scopedSectionAppBar,

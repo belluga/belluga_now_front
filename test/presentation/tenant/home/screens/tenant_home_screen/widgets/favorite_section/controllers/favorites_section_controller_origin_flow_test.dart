@@ -403,6 +403,12 @@ void main() {
           1: _pagedFavoriteResumesResultFromRaw(
             items: [_favoriteResume(title: 'Primeiro', slug: 'primeiro')],
             hasMore: true,
+            pinned: _favoriteResume(
+              title: 'Pin coerente',
+              slug: 'pin-coerente',
+              targetId: 'pin-coerente',
+              targetType: 'account_profile',
+            ),
           ),
           2: _pagedFavoriteResumesResultFromRaw(
             items: [_favoriteResume(title: 'Segundo', slug: 'segundo')],
@@ -432,6 +438,7 @@ void main() {
         ['Primeiro', 'Segundo'],
       );
       expect(controller.hasMoreFavoritesStreamValue.value, isTrue);
+      expect(controller.pinnedFavoriteStreamValue.value?.title, 'Pin coerente');
 
       await controller.loadNextPage();
 
@@ -830,9 +837,11 @@ void main() {
 PagedFavoriteResumesResult _pagedFavoriteResumesResultFromRaw({
   required List<FavoriteResume> items,
   required Object? hasMore,
+  FavoriteResume? pinned,
 }) {
   return PagedFavoriteResumesResult(
     items: items,
+    pinned: pinned,
     hasMoreValue:
         (DomainBooleanValue(defaultValue: false, isRequired: false)
           ..parse(hasMore?.toString())),

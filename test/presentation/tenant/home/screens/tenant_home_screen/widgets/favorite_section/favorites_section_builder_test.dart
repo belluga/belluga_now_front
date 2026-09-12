@@ -86,9 +86,11 @@ class _FakeFavoriteRepository extends FavoriteRepositoryContract
 PagedFavoriteResumesResult _pagedFavoriteResumesResultFromRaw({
   required List<FavoriteResume> items,
   required Object? hasMore,
+  FavoriteResume? pinned,
 }) {
   return PagedFavoriteResumesResult(
     items: items,
+    pinned: pinned,
     hasMoreValue: (DomainBooleanValue(defaultValue: false, isRequired: false)
       ..parse(hasMore?.toString())),
   );
@@ -569,6 +571,58 @@ void main() {
   );
 
   testWidgets(
+    'configured pin occupies the first slot and suppresses only its row duplicate',
+    (tester) async {
+      final pinned = _profileFavoriteResume(
+        id: 'profile-pinned',
+        title: 'Pinned Venue',
+        publicDetailPath: '/parceiro/pinned-venue',
+        nextEventOccurrenceAt: _futureOccurrence(),
+      );
+      final duplicateFavorite = _profileFavoriteResume(
+        id: 'profile-pinned',
+        title: 'Pinned Venue',
+        publicDetailPath: '/parceiro/pinned-venue',
+      );
+      final repository = _FakeFavoriteRepository(
+        pagedResultsByPage: {
+          1: _pagedFavoriteResumesResultFromRaw(
+            items: [
+              duplicateFavorite,
+              _favoriteResume(title: 'Other'),
+            ],
+            pinned: pinned,
+            hasMore: false,
+          ),
+        },
+      );
+      final controller = FavoritesSectionController(
+        favoriteRepository: repository,
+        appDataRepository: _FakeAppDataRepository(),
+      );
+      await controller.init();
+      final router = _RecordingStackRouter();
+
+      await tester.pumpWidget(
+        _favoritesHarness(controller: controller, router: router),
+      );
+      await tester.pumpAndSettle();
+
+      expect(repository.favoriteResumesStreamValue.value, hasLength(2));
+      expect(find.text('Pinned Venue'), findsOneWidget);
+      expect(find.bySemanticsLabel('Pinned Venue, TEM EVENTO'), findsOneWidget);
+      expect(find.text('Other'), findsOneWidget);
+      expect(
+        tester.getTopLeft(find.text('Pinned Venue')).dx,
+        lessThan(tester.getTopLeft(find.text('Other')).dx),
+      );
+      await tester.tap(find.bySemanticsLabel('Pinned Venue, TEM EVENTO'));
+      await tester.pumpAndSettle();
+      expect(router.lastPushedPath, '/agenda/evento/pinned-venue');
+    },
+  );
+
+  testWidgets(
     'favorites view requests and renders the next page when the horizontal strip reaches the end',
     (tester) async {
       final favoriteRepository = _FakeFavoriteRepository(
@@ -577,6 +631,11 @@ void main() {
             items: List<FavoriteResume>.generate(
               10,
               (index) => _favoriteResume(title: 'Item ${index + 1}'),
+            ),
+            pinned: _profileFavoriteResume(
+              id: 'profile-pinned',
+              title: 'Pinned Venue',
+              publicDetailPath: '/parceiro/pinned-venue',
             ),
             hasMore: true,
           ),
@@ -610,6 +669,10 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(favoriteRepository.requestedPageNumbers, [1, 2]);
+      expect(
+        favoriteRepository.pinnedFavoriteResumeStreamValue.value?.targetId,
+        'profile-pinned',
+      );
       expect(find.text('Item 11'), findsOneWidget);
     },
   );
@@ -662,6 +725,38 @@ FavoriteResume _favoriteResume({
     liveNowEventOccurrenceIdValue: liveNowEventOccurrenceId == null
         ? null
         : FavoriteEventOccurrenceIdValue(liveNowEventOccurrenceId),
+  );
+}
+
+FavoriteResume _profileFavoriteResume({
+  required String id,
+  required String title,
+  required String publicDetailPath,
+  DateTime? nextEventOccurrenceAt,
+}) {
+  return FavoriteResume(
+    titleValue: TitleValue()..parse(title),
+    assetPathValue: AssetPathValue()
+      ..parse('assets/images/placeholder_avatar.png'),
+    targetTypeValue: FavoriteTargetTypeValue('account_profile'),
+    accountProfile: AccountProfileSummary(
+      idValue: AccountProfileTextValue(id),
+      nameValue: AccountProfileNameValue()..parse(title),
+      profileTypeValue: AccountProfileTypeValue('artist'),
+      canOpenPublicDetailValue: DomainBooleanValue(
+        defaultValue: true,
+        isRequired: false,
+      )..parse('true'),
+      publicDetailPathValue: AccountProfilePublicDetailPathValue(
+        publicDetailPath,
+      ),
+    ),
+    nextEventOccurrenceAtValue: DomainOptionalDateTimeValue(
+      defaultValue: nextEventOccurrenceAt,
+    )..parse(nextEventOccurrenceAt?.toIso8601String()),
+    eventTargetPathValue: nextEventOccurrenceAt == null
+        ? null
+        : FavoriteEventTargetPathValue('/agenda/evento/pinned-venue'),
   );
 }
 

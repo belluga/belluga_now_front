@@ -94,6 +94,7 @@ void main() {
 
     expect(page.items, hasLength(1));
     expect(page.items.single.id, 'profile-2');
+    expect(page.pinned, isNull);
     expect(page.hasMore, isFalse);
     expect(adapter.requests, hasLength(1));
     expect(adapter.requests.single.queryParameters['page'], 2);
@@ -116,6 +117,42 @@ void main() {
       adapter.requests.single.receiveTimeout,
       const Duration(seconds: 12),
     );
+  });
+
+  test('fetchFavoritesPage decodes pin separately from favorites', () async {
+    final adapter = _FavoritesApiAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+
+    GetIt.I.registerSingleton<AuthRepositoryContract<UserContract>>(
+      _FakeAuthRepository(userTokenValue: 'test-token'),
+    );
+    GetIt.I.registerSingleton<AppData>(_buildAppData());
+
+    final page = await LaravelFavoriteBackend(
+      dio: dio,
+    ).fetchFavoritesPage(page: 1, pageSize: 10);
+
+    expect(page.items, hasLength(1));
+    expect(page.pinned?.id, 'profile-pinned');
+    expect(page.pinned?.title, 'Pinned Profile');
+    expect(page.pinned?.targetId, 'profile-pinned');
+  });
+
+  test('fetchFavoritesPage ignores malformed pin without losing items', () async {
+    final adapter = _FavoritesApiAdapter(malformedPinned: true);
+    final dio = Dio()..httpClientAdapter = adapter;
+
+    GetIt.I.registerSingleton<AuthRepositoryContract<UserContract>>(
+      _FakeAuthRepository(userTokenValue: 'test-token'),
+    );
+    GetIt.I.registerSingleton<AppData>(_buildAppData());
+
+    final page = await LaravelFavoriteBackend(
+      dio: dio,
+    ).fetchFavoritesPage(page: 1, pageSize: 10);
+
+    expect(page.pinned, isNull);
+    expect(page.items.single.id, 'profile-1');
   });
 
   test(
@@ -383,6 +420,7 @@ class _FavoritesApiAdapter implements HttpClientAdapter {
     this.firstPageTargetRemovals = const <String>{},
     this.firstPageNavigationRemovals = const <String>{},
     this.unauthorizedFirstGet = false,
+    this.malformedPinned = false,
   });
 
   final List<_RecordedRequest> requests = <_RecordedRequest>[];
@@ -392,6 +430,7 @@ class _FavoritesApiAdapter implements HttpClientAdapter {
   final Set<String> firstPageTargetRemovals;
   final Set<String> firstPageNavigationRemovals;
   final bool unauthorizedFirstGet;
+  final bool malformedPinned;
 
   @override
   void close({bool force = false}) {}
@@ -477,6 +516,33 @@ class _FavoritesApiAdapter implements HttpClientAdapter {
 
       payload = {
         'data': {
+          'pinned': {
+            'registry_key': 'account_profile',
+            'target_type': 'account_profile',
+            'target_id': 'profile-pinned',
+            'target': {
+              'id': 'profile-pinned',
+              'slug': 'pinned-profile',
+              'display_name': 'Pinned Profile',
+              'avatar_url': 'https://cdn.test/pinned.png',
+              'cover_url': 'https://cdn.test/pinned-cover.png',
+              'profile_type': 'artist',
+              'can_open_public_detail': true,
+              'public_detail_path': '/parceiro/pinned-profile',
+            },
+            'occurrence_state': {
+              'next_event_occurrence_at': '2026-03-22T20:00:00Z',
+              'last_event_occurrence_at': null,
+              'live_now_event_occurrence_id': null,
+              'live_now_event_occurrence_at': null,
+            },
+            'navigation': {
+              'kind': 'account_profile',
+              'target_path': '/parceiro/pinned-profile',
+              'profile_target_path': '/parceiro/pinned-profile',
+              'can_open_public_detail': true,
+            },
+          },
           'items': [
             {
               'registry_key': 'account_profile',
@@ -497,6 +563,16 @@ class _FavoritesApiAdapter implements HttpClientAdapter {
           'has_more': true,
         },
       };
+      if (malformedPinned) {
+        final data = payload['data'];
+        if (data is Map) {
+          data['pinned'] = {
+            'registry_key': 'account_profile',
+            'target_id': 'profile-pinned',
+            'target': {'display_name': 'Malformed Pin'},
+          };
+        }
+      }
     } else {
       payload = {
         'data': {

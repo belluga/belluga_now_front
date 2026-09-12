@@ -75,6 +75,7 @@ class FavoriteResume {
   String? get targetType => targetTypeValue?.value;
   String? get profileType => accountProfile?.profileType;
   String? get publicDetailUrl => accountProfile?.publicDetailUrl;
+  String? get targetId => accountProfile?.id;
 
   String? get eventTargetPath {
     final value = eventTargetPathValue?.value.trim();

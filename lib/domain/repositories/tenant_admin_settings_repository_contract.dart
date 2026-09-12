@@ -1,10 +1,13 @@
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_settings.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_home_favorites_pinned_profile_settings.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_account_profile_id_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_count_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_discovery_filters_settings_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_flag_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_lowercase_token_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_text_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
 import 'package:stream_value/core/stream_value.dart';
 
@@ -30,6 +33,30 @@ abstract class TenantAdminSettingsRepositoryContract {
   StreamValue<TenantAdminBrandingSettings?> get brandingSettingsStreamValue;
 
   void clearBrandingSettings();
+
+  Future<TenantAdminHomeFavoritesPinnedProfileSettings>
+      fetchHomeFavoritesPinnedProfile() async =>
+          TenantAdminHomeFavoritesPinnedProfileSettings(
+            accountProfileIdValue: null,
+            availabilityValue: TenantAdminLowercaseTokenValue.fromRaw(
+              'unset',
+              isRequired: false,
+            ),
+            selectedProfileDisplayNameValue: TenantAdminOptionalTextValue(),
+          );
+
+  Future<TenantAdminHomeFavoritesPinnedProfileSettings>
+      updateHomeFavoritesPinnedProfile({
+    required TenantAdminAccountProfileIdValue? accountProfileId,
+  }) async =>
+          TenantAdminHomeFavoritesPinnedProfileSettings(
+            accountProfileIdValue: accountProfileId,
+            availabilityValue: TenantAdminLowercaseTokenValue.fromRaw(
+              accountProfileId == null ? 'unset' : 'available',
+              isRequired: false,
+            ),
+            selectedProfileDisplayNameValue: TenantAdminOptionalTextValue(),
+          );
 
   Future<TenantAdminMapUiSettings> fetchMapUiSettings();
 

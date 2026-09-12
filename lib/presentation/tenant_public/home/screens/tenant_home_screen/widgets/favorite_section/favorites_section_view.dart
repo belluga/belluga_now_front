@@ -7,10 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
 class FavoritesSectionView extends StatelessWidget {
-  const FavoritesSectionView({
-    super.key,
-    required this.controller,
-  });
+  const FavoritesSectionView({super.key, required this.controller});
 
   final FavoritesSectionController controller;
 
@@ -23,37 +20,50 @@ class FavoritesSectionView extends StatelessWidget {
         child: Center(child: CircularProgressIndicator()),
       ),
       builder: (context, favorites) {
-        return StreamValueBuilder<bool>(
-          streamValue: controller.hasMoreFavoritesStreamValue,
-          builder: (context, hasMore) {
+        return StreamValueBuilder<FavoriteResume?>(
+          streamValue: controller.pinnedFavoriteStreamValue,
+          builder: (context, _) {
             return StreamValueBuilder<bool>(
-              streamValue: controller.isPageLoadingStreamValue,
-              builder: (context, isPageLoading) {
-                final all = favorites ?? const <FavoriteResume>[];
-                final items = all.where((fav) => !fav.isPrimary).toList();
-                final pinned = controller.buildPinnedFavorite();
-                final router = context.router;
+              streamValue: controller.hasMoreFavoritesStreamValue,
+              builder: (context, hasMore) {
+                return StreamValueBuilder<bool>(
+                  streamValue: controller.isPageLoadingStreamValue,
+                  builder: (context, isPageLoading) {
+                    final all = favorites ?? const <FavoriteResume>[];
+                    final pinned = controller.buildPinnedFavorite();
+                    final pinnedTargetId = pinned.targetId;
+                    final items = all
+                        .where(
+                          (favorite) =>
+                              !favorite.isPrimary &&
+                              (pinnedTargetId == null ||
+                                  favorite.targetId != pinnedTargetId),
+                        )
+                        .toList();
+                    final router = context.router;
 
-                return Row(
-                  children: [
-                    Expanded(
-                      child: FavoritesStrip(
-                        items: items,
-                        pinned: pinned,
-                        resolvedVisualForItem: controller.resolvedVisualFor,
-                        haloStateForItem: controller.haloStateFor,
-                        canLoadMore: hasMore,
-                        isLoadingMore: isPageLoading,
-                        onEndReached: controller.loadNextPage,
-                        onSearchTap: () {
-                          router.push(DiscoveryRoute());
-                        },
-                        onFavoriteTap: (favorite) {
-                          _openFavoriteTarget(router, favorite);
-                        },
-                      ),
-                    ),
-                  ],
+                    return Row(
+                      children: [
+                        Expanded(
+                          child: FavoritesStrip(
+                            items: items,
+                            pinned: pinned,
+                            resolvedVisualForItem: controller.resolvedVisualFor,
+                            haloStateForItem: controller.haloStateFor,
+                            canLoadMore: hasMore,
+                            isLoadingMore: isPageLoading,
+                            onEndReached: controller.loadNextPage,
+                            onSearchTap: () {
+                              router.push(DiscoveryRoute());
+                            },
+                            onFavoriteTap: (favorite) {
+                              _openFavoriteTarget(router, favorite);
+                            },
+                          ),
+                        ),
+                      ],
+                    );
+                  },
                 );
               },
             );
@@ -63,10 +73,7 @@ class FavoritesSectionView extends StatelessWidget {
     );
   }
 
-  void _openFavoriteTarget(
-    StackRouter router,
-    FavoriteResume favorite,
-  ) {
+  void _openFavoriteTarget(StackRouter router, FavoriteResume favorite) {
     controller.resolveNavigationTarget(favorite).then((target) {
       switch (target) {
         case FavoriteNavigationPrimary():

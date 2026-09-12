@@ -6,6 +6,9 @@ abstract class FavoriteRepositoryContract {
   final favoriteResumesStreamValue = StreamValue<List<FavoriteResume>?>(
     defaultValue: null,
   );
+  final pinnedFavoriteResumeStreamValue = StreamValue<FavoriteResume?>(
+    defaultValue: null,
+  );
 
   StreamValue<bool> get hasMoreFavoriteResumesStreamValue;
 
@@ -23,5 +26,6 @@ abstract class FavoriteRepositoryContract {
 
   void clearCurrentIdentityState() {
     favoriteResumesStreamValue.addValue(null);
+    pinnedFavoriteResumeStreamValue.addValue(null);
   }
 }

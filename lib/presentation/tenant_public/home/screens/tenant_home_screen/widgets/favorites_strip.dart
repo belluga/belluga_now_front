@@ -59,6 +59,10 @@ class FavoritesStrip extends StatelessWidget {
                 isPrimary: pinned.isPrimary,
                 iconImageUrl: pinned.iconImageUrl,
                 primaryColor: pinned.primaryColor,
+                resolvedVisual: resolvedVisualForItem?.call(pinned),
+                haloState:
+                    haloStateForItem?.call(pinned) ??
+                    FavoriteChipHaloState.none,
               ),
             ),
           Expanded(

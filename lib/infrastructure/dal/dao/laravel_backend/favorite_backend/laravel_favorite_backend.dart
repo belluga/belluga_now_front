@@ -89,11 +89,37 @@ class LaravelFavoriteBackend implements FavoriteBackendContract {
               )
               .toList(growable: false)
         : const <FavoritePreviewDTO>[];
+    final rawPinned = payload['pinned'];
+    final pinned = _decodePinned(rawPinned);
 
     return FavoritePreviewPageDTO(
       items: pageItems,
       hasMore: payload['has_more'] == true,
+      pinned: pinned,
     );
+  }
+
+  FavoritePreviewDTO? _decodePinned(Object? rawPinned) {
+    if (rawPinned is! Map) return null;
+    final payload = Map<String, dynamic>.from(rawPinned);
+    final targetRaw = payload['target'];
+    if (payload['registry_key'] != 'account_profile' ||
+        payload['target_type'] != 'account_profile' ||
+        targetRaw is! Map ||
+        payload['occurrence_state'] is! Map ||
+        payload['navigation'] is! Map) {
+      return null;
+    }
+
+    final target = Map<String, dynamic>.from(targetRaw);
+    final targetId = payload['target_id']?.toString().trim() ?? '';
+    final nestedTargetId = target['id']?.toString().trim() ?? '';
+    final displayName = target['display_name']?.toString().trim() ?? '';
+    if (targetId.isEmpty || nestedTargetId != targetId || displayName.isEmpty) {
+      return null;
+    }
+
+    return FavoritePreviewDTO.fromJson(payload);
   }
 
   @override

@@ -538,6 +538,11 @@ class _FakeFavoriteRepository implements FavoriteRepositoryContract {
   );
 
   @override
+  final pinnedFavoriteResumeStreamValue = StreamValue<FavoriteResume?>(
+    defaultValue: null,
+  );
+
+  @override
   final hasMoreFavoriteResumesStreamValue = StreamValue<bool>(
     defaultValue: false,
   );

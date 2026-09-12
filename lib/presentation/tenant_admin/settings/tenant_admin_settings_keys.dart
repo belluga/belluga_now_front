@@ -10,6 +10,8 @@ class TenantAdminSettingsKeys {
       ValueKey('tenant_admin_settings_hub_card_visual_identity');
   static const hubCardDomains =
       ValueKey('tenant_admin_settings_hub_card_domains');
+  static const hubCardHomeFavoritesPinnedProfile =
+      ValueKey('tenant_admin_settings_hub_card_home_favorites_pinned_profile');
   static const hubCardDiscoveryFilters =
       ValueKey('tenant_admin_settings_hub_card_discovery_filters');
   static const hubCardTechnicalIntegrations =

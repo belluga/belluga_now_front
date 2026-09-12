@@ -28,6 +28,8 @@ class FavoritesSectionController implements Disposable {
 
   StreamValue<List<FavoriteResume>?> get favoritesStreamValue =>
       _favoriteRepository.favoriteResumesStreamValue;
+  StreamValue<FavoriteResume?> get pinnedFavoriteStreamValue =>
+      _favoriteRepository.pinnedFavoriteResumeStreamValue;
   StreamValue<bool> get hasMoreFavoritesStreamValue =>
       _favoriteRepository.hasMoreFavoriteResumesStreamValue;
   StreamValue<bool> get isPageLoadingStreamValue =>
@@ -49,6 +51,10 @@ class FavoritesSectionController implements Disposable {
   }
 
   FavoriteResume buildPinnedFavorite() {
+    final configured = pinnedFavoriteStreamValue.value;
+    if (configured != null) {
+      return configured;
+    }
     final appData = _appDataRepository.appData;
     final mainIconUri = appData.mainIconLightUrl.value;
     final primaryColor = _parseHexColor(appData.mainColor.value);

@@ -5,10 +5,12 @@ class PagedFavoriteResumesResult {
   PagedFavoriteResumesResult({
     required this.items,
     required this.hasMoreValue,
+    this.pinned,
   });
 
   final List<FavoriteResume> items;
   final DomainBooleanValue hasMoreValue;
+  final FavoriteResume? pinned;
 
   bool get hasMore => hasMoreValue.value;
 }

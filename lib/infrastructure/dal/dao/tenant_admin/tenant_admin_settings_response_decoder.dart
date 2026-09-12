@@ -1,8 +1,10 @@
 import 'package:belluga_now/application/tenant_admin/settings/tenant_admin_discovery_filters_settings_canonicalizer.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_settings.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_home_favorites_pinned_profile_settings.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_app_link_path_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_account_profile_id_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_android_app_identifier_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_boolean_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_discovery_filters_settings_value.dart';
@@ -27,6 +29,39 @@ class TenantAdminSettingsResponseDecoder {
   }) : _envelopeDecoder = envelopeDecoder ?? const RawJsonEnvelopeDecoder();
 
   final RawJsonEnvelopeDecoder _envelopeDecoder;
+
+  TenantAdminHomeFavoritesPinnedProfileSettings
+  decodeHomeFavoritesPinnedProfile(Object? rawResponse) {
+    final payload = _envelopeDecoder.decodeDataMap(
+      rawResponse,
+      label: 'home favorites pinned profile settings',
+      emptyWhenDataIsNotMap: true,
+    );
+    final valueRaw = payload['value'];
+    final value = valueRaw is Map
+        ? Map<String, dynamic>.from(valueRaw)
+        : const <String, dynamic>{};
+    final selectedRaw = payload['selected_profile'];
+    final selected = selectedRaw is Map
+        ? Map<String, dynamic>.from(selectedRaw)
+        : const <String, dynamic>{};
+
+    final accountProfileId = _normalizeOptionalText(
+      value['account_profile_id'],
+    );
+    return TenantAdminHomeFavoritesPinnedProfileSettings(
+      accountProfileIdValue: accountProfileId == null
+          ? null
+          : TenantAdminAccountProfileIdValue(accountProfileId),
+      availabilityValue: TenantAdminLowercaseTokenValue.fromRaw(
+        payload['availability'],
+        defaultValue: 'unset',
+        isRequired: false,
+      ),
+      selectedProfileDisplayNameValue: TenantAdminOptionalTextValue()
+        ..parse(selected['display_name']?.toString()),
+    );
+  }
 
   TenantAdminMapUiSettings decodeMapUiSettings(
     Object? rawResponse, {
