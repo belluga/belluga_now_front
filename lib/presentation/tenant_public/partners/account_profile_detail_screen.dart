@@ -37,6 +37,8 @@ import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/models/immersive_hero_action.dart';
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/models/immersive_tab_item.dart';
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/tabs/immersive_directions_section.dart';
+import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/tabs/immersive_section_subtitle.dart';
+import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/tabs/immersive_section_title.dart';
 import 'package:belluga_now/presentation/shared/widgets/public_rich_text_html.dart';
 import 'package:belluga_now/presentation/shared/widgets/nested_accounts_load_more_indicator.dart';
 import 'package:belluga_now/presentation/shared/widgets/nested_accounts_search_field.dart';
@@ -889,7 +891,20 @@ class _AccountProfileDetailScreenState
     final normalizedTitle = tab.title.trim().toLowerCase();
 
     if (normalizedTitle == ImmersiveCommonTabs.aboutTitle.toLowerCase()) {
-      return ImmersiveCommonTabs.about(content: content);
+      return ImmersiveCommonTabs.about(
+        content: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              child: ImmersiveSectionTitle(
+                text: ImmersiveCommonTabs.aboutTitle,
+              ),
+            ),
+            content,
+          ],
+        ),
+      );
     }
     if (normalizedTitle.contains('chegar')) {
       return ImmersiveCommonTabs.directions(content: content);
@@ -969,6 +984,8 @@ class _AccountProfileDetailScreenState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          ImmersiveSectionTitle(text: 'Contato'),
+          const SizedBox(height: 16),
           if (accountProfile.contactMode ==
               BellugaContactSourceMode.mirroredAccountProfile)
             Container(
@@ -1671,8 +1688,16 @@ class _AccountProfileDetailScreenState
     AccountProfileComplete accountProfile,
     AccountProfileAgendaPresentation? presentation,
   ) {
+    final slivers = <Widget>[
+      SliverToBoxAdapter(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+          child: ImmersiveSectionTitle(text: 'Agenda'),
+        ),
+      ),
+    ];
     if (presentation == null || presentation.isEmpty) {
-      return [
+      slivers.add(
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.all(16),
@@ -1682,22 +1707,17 @@ class _AccountProfileDetailScreenState
             ),
           ),
         ),
-      ];
+      );
+      return slivers;
     }
 
-    final slivers = <Widget>[];
     if (presentation.liveOccurrences.isNotEmpty) {
       slivers.add(
         SliverPadding(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
           sliver: SliverList.list(
             children: [
-              Text(
-                'Acontecendo Agora',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
+              ImmersiveSectionSubtitle(text: 'Acontecendo Agora'),
               const SizedBox(height: 14),
               for (final event in presentation.liveOccurrences)
                 Padding(
@@ -1716,12 +1736,7 @@ class _AccountProfileDetailScreenState
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-            child: Text(
-              'Próximos Eventos',
-              style: Theme.of(
-                context,
-              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900),
-            ),
+            child: ImmersiveSectionSubtitle(text: 'Próximos Eventos'),
           ),
         ),
       );
@@ -2664,16 +2679,7 @@ class _AccountProfileDetailScreenState
         key: const Key('accountProfileGroupedGallery'),
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Galeria',
-            style: Theme.of(
-              context,
-            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900),
-          ),
-          const SizedBox(height: 8),
-          Divider(
-            color: Theme.of(context).dividerColor.withValues(alpha: 0.45),
-          ),
+          ImmersiveSectionTitle(text: 'Galeria', showDivider: true),
           const SizedBox(height: 12),
           for (
             var groupIndex = 0;
@@ -2681,16 +2687,9 @@ class _AccountProfileDetailScreenState
             groupIndex++
           ) ...[
             if (groupIndex > 0) const SizedBox(height: 24),
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    visibleGroups[groupIndex].subtitle,
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
+            ImmersiveSectionSubtitle(
+              text: visibleGroups[groupIndex].subtitle,
+              actions: [
                 TextButton(
                   key: Key(
                     'accountProfileGalleryOpenGroup_${visibleGroups[groupIndex].groupId}',
@@ -2881,36 +2880,33 @@ class _AccountProfileDetailScreenState
   }
 
   Widget _nestedProfileGroup(AccountProfileNestedGroup group) {
-    return _LazyNestedProfileGroupContent(
-      key: Key('accountProfileNestedGroup_${group.id}'),
-      controller: _controller,
-      group: group,
-      itemBuilder: (members, footer) {
-        final title = group.label.trim();
-        return Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (title.isNotEmpty) ...[
-                Text(
-                  title,
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 16),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+          child: ImmersiveSectionTitle(text: group.label),
+        ),
+        _LazyNestedProfileGroupContent(
+          key: Key('accountProfileNestedGroup_${group.id}'),
+          controller: _controller,
+          group: group,
+          itemBuilder: (members, footer) => Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (final entry in members.asMap().entries) ...[
+                  if (entry.key > 0) const SizedBox(height: 12),
+                  _nestedProfileMemberCard(group, entry.value),
+                ],
+                // ignore: use_null_aware_elements
+                if (footer case final footer?) footer,
               ],
-              for (final entry in members.asMap().entries) ...[
-                if (entry.key > 0) const SizedBox(height: 12),
-                _nestedProfileMemberCard(group, entry.value),
-              ],
-              // ignore: use_null_aware_elements
-              if (footer case final footer?) footer,
-            ],
+            ),
           ),
-        );
-      },
+        ),
+      ],
     );
   }
 

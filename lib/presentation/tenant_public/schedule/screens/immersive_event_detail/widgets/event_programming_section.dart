@@ -9,6 +9,7 @@ import 'package:belluga_now/presentation/shared/visuals/account_profile_visual_r
 import 'package:belluga_now/presentation/shared/visuals/resolved_account_profile_visual.dart';
 import 'package:belluga_now/presentation/shared/widgets/account_profile_type_avatar.dart';
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
+import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/tabs/immersive_section_title.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/widgets/event_programming_timeline_rail_painter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart';
@@ -79,12 +80,7 @@ class _EventProgrammingSectionState extends State<EventProgrammingSection> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Programação',
-            style: theme.textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.w800,
-            ),
-          ),
+          ImmersiveSectionTitle(text: 'Programação'),
           if (widget.occurrences.length > 1) ...[
             const SizedBox(height: 14),
             _ProgrammingDateSelector(

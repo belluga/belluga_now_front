@@ -1,5 +1,6 @@
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/presentation/shared/widgets/public_rich_text_html.dart';
+import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/tabs/immersive_section_title.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart';
 
@@ -21,10 +22,7 @@ class EventInfoSection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Sobre',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-          ),
+          ImmersiveSectionTitle(text: 'Sobre'),
           const SizedBox(height: 16),
           PublicRichTextHtml(
             html: html,

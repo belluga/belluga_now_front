@@ -11,6 +11,7 @@ import 'package:belluga_now/domain/static_assets/value_objects/public_static_ass
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/presentation/tenant_public/static_assets/controllers/static_asset_detail_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/static_assets/static_asset_detail_screen.dart';
+import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/tabs/immersive_section_title.dart';
 import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -83,6 +84,10 @@ void main() {
       await tester.tap(find.byKey(const Key('immersiveTabLabel_1')));
       await tester.pumpAndSettle();
 
+      expect(
+        find.widgetWithText(ImmersiveSectionTitle, 'Como Chegar'),
+        findsOneWidget,
+      );
       expect(
         find.byKey(const Key('staticAssetMainWazeButton')),
         findsOneWidget,

@@ -4,6 +4,7 @@ import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/d
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_launch_target.dart';
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_provider_actions.dart';
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/tabs/immersive_directions_section.dart';
+import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/tabs/immersive_section_subtitle.dart';
 import 'package:flutter/material.dart';
 
 class LocationSection extends StatelessWidget {
@@ -31,7 +32,6 @@ class LocationSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final address = event.location.value.trim();
     final venueName = event.venue?.displayName.trim();
     final resolvedTitle = venueName != null && venueName.isNotEmpty
@@ -49,7 +49,6 @@ class LocationSection extends StatelessWidget {
 
     return ImmersiveDirectionsSection(
       padding: const EdgeInsets.all(16).copyWith(bottom: 100),
-      titleStyle: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
       mapCanvas: _LocationMapCanvas(event: event),
       destinationSubtitle: mainSubtitle,
       canOpenMap: canOpenMap,
@@ -63,11 +62,9 @@ class LocationSection extends StatelessWidget {
       extraChildren: [
         if (destinations.isNotEmpty) ...[
           const SizedBox(height: 18),
-          Text(
-            'Outros endereços relacionados',
-            style: theme.textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.w800,
-            ),
+          ImmersiveSectionSubtitle(
+            text: 'Outros endereços relacionados',
+            showDivider: true,
           ),
           const SizedBox(height: 10),
           ...destinations.map(

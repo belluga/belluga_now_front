@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_contact_channels/belluga_contact_channels.dart';
 import 'package:belluga_now/application/icons/boora_icons.dart';
@@ -39,6 +41,8 @@ import 'package:belluga_now/presentation/shared/widgets/account_profile_overlapp
 import 'package:belluga_now/presentation/shared/widgets/public_rich_text_html.dart';
 import 'package:belluga_now/presentation/tenant_public/widgets/upcoming_ocurrence_card.dart';
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/immersive_detail_screen.dart';
+import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/tabs/immersive_section_title.dart';
+import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/tabs/immersive_section_subtitle.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/widgets/immersive_tab_bar.dart';
 import 'package:belluga_now/presentation/shared/promotion/screens/app_promotion_screen/controllers/app_promotion_screen_controller.dart';
 import 'package:belluga_now/presentation/shared/promotion/screens/app_promotion_screen/controllers/app_promotion_store_platform.dart';
@@ -60,6 +64,22 @@ import 'package:value_object_pattern/domain/value_objects/mongo_id_value.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 
 import '../../../support/sticky_date_header_test_support.dart';
+
+Finder _immersiveTabLabel(String label) {
+  return find.byWidgetPredicate((widget) {
+    final key = widget.key;
+    return widget is Text &&
+        widget.data == label &&
+        key is ValueKey<String> &&
+        key.value.startsWith('immersiveTabLabel_');
+  });
+}
+
+void _expectSingleSharedTitleWithTab(String label) {
+  expect(_immersiveTabLabel(label), findsOneWidget);
+  expect(find.widgetWithText(ImmersiveSectionTitle, label), findsOneWidget);
+  expect(find.text(label), findsNWidgets(2));
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -183,8 +203,14 @@ void main() {
       find.byKey(const Key('accountProfileGroupedGallery')),
       findsOneWidget,
     );
-    expect(find.text('Galeria'), findsOneWidget);
-    expect(find.text('Ambiente'), findsOneWidget);
+    expect(
+      find.widgetWithText(ImmersiveSectionTitle, 'Galeria'),
+      findsOneWidget,
+    );
+    expect(
+      find.widgetWithText(ImmersiveSectionSubtitle, 'Ambiente'),
+      findsOneWidget,
+    );
     expect(find.text('Ver tudo'), findsOneWidget);
 
     final galleryItem = find.byKey(
@@ -478,7 +504,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Contato'), findsOneWidget);
+      _expectSingleSharedTitleWithTab('Contato');
       expect(
         find.byKey(const Key('accountProfileContactBubbleButton')),
         findsOneWidget,
@@ -537,7 +563,7 @@ void main() {
         isNull,
       );
 
-      await tester.tap(find.text('Contato'));
+      await tester.tap(_immersiveTabLabel('Contato'));
       await tester.pumpAndSettle();
 
       expect(
@@ -664,7 +690,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Contato'));
+      await tester.tap(_immersiveTabLabel('Contato'));
       await tester.pumpAndSettle();
 
       expect(
@@ -785,7 +811,7 @@ void main() {
         find.byKey(const Key('accountProfileFavoriteFooterButton')),
         findsNothing,
       );
-      expect(find.text('Contato'), findsOneWidget);
+      _expectSingleSharedTitleWithTab('Contato');
       expect(
         find.byKey(const Key('accountProfileContactBubbleButton')),
         findsOneWidget,
@@ -1158,13 +1184,14 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Contato'));
+      await tester.tap(_immersiveTabLabel('Contato'));
       await tester.pumpAndSettle();
-      await tester.tap(
-        find.byKey(
-          const Key('accountProfileContactChannelCard_whatsapp-support'),
-        ),
+      final supportCard = find.byKey(
+        const Key('accountProfileContactChannelCard_whatsapp-support'),
       );
+      await tester.ensureVisible(supportCard);
+      await tester.pumpAndSettle();
+      await tester.tap(supportCard);
       await tester.pumpAndSettle();
 
       expect(
@@ -1231,8 +1258,21 @@ void main() {
       );
       await tester.pumpAndSettle();
 
+      expect(
+        find.widgetWithText(ImmersiveSectionTitle, 'Agenda'),
+        findsOneWidget,
+      );
+      expect(find.text('Agenda'), findsNWidgets(2));
+      expect(
+        find.widgetWithText(ImmersiveSectionSubtitle, 'Acontecendo Agora'),
+        findsOneWidget,
+      );
       expect(find.text('Acontecendo Agora'), findsOneWidget);
       await _scrollAccountUntilVisible(tester, find.text('Próximos Eventos'));
+      expect(
+        find.widgetWithText(ImmersiveSectionSubtitle, 'Próximos Eventos'),
+        findsOneWidget,
+      );
       expect(find.text('Próximos Eventos'), findsWidgets);
       expect(find.text('Favoritar'), findsOneWidget);
       expect(find.text('Ver detalhes do evento'), findsNothing);
@@ -1821,6 +1861,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    _expectSingleSharedTitleWithTab('Agenda');
     expect(find.text('Acontecendo Agora'), findsNothing);
     expect(find.text('Próximos Eventos'), findsOneWidget);
   });
@@ -2083,19 +2124,17 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(
-        tester.widget<Text>(find.byKey(const Key('immersiveTabLabel_3'))).data,
-        'Parceiros',
-      );
+      expect(_immersiveTabLabel('Parceiros'), findsOneWidget);
 
-      await tester.ensureVisible(find.byKey(const Key('immersiveTabLabel_3')));
-      await tester.tap(find.byKey(const Key('immersiveTabLabel_3')));
+      await tester.ensureVisible(_immersiveTabLabel('Parceiros'));
+      await tester.tap(_immersiveTabLabel('Parceiros'));
       await tester.pumpAndSettle();
 
       expect(
         find.byKey(const Key('accountProfileNestedGroup_parceiros')),
         findsOneWidget,
       );
+      _expectSingleSharedTitleWithTab('Parceiros');
       expect(find.text('Ananda Torres'), findsOneWidget);
       expect(find.text('Música'), findsOneWidget);
       expect(
@@ -2158,16 +2197,14 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(repository.lastNestedGroupMembersPath, isNull);
-      expect(
-        tester.widget<Text>(find.byKey(const Key('immersiveTabLabel_3'))).data,
-        'Parceiros',
-      );
+      expect(_immersiveTabLabel('Parceiros'), findsOneWidget);
 
-      await tester.ensureVisible(find.byKey(const Key('immersiveTabLabel_3')));
-      await tester.tap(find.byKey(const Key('immersiveTabLabel_3')));
+      await tester.ensureVisible(_immersiveTabLabel('Parceiros'));
+      await tester.tap(_immersiveTabLabel('Parceiros'));
       await tester.pumpAndSettle();
 
       expect(repository.lastNestedGroupMembersPath, membersPath);
+      _expectSingleSharedTitleWithTab('Parceiros');
       expect(
         find.byKey(const Key('accountProfileNestedGroup_parceiros')),
         findsOneWidget,
@@ -2215,10 +2252,11 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      await tester.ensureVisible(find.byKey(const Key('immersiveTabLabel_3')));
-      await tester.tap(find.byKey(const Key('immersiveTabLabel_3')));
+      await tester.ensureVisible(_immersiveTabLabel('Parceiros'));
+      await tester.tap(_immersiveTabLabel('Parceiros'));
       await tester.pumpAndSettle();
 
+      _expectSingleSharedTitleWithTab('Parceiros');
       final searchField = find.byKey(
         const Key('accountProfileNestedGroupSearch_parceiros'),
       );
@@ -2228,9 +2266,86 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(repository.lastNestedGroupMembersSearch, 'ana');
+      _expectSingleSharedTitleWithTab('Parceiros');
       expect(find.text('Ananda Torres'), findsOneWidget);
     },
   );
+
+  testWidgets(
+    'keeps nested group root visible while loading and after an empty result',
+    (tester) async {
+      final completer = Completer<AccountProfileSummaryPage>();
+      final repository = _FakeAccountProfilesRepository(
+        nestedGroupMembersByPath: const <String, List<AccountProfileSummary>>{
+          _nestedPartnersMembersPath: <AccountProfileSummary>[],
+        },
+        nestedGroupPageCompleter: completer,
+      );
+      GetIt.I.registerSingleton<AccountProfileDetailController>(
+        AccountProfileDetailController(accountProfilesRepository: repository),
+      );
+
+      await tester.pumpWidget(
+        _buildRoutedTestApp(
+          router: _RecordingStackRouter(),
+          child: AccountProfileDetailScreen(
+            accountProfile: _buildVenueFullProfile().copyWith(
+              nestedProfileGroupValues: [_buildLazyNestedAccountProfileGroup()],
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(_immersiveTabLabel('Parceiros'));
+      await tester.tap(_immersiveTabLabel('Parceiros'));
+      await tester.pump(const Duration(milliseconds: 450));
+
+      _expectSingleSharedTitleWithTab('Parceiros');
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+
+      completer.complete(const AccountProfileSummaryPage.empty());
+      await tester.pumpAndSettle();
+
+      _expectSingleSharedTitleWithTab('Parceiros');
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+      expect(find.byType(AccountProfileOverlappingIdentityCard), findsNothing);
+    },
+  );
+
+  testWidgets('keeps nested group root visible when loading fails', (
+    tester,
+  ) async {
+    final repository = _FakeAccountProfilesRepository(
+      nestedGroupMembersByPath: const <String, List<AccountProfileSummary>>{
+        _nestedPartnersMembersPath: <AccountProfileSummary>[],
+      },
+      nestedGroupFetchError: StateError('fixture failure'),
+    );
+    GetIt.I.registerSingleton<AccountProfileDetailController>(
+      AccountProfileDetailController(accountProfilesRepository: repository),
+    );
+
+    await tester.pumpWidget(
+      _buildRoutedTestApp(
+        router: _RecordingStackRouter(),
+        child: AccountProfileDetailScreen(
+          accountProfile: _buildVenueFullProfile().copyWith(
+            nestedProfileGroupValues: [_buildLazyNestedAccountProfileGroup()],
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(_immersiveTabLabel('Parceiros'));
+    await tester.tap(_immersiveTabLabel('Parceiros'));
+    await tester.pumpAndSettle();
+
+    _expectSingleSharedTitleWithTab('Parceiros');
+    expect(
+      find.text('Não foi possível carregar os perfis desta aba.'),
+      findsOneWidget,
+    );
+  });
 
   testWidgets(
     'keeps every public nested group tab when multiple groups are present',
@@ -2387,8 +2502,8 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.ensureVisible(find.byKey(const Key('immersiveTabLabel_3')));
-      await tester.tap(find.byKey(const Key('immersiveTabLabel_3')));
+      await tester.ensureVisible(_immersiveTabLabel('Parceiros'));
+      await tester.tap(_immersiveTabLabel('Parceiros'));
       await tester.pumpAndSettle();
 
       final cardFinder = find.byKey(
@@ -2439,8 +2554,8 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.ensureVisible(find.byKey(const Key('immersiveTabLabel_3')));
-      await tester.tap(find.byKey(const Key('immersiveTabLabel_3')));
+      await tester.ensureVisible(_immersiveTabLabel('Parceiros'));
+      await tester.tap(_immersiveTabLabel('Parceiros'));
       await tester.pumpAndSettle();
 
       repository.setSelectedAccountProfile(childProfile);
@@ -2460,10 +2575,7 @@ void main() {
         ),
         findsNothing,
       );
-      expect(
-        tester.widget<Text>(find.byKey(const Key('immersiveTabLabel_3'))).data,
-        'Parceiros',
-      );
+      expect(_immersiveTabLabel('Parceiros'), findsOneWidget);
       expect(
         find.byKey(const Key('accountProfileNestedGroup_parceiros')),
         findsOneWidget,
@@ -2546,8 +2658,8 @@ void main() {
         findsOneWidget,
       );
 
-      await tester.ensureVisible(find.byKey(const Key('immersiveTabLabel_3')));
-      await tester.tap(find.byKey(const Key('immersiveTabLabel_3')));
+      await tester.ensureVisible(_immersiveTabLabel('Parceiros'));
+      await tester.tap(_immersiveTabLabel('Parceiros'));
       await tester.pumpAndSettle();
       await tester.tap(
         find.byKey(
@@ -2677,8 +2789,8 @@ void main() {
       expect(parentController.id, 1);
       expect(parentController.loadedSlugs, contains('du-jorge'));
 
-      await tester.ensureVisible(find.byKey(const Key('immersiveTabLabel_3')));
-      await tester.tap(find.byKey(const Key('immersiveTabLabel_3')));
+      await tester.ensureVisible(_immersiveTabLabel('Parceiros'));
+      await tester.tap(_immersiveTabLabel('Parceiros'));
       await tester.pumpAndSettle();
       await tester.tap(
         find.byKey(
@@ -3147,7 +3259,11 @@ void main() {
 
     expect(find.text('Manifesto Singular'), findsOneWidget);
     expect(find.text('Texto de apoio da casa'), findsOneWidget);
-    expect(find.text('Sobre'), findsOneWidget);
+    _expectSingleSharedTitleWithTab('Sobre');
+    expect(
+      find.widgetWithText(ImmersiveSectionTitle, 'Manifesto Singular'),
+      findsNothing,
+    );
     expect(find.text('Conteúdo'), findsNothing);
     expect(find.textContaining('<p>'), findsNothing);
     expect(find.textContaining('<strong>'), findsNothing);
@@ -3731,6 +3847,8 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
     Map<String, List<AccountProfileSummary>> nestedGroupMembersByPath =
         const <String, List<AccountProfileSummary>>{},
     this.nestedGroupHasMore = false,
+    this.nestedGroupPageCompleter,
+    this.nestedGroupFetchError,
   }) : _favoriteIds = Set<String>.from(initialFavoriteIds),
        _profiles = List<AccountProfileComplete>.from(profiles),
        _nestedGroupMembersByPath =
@@ -3757,6 +3875,8 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
   final List<AccountProfileComplete> _profiles;
   final Map<String, List<AccountProfileSummary>> _nestedGroupMembersByPath;
   final bool nestedGroupHasMore;
+  final Completer<AccountProfileSummaryPage>? nestedGroupPageCompleter;
+  final Object? nestedGroupFetchError;
   String? lastNestedGroupMembersPath;
   String? lastNestedGroupMembersSearch;
 
@@ -3798,6 +3918,10 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
   }) async {
     lastNestedGroupMembersPath = membersPath.value;
     lastNestedGroupMembersSearch = search?.value;
+    final fetchError = nestedGroupFetchError;
+    if (fetchError != null) throw fetchError;
+    final pageCompleter = nestedGroupPageCompleter;
+    if (pageCompleter != null) return pageCompleter.future;
     if (cursor?.value.trim().isNotEmpty == true) {
       return const AccountProfileSummaryPage.empty();
     }
@@ -4176,6 +4300,19 @@ AccountProfileNestedGroup _buildNestedAccountProfileGroup() {
         tagValues: [AccountProfileTagValue('Música')],
       ),
     ],
+  );
+}
+
+AccountProfileNestedGroup _buildLazyNestedAccountProfileGroup() {
+  return AccountProfileNestedGroup(
+    idValue: AccountProfileNestedGroupIdValue('parceiros'),
+    labelValue: AccountProfileNestedGroupLabelValue('Parceiros'),
+    orderValue: AccountProfileNestedGroupOrderValue(0),
+    membersPathValue: AccountProfileNestedGroupMembersPathValue(
+      _nestedPartnersMembersPath,
+    ),
+    memberCountValue: AccountProfileNestedGroupMemberCountValue(1),
+    profiles: const <AccountProfileSummary>[],
   );
 }
 

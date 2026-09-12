@@ -2,6 +2,7 @@ import 'package:belluga_now/domain/partners/account_profile_summary.dart';
 import 'package:belluga_now/presentation/shared/visuals/account_profile_visual_resolver.dart';
 import 'package:belluga_now/presentation/shared/visuals/resolved_account_profile_visual.dart';
 import 'package:belluga_now/presentation/shared/widgets/account_profile_overlapping_identity_card.dart';
+import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/tabs/immersive_section_title.dart';
 import 'package:flutter/material.dart';
 import 'package:belluga_now/domain/partners/profile_type_registry.dart';
 
@@ -35,12 +36,7 @@ class LinkedProfileCategorySection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: Theme.of(
-              context,
-            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
-          ),
+          ImmersiveSectionTitle(text: title),
           const SizedBox(height: 16),
           ...profiles.map(
             (profile) => Padding(

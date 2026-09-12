@@ -57,6 +57,8 @@ import 'package:belluga_now/domain/schedule/value_objects/event_profile_group_or
 import 'package:belluga_now/domain/schedule/value_objects/event_is_confirmed_value.dart';
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/immersive_detail_screen.dart';
+import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/tabs/immersive_section_subtitle.dart';
+import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/tabs/immersive_section_title.dart';
 import 'package:belluga_now/presentation/shared/widgets/account_profile_overlapping_identity_card.dart';
 import 'package:belluga_now/presentation/shared/promotion/screens/app_promotion_screen/controllers/app_promotion_screen_controller.dart';
 import 'package:belluga_now/presentation/shared/promotion/screens/app_promotion_screen/controllers/app_promotion_store_platform.dart';
@@ -3797,6 +3799,10 @@ void main() {
       expect(find.byKey(const Key('eventLocalDescription')), findsOneWidget);
       expect(find.byKey(const Key('eventLocalGalleryStrip')), findsNothing);
       expect(find.text('Ambientes'), findsOneWidget);
+      expect(
+        find.widgetWithText(ImmersiveSectionSubtitle, 'Ambientes'),
+        findsOneWidget,
+      );
       expect(find.text('Vazia'), findsNothing);
       expect(find.text('Não deve aparecer'), findsNothing);
       final galleryRow = tester.widget<BellugaGalleryPreviewRow>(
@@ -4495,12 +4501,42 @@ void main() {
         immersiveDetail().tabs.map((tab) => tab.title).toList(growable: false),
         <String>['Sobre', 'Programação', 'Bandas', 'Expositores', 'O Local'],
       );
+      expect(
+        find.widgetWithText(ImmersiveSectionTitle, 'Sobre'),
+        findsOneWidget,
+      );
+      expect(find.text('Sobre'), findsNWidgets(2));
+      expect(
+        find.widgetWithText(ImmersiveSectionTitle, 'Programação'),
+        findsOneWidget,
+      );
+      expect(find.text('Programação'), findsNWidgets(2));
       expect(find.text('Bandas'), findsWidgets);
       expect(find.text('Expositores'), findsWidgets);
       await _tapImmersiveTab(tester, 2);
+      expect(
+        find.widgetWithText(ImmersiveSectionTitle, 'Bandas'),
+        findsOneWidget,
+      );
+      expect(find.text('Bandas'), findsNWidgets(2));
       expect(find.text('Du Jorge'), findsWidgets);
       await _tapImmersiveTab(tester, 3);
+      expect(
+        find.widgetWithText(ImmersiveSectionTitle, 'Expositores'),
+        findsOneWidget,
+      );
+      expect(find.text('Expositores'), findsNWidgets(2));
       expect(find.text('Agro Sul'), findsWidgets);
+      await _tapImmersiveTab(tester, 4);
+      expect(
+        find.widgetWithText(ImmersiveSectionTitle, 'O Local'),
+        findsOneWidget,
+      );
+      expect(find.text('O Local'), findsNWidgets(2));
+      expect(
+        find.widgetWithText(ImmersiveSectionTitle, 'Como Chegar'),
+        findsNothing,
+      );
 
       await _tapImmersiveTab(tester, 1);
       await tester.tap(find.byKey(const Key('eventDateCardTap_occ-2')));
@@ -6310,6 +6346,13 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Outros endereços relacionados'), findsOneWidget);
+    expect(
+      find.widgetWithText(
+        ImmersiveSectionSubtitle,
+        'Outros endereços relacionados',
+      ),
+      findsOneWidget,
+    );
     expect(
       find.descendant(
         of: find.byKey(const Key('eventLocalRelatedHeading')),

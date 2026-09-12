@@ -14,6 +14,8 @@ import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/d
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_launch_target.dart';
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_provider_actions.dart';
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/tabs/immersive_directions_section.dart';
+import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/tabs/immersive_section_subtitle.dart';
+import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/tabs/immersive_section_title.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart' hide Marker;
 import 'package:flutter_map/flutter_map.dart';
@@ -81,12 +83,9 @@ class EventLocalSection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'O Local',
+          ImmersiveSectionTitle(
+            text: 'O Local',
             key: const Key('eventLocalSectionTitle'),
-            style: Theme.of(
-              context,
-            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 16),
           _EventLocalHero(
@@ -122,12 +121,9 @@ class EventLocalSection extends StatelessWidget {
           ],
           if (firstGallery != null) ...[
             const SizedBox(height: 20),
-            Text(
-              firstGallery.subtitle,
+            ImmersiveSectionSubtitle(
+              text: firstGallery.subtitle,
               key: const Key('eventLocalGallerySubtitle'),
-              style: Theme.of(
-                context,
-              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 12),
             BellugaGalleryPreviewRow(
@@ -155,24 +151,10 @@ class EventLocalSection extends StatelessWidget {
           ],
           if (showNavigation && relatedDestinations.isNotEmpty) ...[
             const SizedBox(height: 20),
-            Row(
+            ImmersiveSectionSubtitle(
               key: const Key('eventLocalRelatedHeading'),
-              children: [
-                Text(
-                  'Outros endereços relacionados',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Divider(
-                    color: Theme.of(context).colorScheme.outlineVariant,
-                    thickness: 1,
-                    height: 1,
-                  ),
-                ),
-              ],
+              text: 'Outros endereços relacionados',
+              showDivider: true,
             ),
             const SizedBox(height: 10),
             ...relatedDestinations.map(

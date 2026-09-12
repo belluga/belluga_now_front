@@ -2,6 +2,7 @@ import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/d
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_launch_target.dart';
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_provider_actions.dart';
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/immersive_common_tabs.dart';
+import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/tabs/immersive_section_title.dart';
 import 'package:flutter/material.dart';
 
 class ImmersiveDirectionsSection extends StatelessWidget {
@@ -18,7 +19,6 @@ class ImmersiveDirectionsSection extends StatelessWidget {
     this.onOpenOtherDirections,
     this.extraChildren = const <Widget>[],
     this.padding = const EdgeInsets.all(16),
-    this.titleStyle,
     this.showTitle = true,
     this.mapTileKey,
     this.distanceBadgeKey,
@@ -43,7 +43,6 @@ class ImmersiveDirectionsSection extends StatelessWidget {
   onOpenOtherDirections;
   final List<Widget> extraChildren;
   final EdgeInsetsGeometry padding;
-  final TextStyle? titleStyle;
   final bool showTitle;
   final Key? mapTileKey;
   final Key? distanceBadgeKey;
@@ -71,14 +70,7 @@ class ImmersiveDirectionsSection extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (showTitle) ...[
-            Text(
-              ImmersiveCommonTabs.directionsTitle,
-              style:
-                  titleStyle ??
-                  theme.textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w900,
-                  ),
-            ),
+            ImmersiveSectionTitle(text: ImmersiveCommonTabs.directionsTitle),
             const SizedBox(height: 12),
           ],
           GestureDetector(
