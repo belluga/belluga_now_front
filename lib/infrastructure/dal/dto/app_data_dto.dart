@@ -21,6 +21,7 @@ import 'package:belluga_now/domain/app_data/value_object/telemetry_location_fres
 import 'package:belluga_now/domain/app_data/value_object/environment_name_value.dart';
 import 'package:belluga_now/domain/app_data/value_object/environment_type_value.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
+import 'package:belluga_now/domain/map/filters/poi_filter_options.dart';
 import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
@@ -45,6 +46,7 @@ import 'package:belluga_now/domain/theme_data_settings/value_objects/brightness_
 import 'package:belluga_now/domain/value_objects/domain_boolean_value.dart';
 import 'package:belluga_now/domain/value_objects/color_required_value.dart';
 import 'package:belluga_now/infrastructure/platform/app_data_local_info_source/app_data_local_info_dto.dart';
+import 'package:belluga_now/infrastructure/dal/dto/map/map_filter_category_dto.dart';
 import 'package:event_tracker_handler/event_tracker_handler.dart';
 import 'package:flutter/material.dart';
 import 'package:value_object_pattern/value_object.dart';
@@ -208,7 +210,10 @@ class AppDataDTO {
   AppData toDomain({required AppDataLocalInfoDTO localInfo}) {
     final radiusBounds = _resolveRadiusBounds(settings);
     final tenantDefaultOrigin = _resolveTenantDefaultOrigin(settings);
-    final mapFilterCatalogKeys = _resolveMapFilterCatalogKeys(settings);
+    final mapFilterOptions = _resolveMapFilterOptions(settings);
+    final mapFilterCatalogKeys = mapFilterOptions.categories
+        .map((category) => category.key)
+        .toList(growable: false);
 
     final origin = _resolveOrigin(mainDomain);
     final mainIconLightResolved = _firstNonEmpty(
@@ -291,6 +296,7 @@ class AppDataDTO {
       mapFilterCatalogKeysValue: AppDataMapFilterCatalogKeysValue(
         mapFilterCatalogKeys,
       ),
+      mapFilterOptions: mapFilterOptions,
       mainIconLightUrl: _parseRequired(
         mainIconLightResolved,
         () => IconUrlValue(isRequired: true),
@@ -766,13 +772,16 @@ class AppDataDTO {
         ? Map<String, dynamic>.from(mapUi['radius'] as Map)
         : const <String, dynamic>{};
 
-    const defaultMinRadiusKm = 1.0;
+    const defaultMinRadiusKm = 0.5;
     const defaultRadiusKm = 5.0;
     const defaultMaxRadiusKm = 50.0;
 
-    final minKm = _parsePositiveDouble(radius['min_km'], defaultMinRadiusKm);
-    final maxKmRaw = _parsePositiveDouble(radius['max_km'], defaultMaxRadiusKm);
-    final maxKm = maxKmRaw < minKm ? minKm : maxKmRaw;
+    var minKm = _parsePositiveDouble(radius['min_km'], defaultMinRadiusKm);
+    var maxKm = _parsePositiveDouble(radius['max_km'], defaultMaxRadiusKm);
+    if (maxKm < minKm) {
+      minKm = defaultMinRadiusKm;
+      maxKm = defaultMaxRadiusKm;
+    }
     final defaultKmRaw = _parsePositiveDouble(
       radius['default_km'],
       defaultRadiusKm,
@@ -816,45 +825,18 @@ class AppDataDTO {
     }
   }
 
-  static List<String> _resolveMapFilterCatalogKeys(
+  static PoiFilterOptions _resolveMapFilterOptions(
     Map<String, dynamic>? rawSettings,
   ) {
     final settings = rawSettings ?? const <String, dynamic>{};
-    final canonicalKeys = _resolveDiscoveryMapFilterCatalogKeys(
-      settings['discovery_filters'],
-    );
-    return canonicalKeys;
-  }
-
-  static List<String> _resolveDiscoveryMapFilterCatalogKeys(
-    Object? rawDiscoveryFilters,
-  ) {
-    if (rawDiscoveryFilters is! Map) {
-      return const <String>[];
-    }
-
-    final discoveryFilters = Map<String, dynamic>.from(rawDiscoveryFilters);
-    final rawSurfaces = discoveryFilters['surfaces'];
-    if (rawSurfaces is! Map) {
-      return const <String>[];
-    }
-
-    final surfaces = Map<String, dynamic>.from(rawSurfaces);
-    final rawPublicMap = surfaces['public_map.primary'];
-    if (rawPublicMap is! Map) {
-      return const <String>[];
-    }
-
-    final publicMap = Map<String, dynamic>.from(rawPublicMap);
-    return _resolveFilterCatalogKeys(publicMap['filters']);
-  }
-
-  static List<String> _resolveFilterCatalogKeys(Object? rawFilters) {
+    final mapUi = settings['map_ui'] is Map
+        ? Map<String, dynamic>.from(settings['map_ui'] as Map)
+        : const <String, dynamic>{};
+    final rawFilters = mapUi['filters'];
     if (rawFilters is! List) {
-      return const <String>[];
+      return PoiFilterOptions(categories: const []);
     }
-
-    final ordered = <String>[];
+    final ordered = <PoiFilterCategory>[];
     final seen = <String>{};
     for (final entry in rawFilters) {
       if (entry is! Map) {
@@ -865,9 +847,14 @@ class AppDataDTO {
       if (key.isEmpty || !seen.add(key)) {
         continue;
       }
-      ordered.add(key);
+      final category = MapFilterCategoryDTO.fromJson(map).toDomain();
+      if (category != null) {
+        ordered.add(category);
+      }
     }
-    return List<String>.unmodifiable(ordered);
+    return PoiFilterOptions(
+      categories: List<PoiFilterCategory>.unmodifiable(ordered),
+    );
   }
 
   static bool _resolvePhoneOtpSmsFallbackEnabled(

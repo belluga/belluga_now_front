@@ -4,8 +4,11 @@ import 'package:belluga_now/domain/map/filters/poi_filter_options.dart';
 import 'package:belluga_now/domain/map/filters/poi_filter_mode.dart';
 import 'package:belluga_now/domain/map/map_region_definition.dart';
 import 'package:belluga_now/domain/map/queries/poi_query.dart';
+import 'package:belluga_now/domain/map/projections/poi_filter_page.dart';
+import 'package:belluga_now/domain/map/projections/poi_scene_result.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_reference_id_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_positive_int_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_reference_type_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_stack_key_value.dart';
 import 'package:belluga_now/domain/partners/account_profile_complete.dart';
@@ -61,6 +64,10 @@ class PoiRepository implements PoiRepositoryContract {
     defaultValue: null,
   );
   @override
+  final filterResultPoisStreamValue = StreamValue<List<CityPoiModel>?>(
+    defaultValue: null,
+  );
+  @override
   final selectedPoiStreamValue = StreamValue<CityPoiModel?>();
   @override
   final filterModeStreamValue = StreamValue<PoiFilterMode>(
@@ -82,16 +89,43 @@ class PoiRepository implements PoiRepositoryContract {
 
   @override
   Future<List<CityPoiModel>> fetchPoints(PoiQuery query) async {
-    final cityPois = await _dataSource.fetchPoints(query);
-    final snapshot = List<CityPoiModel>.unmodifiable(cityPois);
-    _setAllPois(snapshot);
-    return snapshot;
+    final scene = await fetchScene(query);
+    publishScene(scene);
+    return scene.points;
+  }
+
+  @override
+  Future<PoiSceneResult> fetchScene(PoiQuery query) =>
+      _dataSource.fetchScene(query);
+
+  @override
+  void publishScene(PoiSceneResult scene) {
+    _setAllPois(scene.points);
+  }
+
+  @override
+  void replaceFilterResults(List<CityPoiModel> points) {
+    filterResultPoisStreamValue.addValue(
+      List<CityPoiModel>.unmodifiable(points),
+    );
+  }
+
+  @override
+  Future<PoiFilterPage> fetchFilterPage(
+    PoiQuery query, {
+    required PoiPositiveIntValue page,
+    required PoiPositiveIntValue pageSize,
+  }) => _dataSource.fetchFilterPage(query, page: page, pageSize: pageSize);
+
+  @override
+  void seedFilterOptions(PoiFilterOptions options) {
+    filterOptionsStreamValue.addValue(options);
   }
 
   Future<void> initializePoiStreams(PoiQuery query) async {
-    if (filterOptionsStreamValue.value == null) {
-      await fetchFilters(query);
-    }
+    filterOptionsStreamValue.addValue(
+      filterOptionsStreamValue.value ?? PoiFilterOptions(categories: const []),
+    );
   }
 
   @override
@@ -122,13 +156,6 @@ class PoiRepository implements PoiRepositoryContract {
   }) async {
     final stackItems = await fetchStackItems(stackKey: stackKey, query: query);
     setStackItems(stackItems);
-  }
-
-  @override
-  Future<PoiFilterOptions> fetchFilters(PoiQuery query) async {
-    final filters = await _dataSource.fetchFilters(query);
-    filterOptionsStreamValue.addValue(filters);
-    return filters;
   }
 
   @override

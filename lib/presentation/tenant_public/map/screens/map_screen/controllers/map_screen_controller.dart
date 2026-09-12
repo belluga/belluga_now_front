@@ -7,6 +7,7 @@ import 'package:belluga_now/application/time/timezone_converter.dart';
 import 'package:belluga_now/application/map_surface/belluga_map_handle.dart';
 import 'package:belluga_now/application/map_surface/belluga_map_handle_contract.dart';
 import 'package:belluga_now/application/map_surface/belluga_map_interaction.dart';
+import 'package:belluga_now/application/map_surface/belluga_map_viewport.dart';
 import 'package:belluga_now/application/proximity_preferences/account_profile_reference_point_resolver.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/app_data/location_origin_resolution.dart';
@@ -34,6 +35,7 @@ import 'package:belluga_now/domain/map/value_objects/poi_filter_source_value.dar
 import 'package:belluga_now/domain/map/value_objects/poi_filter_taxonomy_token_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_filter_type_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_reference_id_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_positive_int_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_reference_path_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_reference_slug_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_reference_type_value.dart';
@@ -82,6 +84,7 @@ class MapScreenController implements Disposable {
     milliseconds: 1000,
   );
   static const Duration _searchInputDebounceDelay = Duration(milliseconds: 260);
+  static const Duration _viewportDebounceDelay = Duration(milliseconds: 300);
   MapScreenController({
     PoiRepositoryContract? poiRepository,
     UserLocationRepositoryContract? userLocationRepository,
@@ -139,6 +142,15 @@ class MapScreenController implements Disposable {
     defaultValue: MapStatus.locating,
   );
   final isLoading = StreamValue<bool>(defaultValue: false);
+  final isViewportRefreshingStreamValue = StreamValue<bool>(
+    defaultValue: false,
+  );
+  final isScenePartialStreamValue = StreamValue<bool>(defaultValue: false);
+  final sceneNoticeStreamValue = StreamValue<String?>(defaultValue: null);
+  StreamValue<List<CityPoiModel>?> get filterResultPoisStreamValue =>
+      _poiRepository.filterResultPoisStreamValue;
+  final filterListHasMoreStreamValue = StreamValue<bool>(defaultValue: false);
+  final isFilterListLoadingStreamValue = StreamValue<bool>(defaultValue: false);
   final filterInteractionLockedStreamValue = StreamValue<bool>(
     defaultValue: false,
   );
@@ -163,6 +175,7 @@ class MapScreenController implements Disposable {
   final zoomStreamValue = StreamValue<double>(defaultValue: 16);
   Timer? _zoomThrottle;
   Timer? _searchInputDebounceTimer;
+  Timer? _viewportDebounceTimer;
   double? _pendingZoom;
   Future<EventTrackerTimedEventHandle?>? _activePoiTimedEventFuture;
   String? _activePoiId;
@@ -241,6 +254,11 @@ class MapScreenController implements Disposable {
   StreamSubscription<LocationOriginSettings?>?
   _locationOriginSettingsSubscription;
   int _poiRequestSequence = 0;
+  int _filterListGeneration = 0;
+  int _filterListPage = 0;
+  PoiQuery? _filterListQuery;
+  String? _requestedViewportFingerprint;
+  bool _hasCommittedScene = false;
   bool _filterInteractionLocked = false;
   CityPoiModel? _pendingInitialPoiFocus;
   bool _initialPoiFocusApplied = false;
@@ -692,35 +710,11 @@ class MapScreenController implements Disposable {
     if (_isDisposed) {
       return;
     }
-    if (!force &&
-        filterOptionsStreamValue.value != null &&
-        !_filtersLoadFailed) {
+    if (!force && filterOptionsStreamValue.value != null) {
       return;
     }
-    try {
-      final baseQuery = _hasEstablishedInitialPoiQuery
-          ? _currentQuery
-          : PoiQuery();
-      final resolvedQuery = await _resolveRuntimeQuery(baseQuery);
-      if (_isDisposed) {
-        return;
-      }
-      if (resolvedQuery.origin == null) {
-        _filtersLoadFailed = true;
-        debugPrint(
-          'Skipped POI filters load because no canonical origin was resolved.',
-        );
-        return;
-      }
-      await _poiRepository.fetchFilters(resolvedQuery);
-      if (_isDisposed) {
-        return;
-      }
-      _filtersLoadFailed = false;
-    } catch (error) {
-      _filtersLoadFailed = true;
-      debugPrint('Failed to load POI filters: $error');
-    }
+    _poiRepository.seedFilterOptions(_appData.mapFilterOptions);
+    _filtersLoadFailed = false;
   }
 
   Future<void> centerOnUser({bool animate = true}) async {
@@ -1174,9 +1168,28 @@ class MapScreenController implements Disposable {
     if (_isDisposed) {
       return;
     }
+    if (!mapHandle.isReady) {
+      return;
+    }
+    final viewport = query.hasBounds
+        ? BellugaMapViewport(
+            northEast: query.northEast!,
+            southWest: query.southWest!,
+          )
+        : mapHandle.currentViewport;
+    if (viewport == null) {
+      return;
+    }
+    final viewportQuery = _queryForViewport(query, viewport);
+    if (viewportQuery == null) {
+      sceneNoticeStreamValue.addValue(
+        'Aproxime o mapa para atualizar os pontos desta area.',
+      );
+      return;
+    }
     final requestSequence = ++_poiRequestSequence;
-    final resolvedQuery = await _resolveRuntimeQuery(query);
-    if (_isDisposed) {
+    final resolvedQuery = await _resolveRuntimeQuery(viewportQuery);
+    if (_isDisposed || !_isLatestPoiRequest(requestSequence)) {
       return;
     }
     _currentQuery = resolvedQuery;
@@ -1188,22 +1201,37 @@ class MapScreenController implements Disposable {
       searchTextController.text = nextSearchText;
     }
 
-    _setMapStatus(MapStatus.fetching);
-    _setMapMessage(
-      announceLoadingMessage
-          ? (loadingMessage ?? 'Carregando pontos...')
-          : null,
-    );
-    _setLoadingState();
+    final replacingCommittedScene = _hasCommittedScene;
+    if (replacingCommittedScene) {
+      isViewportRefreshingStreamValue.addValue(true);
+      sceneNoticeStreamValue.addValue('Atualizando esta area...');
+    } else {
+      _setMapStatus(MapStatus.fetching);
+      _setMapMessage(
+        announceLoadingMessage
+            ? (loadingMessage ?? 'Carregando pontos...')
+            : null,
+      );
+      _setLoadingState();
+    }
 
     try {
-      await _poiRepository.refreshPoints(resolvedQuery);
+      final scene = await _poiRepository.fetchScene(resolvedQuery);
       if (_isDisposed) {
         return;
       }
       if (!_isLatestPoiRequest(requestSequence)) {
         return;
       }
+      _poiRepository.publishScene(scene);
+      _hasCommittedScene = true;
+      isScenePartialStreamValue.addValue(scene.isPartial);
+      isViewportRefreshingStreamValue.addValue(false);
+      sceneNoticeStreamValue.addValue(
+        scene.isPartial
+            ? 'Ha mais pontos nesta area. Aproxime o mapa para ver mais.'
+            : null,
+      );
       _setIdleState();
       _setMapStatus(MapStatus.ready);
       _setMapMessage(null);
@@ -1214,12 +1242,77 @@ class MapScreenController implements Disposable {
       if (!_isLatestPoiRequest(requestSequence)) {
         return;
       }
+      isViewportRefreshingStreamValue.addValue(false);
+      if (_hasCommittedScene) {
+        sceneNoticeStreamValue.addValue(
+          'Nao foi possivel atualizar os pontos desta area.',
+        );
+        _setIdleState();
+        _setMapStatus(MapStatus.ready);
+        return;
+      }
       const errorMessage = 'Nao foi possivel carregar os pontos de interesse.';
       _setErrorState(errorMessage);
       _setMapStatus(MapStatus.error);
       _setMapMessage(errorMessage);
       debugPrint('Failed to load POIs: $error');
     }
+  }
+
+  PoiQuery? _queryForViewport(PoiQuery query, BellugaMapViewport viewport) {
+    final north = viewport.northEast.latitude;
+    final east = viewport.northEast.longitude;
+    final south = viewport.southWest.latitude;
+    final west = viewport.southWest.longitude;
+    if (![north, east, south, west].every((value) => value.isFinite) ||
+        south >= north ||
+        west >= east) {
+      return null;
+    }
+    final center = _coordinate((north + south) / 2, (east + west) / 2);
+    final radius = _distanceMeters(center, viewport.northEast);
+    if (!radius.isFinite ||
+        radius <= 0 ||
+        radius > _appData.mapRadiusMaxMeters) {
+      return null;
+    }
+    final effectiveRadius = math.max(radius, _appData.mapRadiusMinMeters);
+    return PoiQuery(
+      northEast: viewport.northEast,
+      southWest: viewport.southWest,
+      origin: center,
+      maxDistanceMetersValue: _parseDistanceValue(effectiveRadius),
+      categoryKeyValues: query.categoryKeyValues,
+      sourceValue: query.sourceValue,
+      typeValues: query.typeValues,
+      tagValues: query.tagValues,
+      taxonomyTokenValues: query.taxonomyTokenValues,
+      searchTermValue: query.searchTermValue,
+    );
+  }
+
+  CityCoordinate _coordinate(double latitude, double longitude) {
+    final latitudeValue = LatitudeValue()..parse(latitude.toString());
+    final longitudeValue = LongitudeValue()..parse(longitude.toString());
+    return CityCoordinate(
+      latitudeValue: latitudeValue,
+      longitudeValue: longitudeValue,
+    );
+  }
+
+  double _distanceMeters(CityCoordinate from, CityCoordinate to) {
+    const earthRadiusMeters = 6371008.8;
+    double radians(double degrees) => degrees * math.pi / 180;
+    final fromLat = radians(from.latitude);
+    final toLat = radians(to.latitude);
+    final deltaLat = toLat - fromLat;
+    final deltaLng = radians(to.longitude - from.longitude);
+    final a =
+        math.pow(math.sin(deltaLat / 2), 2) +
+        math.cos(fromLat) *
+            math.cos(toLat) *
+            math.pow(math.sin(deltaLng / 2), 2);
+    return earthRadiusMeters * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
   }
 
   bool _isLatestPoiRequest(int requestSequence) {
@@ -1238,8 +1331,9 @@ class MapScreenController implements Disposable {
     _currentQueryOriginSettings = resolution.settings;
     _refreshLocationFeedback(emitNotice: false);
     _queueBootstrapUserOriginHandoffIfEligible(resolution);
-    final origin =
-        _searchTrayOrigin ?? resolution.effectiveCoordinate ?? query.origin;
+    final origin = query.hasBounds
+        ? query.origin
+        : (_searchTrayOrigin ?? resolution.effectiveCoordinate ?? query.origin);
     return PoiQuery(
       northEast: query.northEast,
       southWest: query.southWest,
@@ -2414,7 +2508,14 @@ class MapScreenController implements Disposable {
     required bool focusLeadingResultOnSuccess,
   }) async {
     try {
-      await loadPois(query, announceLoadingMessage: false);
+      final shouldLoadList = _hasActiveServerFilter;
+      await Future.wait<void>([
+        loadPois(query, announceLoadingMessage: false),
+        if (shouldLoadList)
+          _resetAndLoadFilterList(query)
+        else
+          _clearFilterList(),
+      ]);
       if (_isDisposed) {
         return;
       }
@@ -2429,6 +2530,107 @@ class MapScreenController implements Disposable {
         _armPostFilterMarkerTapSuppression();
         _setFilterInteractionLocked(false);
         _setPendingFilterLabel(null);
+      }
+    }
+  }
+
+  bool get _hasActiveServerFilter =>
+      _activeCategoryKeys.isNotEmpty ||
+      _activeTaxonomyTokens.isNotEmpty ||
+      _activeTags.isNotEmpty ||
+      (_activeSource?.trim().isNotEmpty ?? false) ||
+      _activeTypes.isNotEmpty;
+
+  Future<void> _clearFilterList() async {
+    _filterListGeneration += 1;
+    _filterListPage = 0;
+    _filterListQuery = null;
+    _poiRepository.replaceFilterResults(const <CityPoiModel>[]);
+    filterListHasMoreStreamValue.addValue(false);
+    isFilterListLoadingStreamValue.addValue(false);
+  }
+
+  Future<void> _resetAndLoadFilterList(PoiQuery sceneQuery) async {
+    final generation = ++_filterListGeneration;
+    _filterListPage = 0;
+    _poiRepository.replaceFilterResults(const <CityPoiModel>[]);
+    filterListHasMoreStreamValue.addValue(false);
+    isFilterListLoadingStreamValue.addValue(true);
+    final resolved = await _resolveRuntimeQuery(
+      _queryWithoutViewport(sceneQuery),
+    );
+    if (_isDisposed || generation != _filterListGeneration) {
+      return;
+    }
+    final origin = resolved.origin;
+    if (origin == null) {
+      isFilterListLoadingStreamValue.addValue(false);
+      return;
+    }
+    _filterListQuery = PoiQuery(
+      origin: origin,
+      maxDistanceMetersValue: _parseDistanceValue(_appData.mapRadiusMaxMeters),
+      categoryKeyValues: resolved.categoryKeyValues,
+      sourceValue: resolved.sourceValue,
+      typeValues: resolved.typeValues,
+      tagValues: resolved.tagValues,
+      taxonomyTokenValues: resolved.taxonomyTokenValues,
+      searchTermValue: resolved.searchTermValue,
+    );
+    await _loadFilterListPage(generation: generation, page: 1, append: false);
+  }
+
+  Future<void> loadMoreFilterResults() async {
+    if (_isDisposed ||
+        isFilterListLoadingStreamValue.value ||
+        !filterListHasMoreStreamValue.value ||
+        _filterListQuery == null) {
+      return;
+    }
+    await _loadFilterListPage(
+      generation: _filterListGeneration,
+      page: _filterListPage + 1,
+      append: true,
+    );
+  }
+
+  Future<void> _loadFilterListPage({
+    required int generation,
+    required int page,
+    required bool append,
+  }) async {
+    final query = _filterListQuery;
+    if (query == null) {
+      return;
+    }
+    isFilterListLoadingStreamValue.addValue(true);
+    try {
+      final result = await _poiRepository.fetchFilterPage(
+        query,
+        page: PoiPositiveIntValue()..parse(page.toString()),
+        pageSize: PoiPositiveIntValue()..parse('10'),
+      );
+      if (_isDisposed || generation != _filterListGeneration) {
+        return;
+      }
+      final prior = append
+          ? filterResultPoisStreamValue.value ?? const <CityPoiModel>[]
+          : const <CityPoiModel>[];
+      _poiRepository.replaceFilterResults(
+        List<CityPoiModel>.unmodifiable(<CityPoiModel>[
+          ...prior,
+          ...result.items,
+        ]),
+      );
+      _filterListPage = result.page;
+      filterListHasMoreStreamValue.addValue(result.hasMore);
+    } catch (error) {
+      if (!_isDisposed && generation == _filterListGeneration) {
+        debugPrint('Failed to load Map filter list page: $error');
+      }
+    } finally {
+      if (!_isDisposed && generation == _filterListGeneration) {
+        isFilterListLoadingStreamValue.addValue(false);
       }
     }
   }
@@ -2462,7 +2664,7 @@ class MapScreenController implements Disposable {
       clearSelectedPoi(preserveMarkerMemory: false);
     }
     final pois = orderedFilterResultPois(
-      filteredPoisStreamValue.value ?? const <CityPoiModel>[],
+      filterResultPoisStreamValue.value ?? const <CityPoiModel>[],
     );
     if (pois.isEmpty) {
       return;
@@ -2539,7 +2741,7 @@ class MapScreenController implements Disposable {
     }
 
     final ordered = orderedFilterResultPois(
-      filteredPoisStreamValue.value ?? const <CityPoiModel>[],
+      filterResultPoisStreamValue.value ?? const <CityPoiModel>[],
     );
     final selectedIndex = ordered.indexWhere((poi) => poi.id == selectedPoi.id);
     if (selectedIndex == -1) {
@@ -2585,7 +2787,7 @@ class MapScreenController implements Disposable {
 
   void _syncDeckIndexToPoi(CityPoiModel poi) {
     final orderedPois = orderedFilterResultPois(
-      filteredPoisStreamValue.value ?? const <CityPoiModel>[],
+      filterResultPoisStreamValue.value ?? const <CityPoiModel>[],
     );
     final index = orderedPois.indexWhere((entry) => entry.id == poi.id);
     if (index == -1) {
@@ -3218,6 +3420,7 @@ class MapScreenController implements Disposable {
     _finishPoiTimedEvent();
     _zoomThrottle?.cancel();
     _searchInputDebounceTimer?.cancel();
+    _viewportDebounceTimer?.cancel();
     _cancelSoftLocationNoticeTimer();
     _postFilterMarkerTapSuppressionTimer?.cancel();
     await _mapInteractionSubscription?.cancel();
@@ -3230,6 +3433,11 @@ class MapScreenController implements Disposable {
     locationFeedbackStateStreamValue.dispose();
     mapStatusStreamValue.dispose();
     isLoading.dispose();
+    isViewportRefreshingStreamValue.dispose();
+    isScenePartialStreamValue.dispose();
+    sceneNoticeStreamValue.dispose();
+    filterListHasMoreStreamValue.dispose();
+    isFilterListLoadingStreamValue.dispose();
     errorMessage.dispose();
     searchTermStreamValue.dispose();
     searchTextController.dispose();
@@ -3274,6 +3482,9 @@ class MapScreenController implements Disposable {
       }
       if (event.isViewportChange) {
         clearSelectedPoi(preserveMarkerMemory: false);
+        if (event.userGesture && event.viewport != null) {
+          _queueViewportScene(event.viewport!);
+        }
       } else if (event.type == BellugaMapInteractionType.emptyTap) {
         clearClusterPicker();
       }
@@ -3286,9 +3497,60 @@ class MapScreenController implements Disposable {
       if (event.type == BellugaMapInteractionType.ready) {
         _tryApplyPendingInitialPoiFocus();
         _tryApplyPendingBootstrapUserOriginHandoff();
+        final viewport = event.viewport ?? mapHandle.currentViewport;
+        if (viewport != null && !_hasCommittedScene) {
+          _queueViewportScene(viewport, immediate: true);
+        }
       }
     });
   }
+
+  void _queueViewportScene(
+    BellugaMapViewport viewport, {
+    bool immediate = false,
+  }) {
+    _viewportDebounceTimer?.cancel();
+    final fingerprint = _viewportFingerprint(viewport);
+    if (fingerprint == _requestedViewportFingerprint) {
+      return;
+    }
+    void dispatch() {
+      if (_isDisposed || fingerprint == _requestedViewportFingerprint) {
+        return;
+      }
+      _requestedViewportFingerprint = fingerprint;
+      unawaited(
+        loadPois(
+          _currentQuery.hasBounds
+              ? _queryWithoutViewport(_currentQuery)
+              : _currentQuery,
+          announceLoadingMessage: !_hasCommittedScene,
+        ),
+      );
+    }
+
+    if (immediate) {
+      dispatch();
+      return;
+    }
+    _viewportDebounceTimer = Timer(_viewportDebounceDelay, dispatch);
+  }
+
+  PoiQuery _queryWithoutViewport(PoiQuery query) => PoiQuery(
+    categoryKeyValues: query.categoryKeyValues,
+    sourceValue: query.sourceValue,
+    typeValues: query.typeValues,
+    tagValues: query.tagValues,
+    taxonomyTokenValues: query.taxonomyTokenValues,
+    searchTermValue: query.searchTermValue,
+  );
+
+  String _viewportFingerprint(BellugaMapViewport viewport) => <double>[
+    viewport.southWest.latitude,
+    viewport.southWest.longitude,
+    viewport.northEast.latitude,
+    viewport.northEast.longitude,
+  ].map((value) => value.toStringAsFixed(6)).join(':');
 
   void _pushZoom(double nextZoom) {
     if (_isDisposed) {

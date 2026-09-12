@@ -1529,7 +1529,24 @@ void main() {
   testWidgets('Visual sheet saves filter visual while marker override is off', (
     tester,
   ) async {
-    final settingsRepository = _FakeTenantAdminSettingsRepository();
+    final initialDiscoveryFilters = TenantAdminDiscoveryFiltersSettings.empty()
+        .applyFilters(
+          surface: TenantAdminDiscoveryFilterSurfaceDefinition.map,
+          filters: TenantAdminDiscoveryFilterCatalogItems([
+            TenantAdminDiscoveryFilterCatalogItem(
+              keyValue: _token('events'),
+              labelValue: _requiredText('Eventos'),
+              query: TenantAdminDiscoveryFilterQuery(
+                entityValues: <TenantAdminLowercaseTokenValue>[_token('event')],
+              ),
+            ),
+          ]),
+        );
+    final settingsRepository = _FakeTenantAdminSettingsRepository(
+      initialDiscoveryFiltersSettings: TenantAdminDiscoveryFiltersSettingsValue(
+        initialDiscoveryFilters.rawDiscoveryFilters,
+      ),
+    );
     GetIt.I.registerSingleton<TenantAdminSettingsRepositoryContract>(
       settingsRepository,
     );
@@ -1548,11 +1565,6 @@ void main() {
         ),
       ),
     );
-
-    await tester.tap(
-      find.byKey(TenantAdminDiscoveryFiltersKeys.addFilterButton),
-    );
-    await tester.pumpAndSettle();
 
     final rowFinder = find.byKey(
       TenantAdminDiscoveryFiltersKeys.filterRow('public_map.primary', 0),

@@ -20,10 +20,7 @@ const double _kSearchLauncherSize = 48;
 const double _kSearchPreviewVisualSize = 46;
 
 class MapAdaptiveTray extends StatelessWidget {
-  const MapAdaptiveTray({
-    super.key,
-    required this.controller,
-  });
+  const MapAdaptiveTray({super.key, required this.controller});
 
   final MapScreenController controller;
 
@@ -39,63 +36,71 @@ class MapAdaptiveTray extends StatelessWidget {
             builder: (_, filterOptions) {
               return StreamValueBuilder<List<CityPoiModel>?>(
                 streamValue: controller.filteredPoisStreamValue,
-                builder: (_, filteredPoisOrNull) {
-                  final filteredPois =
-                      filteredPoisOrNull ?? const <CityPoiModel>[];
-                  return StreamValueBuilder<String?>(
-                    streamValue: controller.activeFilterLabelStreamValue,
-                    builder: (_, activeFilterLabel) {
+                builder: (_, scenePoisOrNull) {
+                  return StreamValueBuilder<List<CityPoiModel>?>(
+                    streamValue: controller.filterResultPoisStreamValue,
+                    builder: (_, filterListOrNull) {
+                      final filteredPois = trayMode == MapTrayMode.filterResults
+                          ? filterListOrNull ?? const <CityPoiModel>[]
+                          : scenePoisOrNull ?? const <CityPoiModel>[];
                       return StreamValueBuilder<String?>(
-                        streamValue: controller.pendingFilterLabelStreamValue,
-                        builder: (_, pendingFilterLabel) {
+                        streamValue: controller.activeFilterLabelStreamValue,
+                        builder: (_, activeFilterLabel) {
                           return StreamValueBuilder<String?>(
                             streamValue:
-                                controller.activeCatalogFilterKeyStreamValue,
-                            builder: (_, activeCatalogFilterKey) {
+                                controller.pendingFilterLabelStreamValue,
+                            builder: (_, pendingFilterLabel) {
                               return StreamValueBuilder<String?>(
                                 streamValue: controller
-                                    .appliedCatalogFilterKeyStreamValue,
-                                builder: (_, appliedCatalogFilterKey) {
-                                  return StreamValueBuilder<bool>(
+                                    .activeCatalogFilterKeyStreamValue,
+                                builder: (_, activeCatalogFilterKey) {
+                                  return StreamValueBuilder<String?>(
                                     streamValue: controller
-                                        .filterInteractionLockedStreamValue,
-                                    builder: (_, filterPending) {
-                                      final visualFilterLabel =
-                                          activeFilterLabel
+                                        .appliedCatalogFilterKeyStreamValue,
+                                    builder: (_, appliedCatalogFilterKey) {
+                                      return StreamValueBuilder<bool>(
+                                        streamValue: controller
+                                            .filterInteractionLockedStreamValue,
+                                        builder: (_, filterPending) {
+                                          final visualFilterLabel =
+                                              activeFilterLabel
                                                       ?.trim()
                                                       .isNotEmpty ==
                                                   true
                                               ? activeFilterLabel!.trim()
                                               : pendingFilterLabel?.trim();
-                                      return AnimatedSwitcher(
-                                        duration:
-                                            const Duration(milliseconds: 220),
-                                        switchInCurve: Curves.easeOutCubic,
-                                        switchOutCurve: Curves.easeInCubic,
-                                        child: trayMode == MapTrayMode.search
-                                            ? _TraySurface(
-                                                key: const ValueKey<String>(
-                                                  'map-tray-surface-search',
-                                                ),
-                                                dragEnabled: true,
-                                                onCollapse: controller
-                                                    .showDiscoveryTray,
-                                                child: Padding(
-                                                  padding:
-                                                      const EdgeInsets.fromLTRB(
-                                                    18,
-                                                    14,
-                                                    18,
-                                                    18,
-                                                  ),
-                                                  child: _SearchTrayBody(
-                                                    controller: controller,
-                                                    filteredPois: filteredPois,
-                                                  ),
-                                                ),
-                                              )
-                                            : trayMode ==
-                                                    MapTrayMode.filterResults
+                                          return AnimatedSwitcher(
+                                            duration: const Duration(
+                                              milliseconds: 220,
+                                            ),
+                                            switchInCurve: Curves.easeOutCubic,
+                                            switchOutCurve: Curves.easeInCubic,
+                                            child:
+                                                trayMode == MapTrayMode.search
+                                                ? _TraySurface(
+                                                    key: const ValueKey<String>(
+                                                      'map-tray-surface-search',
+                                                    ),
+                                                    dragEnabled: true,
+                                                    onCollapse: controller
+                                                        .showDiscoveryTray,
+                                                    child: Padding(
+                                                      padding:
+                                                          const EdgeInsets.fromLTRB(
+                                                            18,
+                                                            14,
+                                                            18,
+                                                            18,
+                                                          ),
+                                                      child: _SearchTrayBody(
+                                                        controller: controller,
+                                                        filteredPois:
+                                                            filteredPois,
+                                                      ),
+                                                    ),
+                                                  )
+                                                : trayMode ==
+                                                      MapTrayMode.filterResults
                                                 ? _TraySurface(
                                                     key: const ValueKey<String>(
                                                       'map-tray-surface-filter-results',
@@ -104,15 +109,14 @@ class MapAdaptiveTray extends StatelessWidget {
                                                     onCollapse: controller
                                                         .showDiscoveryTray,
                                                     child: Padding(
-                                                      padding: const EdgeInsets
-                                                          .fromLTRB(
-                                                        18,
-                                                        14,
-                                                        18,
-                                                        18,
-                                                      ),
-                                                      child:
-                                                          _FilterResultsTrayBody(
+                                                      padding:
+                                                          const EdgeInsets.fromLTRB(
+                                                            18,
+                                                            14,
+                                                            18,
+                                                            18,
+                                                          ),
+                                                      child: _FilterResultsTrayBody(
                                                         controller: controller,
                                                         filterOptions:
                                                             filterOptions,
@@ -144,9 +148,12 @@ class MapAdaptiveTray extends StatelessWidget {
                                                         appliedCatalogFilterKey,
                                                     filterPending:
                                                         filterPending,
-                                                    expanded: trayMode ==
+                                                    expanded:
+                                                        trayMode ==
                                                         MapTrayMode.filters,
                                                   ),
+                                          );
+                                        },
                                       );
                                     },
                                   );
@@ -244,7 +251,8 @@ class _FloatingFilterCluster extends StatelessWidget {
       builder: (context, constraints) {
         final collapsedCapacity = _collapsedCapacity(
           maxWidth: constraints.maxWidth,
-          hasExpandedActiveChip: activeCategory != null &&
+          hasExpandedActiveChip:
+              activeCategory != null &&
               activeLabel != null &&
               activeLabel.isNotEmpty,
         );
@@ -311,7 +319,8 @@ class _FloatingFilterCluster extends StatelessWidget {
   }
 
   PoiFilterCategory? _resolveDisplayedCategory(
-      List<PoiFilterCategory> categories) {
+    List<PoiFilterCategory> categories,
+  ) {
     final activeKey = activeCatalogFilterKey?.trim().toLowerCase();
     if (activeKey != null && activeKey.isNotEmpty) {
       for (final category in categories) {
@@ -348,8 +357,9 @@ class _FloatingFilterCluster extends StatelessWidget {
     required double maxWidth,
     required bool hasExpandedActiveChip,
   }) {
-    final effectiveWidth =
-        maxWidth.isFinite ? math.max(0, maxWidth - 36) : 384.0;
+    final effectiveWidth = maxWidth.isFinite
+        ? math.max(0, maxWidth - 36)
+        : 384.0;
     final perRow = math.max(
       1,
       ((effectiveWidth + _kFilterClusterSpacing) /
@@ -427,6 +437,28 @@ class _FilterResultsTrayBody extends StatelessWidget {
           scrollViewKey: const ValueKey<String>('map-filter-results-scroll'),
           onPoiTap: controller.handleDeckPoiSelection,
         ),
+        StreamValueBuilder<bool>(
+          streamValue: controller.filterListHasMoreStreamValue,
+          builder: (_, hasMore) => StreamValueBuilder<bool>(
+            streamValue: controller.isFilterListLoadingStreamValue,
+            builder: (_, loading) {
+              if (!hasMore && !loading) {
+                return const SizedBox.shrink();
+              }
+              return Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: Center(
+                  child: loading
+                      ? const CircularProgressIndicator()
+                      : OutlinedButton(
+                          onPressed: controller.loadMoreFilterResults,
+                          child: const Text('Carregar mais'),
+                        ),
+                ),
+              );
+            },
+          ),
+        ),
       ],
     );
   }
@@ -455,27 +487,28 @@ class _FilterChipWrap extends StatelessWidget {
     return Wrap(
       spacing: _kFilterClusterSpacing,
       runSpacing: _kFilterClusterSpacing,
-      children: categories.map(
-        (category) {
-          final matchesPersistedKey = _matchesCategoryKey(
-            category,
-            activeCatalogFilterKey: activeCatalogFilterKey,
-            appliedCatalogFilterKey: appliedCatalogFilterKey,
-          );
-          return _FloatingFilterChip(
-            category: category,
-            isActive: controller.isCategoryFilterActive(category) ||
-                matchesPersistedKey,
-            activeFilterLabel: activeFilterLabel,
-            pending: filterPending && matchesPersistedKey,
-            enabled: !filterPending,
-            onTap: () {
-              controller.toggleCatalogCategoryFilter(category);
-            },
-            onClear: controller.clearFilters,
-          );
-        },
-      ).toList(growable: false),
+      children: categories
+          .map((category) {
+            final matchesPersistedKey = _matchesCategoryKey(
+              category,
+              activeCatalogFilterKey: activeCatalogFilterKey,
+              appliedCatalogFilterKey: appliedCatalogFilterKey,
+            );
+            return _FloatingFilterChip(
+              category: category,
+              isActive:
+                  controller.isCategoryFilterActive(category) ||
+                  matchesPersistedKey,
+              activeFilterLabel: activeFilterLabel,
+              pending: filterPending && matchesPersistedKey,
+              enabled: !filterPending,
+              onTap: () {
+                controller.toggleCatalogCategoryFilter(category);
+              },
+              onClear: controller.clearFilters,
+            );
+          })
+          .toList(growable: false),
     );
   }
 
@@ -515,10 +548,12 @@ class _FilterChipPalette {
   }) {
     final scheme = Theme.of(context).colorScheme;
     final fallback = _FilterChipPalette(
-      backgroundColor:
-          isActive ? scheme.primaryContainer : scheme.surfaceContainerHigh,
-      foregroundColor:
-          isActive ? scheme.onPrimaryContainer : scheme.onSurfaceVariant,
+      backgroundColor: isActive
+          ? scheme.primaryContainer
+          : scheme.surfaceContainerHigh,
+      foregroundColor: isActive
+          ? scheme.onPrimaryContainer
+          : scheme.onSurfaceVariant,
       controlBackgroundColor: isActive
           ? scheme.onPrimaryContainer.withValues(alpha: 0.12)
           : scheme.onSurfaceVariant.withValues(alpha: 0.08),
@@ -535,10 +570,10 @@ class _FilterChipPalette {
 
     final background =
         MapMarkerVisualResolver.tryParseHexColor(overrideVisual.colorHex) ??
-            fallback.backgroundColor;
+        fallback.backgroundColor;
     final foreground =
         MapMarkerVisualResolver.tryParseHexColor(overrideVisual.iconColorHex) ??
-            fallback.foregroundColor;
+        fallback.foregroundColor;
 
     return _FilterChipPalette(
       backgroundColor: background,
@@ -549,10 +584,7 @@ class _FilterChipPalette {
 }
 
 class _FilterClusterHandle extends StatelessWidget {
-  const _FilterClusterHandle({
-    required this.expanded,
-    required this.onToggle,
-  });
+  const _FilterClusterHandle({required this.expanded, required this.onToggle});
 
   final bool expanded;
   final VoidCallback onToggle;
@@ -673,12 +705,10 @@ class _FloatingFilterChip extends StatelessWidget {
                               (activeFilterLabel?.trim().isNotEmpty ?? false)
                                   ? activeFilterLabel!.trim()
                                   : (category.label.trim().isEmpty
-                                      ? category.key.trim()
-                                      : category.label),
+                                        ? category.key.trim()
+                                        : category.label),
                               overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .labelLarge
+                              style: Theme.of(context).textTheme.labelLarge
                                   ?.copyWith(
                                     color: palette.foregroundColor,
                                     fontWeight: FontWeight.w700,
@@ -735,10 +765,7 @@ class _FloatingFilterChip extends StatelessWidget {
 }
 
 class _SearchTrayBody extends StatelessWidget {
-  const _SearchTrayBody({
-    required this.controller,
-    required this.filteredPois,
-  });
+  const _SearchTrayBody({required this.controller, required this.filteredPois});
 
   final MapScreenController controller;
   final List<CityPoiModel> filteredPois;
@@ -817,9 +844,9 @@ class _PoiSuggestionSection extends StatelessWidget {
       children: [
         Text(
           title,
-          style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
+          style: Theme.of(
+            context,
+          ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 10),
         ConstrainedBox(
@@ -845,9 +872,7 @@ class _PoiSuggestionSection extends StatelessWidget {
 }
 
 class _DockSearchLauncher extends StatelessWidget {
-  const _DockSearchLauncher({
-    required this.onTap,
-  });
+  const _DockSearchLauncher({required this.onTap});
 
   final VoidCallback onTap;
 
@@ -881,10 +906,7 @@ class _DockSearchLauncher extends StatelessWidget {
 }
 
 class _SearchSuggestionCard extends StatelessWidget {
-  const _SearchSuggestionCard({
-    required this.poi,
-    required this.onTap,
-  });
+  const _SearchSuggestionCard({required this.poi, required this.onTap});
 
   final CityPoiModel poi;
   final VoidCallback onTap;
@@ -892,12 +914,12 @@ class _SearchSuggestionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final titleStyle = Theme.of(context).textTheme.titleSmall?.copyWith(
-          fontWeight: FontWeight.w700,
-        );
-    final subtitleStyle = Theme.of(context).textTheme.bodySmall?.copyWith(
-          color: scheme.onSurfaceVariant,
-        );
+    final titleStyle = Theme.of(
+      context,
+    ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700);
+    final subtitleStyle = Theme.of(
+      context,
+    ).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant);
     final badgeLabel = PoiContentResolver.eventRelativeTimingBadgeLabel(poi);
     final isLiveNow = poi.isHappeningNow && badgeLabel != null;
 
@@ -933,9 +955,7 @@ class _SearchSuggestionCard extends StatelessWidget {
                           ),
                           child: Text(
                             badgeLabel.toUpperCase(),
-                            style: Theme.of(context)
-                                .textTheme
-                                .labelSmall
+                            style: Theme.of(context).textTheme.labelSmall
                                 ?.copyWith(
                                   color: isLiveNow
                                       ? scheme.onErrorContainer
@@ -979,9 +999,7 @@ class _SearchSuggestionCard extends StatelessWidget {
 }
 
 class _SearchSuggestionVisual extends StatelessWidget {
-  const _SearchSuggestionVisual({
-    required this.poi,
-  });
+  const _SearchSuggestionVisual({required this.poi});
 
   final CityPoiModel poi;
 
@@ -1033,11 +1051,7 @@ class _SearchSuggestionVisual extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
       ),
       child: Center(
-        child: Icon(
-          PoiContentResolver.icon(poi),
-          color: iconColor,
-          size: 20,
-        ),
+        child: Icon(PoiContentResolver.icon(poi), color: iconColor, size: 20),
       ),
     );
   }

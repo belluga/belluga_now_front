@@ -261,46 +261,83 @@ void main() {
   });
 
   group('AppDataDTO map filter catalog keys', () {
-    test('prefers canonical public map discovery filter ordering', () {
+    test('builds full options from Laravel public map_ui projection', () {
       final appData = AppDataDTO.fromJson(
         _basePayload(
           profileTypes: const [],
           settings: const {
             'map_ui': {
               'filters': [
-                {'key': 'legacy-first'},
-              ],
-            },
-            'discovery_filters': {
-              'surfaces': {
-                'public_map.primary': {
-                  'filters': [
-                    {'key': 'override-first'},
-                    {'key': 'button-only'},
-                    {'key': 'override-first'},
-                  ],
+                {
+                  'key': 'events',
+                  'label': 'Agenda',
+                  'image_uri': 'https://tenant.test/events.png',
+                  'override_marker': true,
+                  'marker_override': {
+                    'mode': 'icon',
+                    'icon': 'music',
+                    'color': '#C6141F',
+                    'icon_color': '#FFFFFF',
+                  },
+                  'query': {
+                    'source': 'event',
+                    'types': ['show'],
+                    'taxonomy': ['genre:music'],
+                    'tags': ['featured'],
+                    'categories': ['events'],
+                  },
                 },
-              },
+                {
+                  'key': 'beaches',
+                  'label': 'Praias',
+                  'override_marker': false,
+                  'query': {
+                    'source': 'static_asset',
+                    'types': ['beach'],
+                  },
+                },
+              ],
             },
           },
         ),
       ).toDomain(localInfo: _localInfo());
 
       expect(appData.mapFilterCatalogKeys.toList(), <String>[
-        'override-first',
-        'button-only',
+        'events',
+        'beaches',
       ]);
+      final events = appData.mapFilterOptions.categories.first;
+      expect(events.label, 'Agenda');
+      expect(events.count, 0);
+      expect(events.imageUri, 'https://tenant.test/events.png');
+      expect(events.overrideMarker, isTrue);
+      expect(events.markerOverrideVisual?.icon, 'music');
+      expect(events.serverQuery?.sourceValue?.value, 'event');
+      expect(events.serverQuery?.typeValues.single.value, 'show');
+      expect(
+        events.serverQuery?.taxonomyTokenValues.single.value,
+        'genre:music',
+      );
+      expect(events.serverQuery?.tagValues.single.value, 'featured');
+      expect(events.serverQuery?.categoryKeyValues.single.value, 'events');
     });
 
-    test('does not use legacy map_ui filters after public map cutoff', () {
+    test('does not consume private discovery_filters transport', () {
       final appData = AppDataDTO.fromJson(
         _basePayload(
           profileTypes: const [],
           settings: const {
-            'map_ui': {
-              'filters': [
-                {'key': 'legacy-first'},
-              ],
+            'discovery_filters': {
+              'surfaces': {
+                'public_map.primary': {
+                  'filters': [
+                    {
+                      'key': 'private-filter',
+                      'query': {'source': 'event'},
+                    },
+                  ],
+                },
+              },
             },
           },
         ),

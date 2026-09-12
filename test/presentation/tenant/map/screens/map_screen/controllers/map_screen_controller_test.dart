@@ -10,7 +10,10 @@ import 'package:belluga_now/application/router/support/canonical_route_family.da
 import 'package:belluga_now/application/router/support/canonical_route_meta.dart';
 import 'package:belluga_now/application/router/support/route_instance_scope.dart';
 import 'package:belluga_now/application/map_surface/belluga_map_handle_contract.dart';
+import 'package:belluga_now/application/map_surface/belluga_map_handle_flutter_map.dart'
+    as flutter_map_handle;
 import 'package:belluga_now/application/map_surface/belluga_map_interaction.dart';
+import 'package:belluga_now/application/map_surface/belluga_map_viewport.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/app_data/value_object/app_data_map_filter_catalog_keys_value.dart';
 import 'package:belluga_now/domain/map/city_poi_category.dart';
@@ -21,6 +24,8 @@ import 'package:belluga_now/domain/map/filters/poi_filter_options.dart';
 import 'package:belluga_now/domain/map/map_status.dart';
 import 'package:belluga_now/domain/map/map_region_definition.dart';
 import 'package:belluga_now/domain/map/projections/city_poi_stack_items.dart';
+import 'package:belluga_now/domain/map/projections/poi_filter_page.dart';
+import 'package:belluga_now/domain/map/projections/poi_scene_result.dart';
 import 'package:belluga_now/domain/map/queries/poi_query.dart';
 import 'package:belluga_now/domain/map/ride_share_provider.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
@@ -42,6 +47,7 @@ import 'package:belluga_now/domain/map/value_objects/poi_filter_type_value.dart'
 import 'package:belluga_now/domain/map/value_objects/poi_hex_color_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_icon_symbol_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_priority_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_positive_int_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_reference_id_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_reference_path_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_reference_slug_value.dart';
@@ -322,9 +328,15 @@ class _FakeCityMapRepository implements CityMapRepositoryContract {
   int failFetchPointsCount = 0;
   int failFetchFiltersCount = 0;
   int fetchPointsCallCount = 0;
-  int fetchFiltersCallCount = 0;
+  int fetchFilterPageCallCount = 0;
+  final List<PoiQuery> filterPageQueries = <PoiQuery>[];
+  final List<int> requestedFilterPages = <int>[];
   final List<Completer<List<CityPoiModel>>> queuedFetchCompleters =
       <Completer<List<CityPoiModel>>>[];
+  final List<Completer<PoiSceneResult>> queuedSceneCompleters =
+      <Completer<PoiSceneResult>>[];
+  final List<Completer<PoiFilterPage>> queuedFilterPageCompleters =
+      <Completer<PoiFilterPage>>[];
   PoiFilterOptions nextFilterOptions = PoiFilterOptions(categories: const []);
 
   @override
@@ -343,6 +355,40 @@ class _FakeCityMapRepository implements CityMapRepositoryContract {
       throw Exception('forced fetch failure');
     }
     return nextPois;
+  }
+
+  @override
+  Future<PoiSceneResult> fetchScene(PoiQuery query) async {
+    if (queuedSceneCompleters.isNotEmpty) {
+      fetchPointsCallCount += 1;
+      lastQuery = query;
+      return queuedSceneCompleters.removeAt(0).future;
+    }
+    return PoiSceneResult(
+      points: await fetchPoints(query),
+      isPartialValue: PoiBooleanValue()..parse('false'),
+    );
+  }
+
+  @override
+  Future<PoiFilterPage> fetchFilterPage(
+    PoiQuery query, {
+    required PoiPositiveIntValue page,
+    required PoiPositiveIntValue pageSize,
+  }) async {
+    fetchFilterPageCallCount += 1;
+    lastFilterQuery = query;
+    filterPageQueries.add(query);
+    requestedFilterPages.add(page.value);
+    if (queuedFilterPageCompleters.isNotEmpty) {
+      return queuedFilterPageCompleters.removeAt(0).future;
+    }
+    return PoiFilterPage(
+      pageValue: page,
+      pageSizeValue: pageSize,
+      hasMoreValue: PoiBooleanValue()..parse('false'),
+      items: nextPois,
+    );
   }
 
   @override
@@ -369,20 +415,6 @@ class _FakeCityMapRepository implements CityMapRepositoryContract {
       throw Exception('forced lookup failure');
     }
     return nextLookupPoi;
-  }
-
-  @override
-  Future<PoiFilterOptions> fetchFilters(PoiQuery query) async {
-    fetchFiltersCallCount += 1;
-    lastFilterQuery = query;
-    if (failFetchFiltersCount > 0) {
-      failFetchFiltersCount -= 1;
-      throw Exception('forced transient filters failure');
-    }
-    if (throwOnFetchFilters) {
-      throw Exception('forced filters failure');
-    }
-    return nextFilterOptions;
   }
 
   @override
@@ -777,7 +809,7 @@ PublicStaticAssetModel _buildPublicStaticAsset({
   );
 }
 
-class _FakeMapHandle implements BellugaMapHandleContract {
+class _FakeMapHandle extends flutter_map_handle.BellugaMapHandle {
   static const double _cameraCoordinateTolerance = 0.000001;
   static const double _cameraZoomTolerance = 0.01;
 
@@ -805,6 +837,7 @@ class _FakeMapHandle implements BellugaMapHandleContract {
   bool _isReady;
   double? _currentZoom;
   CityCoordinate? _currentCenter;
+  BellugaMapViewport? _currentViewport;
   final bool _treatNoOpMoveAsSuccess;
   int moveCallCount = 0;
   CityCoordinate? lastMoveCoordinate;
@@ -823,6 +856,28 @@ class _FakeMapHandle implements BellugaMapHandleContract {
 
   @override
   CityCoordinate? get currentCenter => _currentCenter;
+
+  @override
+  BellugaMapViewport? get currentViewport {
+    if (!_isReady) {
+      return null;
+    }
+    final existing = _currentViewport;
+    if (existing != null) {
+      return existing;
+    }
+    final center = _currentCenter ?? _buildCoordinate('-20.0', '-40.0');
+    return BellugaMapViewport(
+      northEast: _buildCoordinate(
+        (center.latitude + 0.005).toString(),
+        (center.longitude + 0.005).toString(),
+      ),
+      southWest: _buildCoordinate(
+        (center.latitude - 0.005).toString(),
+        (center.longitude - 0.005).toString(),
+      ),
+    );
+  }
 
   @override
   bool moveTo(CityCoordinate coordinate, {required double zoom}) {
@@ -879,19 +934,25 @@ class _FakeMapHandle implements BellugaMapHandleContract {
       BellugaMapInteractionEvent(
         type: BellugaMapInteractionType.ready,
         zoom: _currentZoom,
+        viewport: currentViewport,
       ),
     );
   }
 
   @override
   void emitInteraction(BellugaMapInteractionEvent event) {
+    if (event.type == BellugaMapInteractionType.ready) {
+      _isReady = true;
+    }
     _currentZoom = event.zoom ?? _currentZoom;
+    _currentViewport = event.viewport ?? _currentViewport;
     _events.add(event);
   }
 
   @override
   void dispose() {
     _events.close();
+    super.dispose();
   }
 
   void emitReady() {
@@ -900,6 +961,7 @@ class _FakeMapHandle implements BellugaMapHandleContract {
       BellugaMapInteractionEvent(
         type: BellugaMapInteractionType.ready,
         zoom: _currentZoom,
+        viewport: currentViewport,
       ),
     );
   }
@@ -1007,6 +1069,44 @@ CityPoiModel _buildPoi({
 
 Future<void> _flushMicrotasks() async {
   await Future<void>.delayed(Duration.zero);
+}
+
+PoiFilterPage _buildFilterPage({
+  required int page,
+  required bool hasMore,
+  required List<CityPoiModel> items,
+}) {
+  return PoiFilterPage(
+    pageValue: PoiPositiveIntValue()..parse(page.toString()),
+    pageSizeValue: PoiPositiveIntValue()..parse('10'),
+    hasMoreValue: PoiBooleanValue()..parse(hasMore.toString()),
+    items: items,
+  );
+}
+
+PoiSceneResult _buildScene({
+  required bool isPartial,
+  required List<CityPoiModel> points,
+}) {
+  return PoiSceneResult(
+    points: points,
+    isPartialValue: PoiBooleanValue()..parse(isPartial.toString()),
+  );
+}
+
+BellugaMapViewport _buildViewport({required int seed}) {
+  final centerLatitude = -20.0 - (seed * 0.001);
+  final centerLongitude = -40.0 - (seed * 0.001);
+  return BellugaMapViewport(
+    northEast: _buildCoordinate(
+      (centerLatitude + 0.004).toString(),
+      (centerLongitude + 0.004).toString(),
+    ),
+    southWest: _buildCoordinate(
+      (centerLatitude - 0.004).toString(),
+      (centerLongitude - 0.004).toString(),
+    ),
+  );
 }
 
 CityCoordinate _buildCoordinate(String latitudeRaw, String longitudeRaw) {
@@ -2011,9 +2111,10 @@ void main() {
         hasLength(1),
       );
       expect(controller.selectedPoiStreamValue.value?.id, 'poi-a');
+      expect(controller.errorMessage.value, isNull);
       expect(
-        controller.errorMessage.value,
-        'Nao foi possivel carregar os pontos de interesse.',
+        controller.sceneNoticeStreamValue.value,
+        'Nao foi possivel atualizar os pontos desta area.',
       );
     });
 
@@ -3029,20 +3130,346 @@ void main() {
     );
 
     test(
-      'refreshes query origin from the latest tracked user location',
+      'drops an older scene that completes after a newer partial scene',
       () async {
-        final firstOrigin = _buildCoordinate('-20.1000', '-40.1000');
-        final latestOrigin = _buildCoordinate('-20.2000', '-40.2000');
+        final olderRequest = Completer<PoiSceneResult>();
+        final newerRequest = Completer<PoiSceneResult>();
+        mapRepository.queuedSceneCompleters
+          ..add(olderRequest)
+          ..add(newerRequest);
 
-        userLocationRepository.userLocationStreamValue.addValue(firstOrigin);
-        await controller.loadPois(PoiQuery());
-        expect(mapRepository.lastQuery?.origin, firstOrigin);
+        final olderFuture = controller.loadPois(PoiQuery());
+        await _flushMicrotasks();
+        final newerFuture = controller.loadPois(
+          _buildQuery(categoryKeys: const <String>{'event'}),
+        );
+        await _flushMicrotasks();
 
-        userLocationRepository.userLocationStreamValue.addValue(latestOrigin);
-        await controller.searchPois('pizza');
+        newerRequest.complete(
+          _buildScene(
+            isPartial: true,
+            points: <CityPoiModel>[_buildPoi(id: 'newer-partial')],
+          ),
+        );
+        await newerFuture;
+        await _flushMicrotasks();
 
-        expect(mapRepository.lastQuery?.origin, latestOrigin);
-        expect(_querySearchTerm(mapRepository.lastQuery), 'pizza');
+        expect(
+          controller.filteredPoisStreamValue.value?.map((poi) => poi.id),
+          <String>['newer-partial'],
+        );
+        expect(controller.isScenePartialStreamValue.value, isTrue);
+        expect(
+          controller.sceneNoticeStreamValue.value,
+          'Ha mais pontos nesta area. Aproxime o mapa para ver mais.',
+        );
+
+        olderRequest.complete(
+          _buildScene(
+            isPartial: false,
+            points: <CityPoiModel>[_buildPoi(id: 'older-completed-last')],
+          ),
+        );
+        await olderFuture;
+        await _flushMicrotasks();
+
+        expect(
+          controller.filteredPoisStreamValue.value?.map((poi) => poi.id),
+          <String>['newer-partial'],
+        );
+        expect(controller.isScenePartialStreamValue.value, isTrue);
+        expect(_queryCategoryKeys(mapRepository.lastQuery), <String>{'event'});
+      },
+    );
+
+    test('keeps scene origin bound to the viewport midpoint', () async {
+      final firstOrigin = _buildCoordinate('-20.1000', '-40.1000');
+      final latestOrigin = _buildCoordinate('-20.2000', '-40.2000');
+
+      userLocationRepository.userLocationStreamValue.addValue(firstOrigin);
+      await controller.loadPois(PoiQuery());
+      expect(
+        mapRepository.lastQuery?.origin,
+        _buildCoordinate('-20.0', '-40.0'),
+      );
+
+      userLocationRepository.userLocationStreamValue.addValue(latestOrigin);
+      await controller.searchPois('pizza');
+
+      expect(
+        mapRepository.lastQuery?.origin,
+        _buildCoordinate('-20.0', '-40.0'),
+      );
+      expect(_querySearchTerm(mapRepository.lastQuery), 'pizza');
+    });
+
+    testWidgets(
+      'waits for map readiness and sends the first complete rendered viewport',
+      (tester) async {
+        final mapHandle = _FakeMapHandle(isReady: false);
+        final localController = _buildMapController(
+          poiRepository: _buildPoiRepository(mapRepository: mapRepository),
+          userLocationRepository: userLocationRepository,
+          telemetryRepository: telemetry,
+          mapHandle: mapHandle,
+          appData: _buildAppData(),
+        );
+        addTearDown(localController.onDispose);
+
+        await localController.init(
+          initialLocationGateResult:
+              LocationPermissionGateResult.continueWithoutLocation,
+        );
+        await tester.pump();
+
+        expect(mapRepository.fetchPointsCallCount, 0);
+
+        final renderedViewport = _buildViewport(seed: 7);
+        mapHandle.emitInteraction(
+          BellugaMapInteractionEvent(
+            type: BellugaMapInteractionType.ready,
+            zoom: 15,
+            viewport: renderedViewport,
+          ),
+        );
+        await tester.pump();
+
+        expect(mapRepository.fetchPointsCallCount, 1);
+        expect(mapRepository.lastQuery?.northEast, renderedViewport.northEast);
+        expect(mapRepository.lastQuery?.southWest, renderedViewport.southWest);
+        expect(
+          mapRepository.lastQuery?.origin,
+          _buildCoordinate('-20.007', '-40.007'),
+        );
+        expect(mapRepository.lastQuery?.maxDistanceMetersValue, isNotNull);
+        await tester.pump(const Duration(seconds: 10));
+      },
+    );
+
+    testWidgets(
+      'normalizes a small rendered viewport to the tenant minimum radius',
+      (tester) async {
+        final mapHandle = _FakeMapHandle(isReady: false);
+        final localController = _buildMapController(
+          poiRepository: _buildPoiRepository(mapRepository: mapRepository),
+          userLocationRepository: userLocationRepository,
+          telemetryRepository: telemetry,
+          mapHandle: mapHandle,
+          appData: _buildAppData(),
+        );
+        addTearDown(localController.onDispose);
+
+        await localController.init(
+          initialLocationGateResult:
+              LocationPermissionGateResult.continueWithoutLocation,
+        );
+        await tester.pump();
+
+        mapHandle.emitInteraction(
+          BellugaMapInteractionEvent(
+            type: BellugaMapInteractionType.ready,
+            zoom: 20,
+            viewport: BellugaMapViewport(
+              northEast: _buildCoordinate('-19.9999', '-39.9999'),
+              southWest: _buildCoordinate('-20.0001', '-40.0001'),
+            ),
+          ),
+        );
+        await tester.pump();
+
+        expect(
+          mapRepository.lastQuery?.maxDistanceMetersValue?.value,
+          _buildAppData().mapRadiusMinMeters,
+        );
+        await tester.pump(const Duration(seconds: 10));
+      },
+    );
+
+    testWidgets(
+      'coalesces 5 10 and 20 settled viewport bursts and deduplicates fingerprints',
+      (tester) async {
+        final mapHandle = _FakeMapHandle(isReady: false);
+        final localController = _buildMapController(
+          poiRepository: _buildPoiRepository(mapRepository: mapRepository),
+          userLocationRepository: userLocationRepository,
+          telemetryRepository: telemetry,
+          mapHandle: mapHandle,
+          appData: _buildAppData(),
+        );
+        addTearDown(localController.onDispose);
+        await localController.init(
+          initialLocationGateResult:
+              LocationPermissionGateResult.continueWithoutLocation,
+        );
+
+        mapHandle.emitInteraction(
+          BellugaMapInteractionEvent(
+            type: BellugaMapInteractionType.ready,
+            zoom: 15,
+            viewport: _buildViewport(seed: 1),
+          ),
+        );
+        await tester.pump();
+        expect(mapRepository.fetchPointsCallCount, 1);
+
+        var seed = 10;
+        for (final burstSize in <int>[5, 10, 20]) {
+          for (var repetition = 0; repetition < 3; repetition += 1) {
+            BellugaMapViewport? finalViewport;
+            for (var eventIndex = 0; eventIndex < burstSize; eventIndex += 1) {
+              finalViewport = _buildViewport(seed: seed++);
+              mapHandle.emitInteraction(
+                BellugaMapInteractionEvent(
+                  type: BellugaMapInteractionType.pan,
+                  zoom: 15,
+                  viewport: finalViewport,
+                  userGesture: true,
+                ),
+              );
+            }
+            await tester.pump();
+            final callsBeforeDebounce = mapRepository.fetchPointsCallCount;
+            await tester.pump(const Duration(milliseconds: 299));
+            expect(mapRepository.fetchPointsCallCount, callsBeforeDebounce);
+            await tester.pump(const Duration(milliseconds: 1));
+            expect(mapRepository.fetchPointsCallCount, callsBeforeDebounce + 1);
+            expect(
+              mapRepository.lastQuery?.northEast,
+              finalViewport!.northEast,
+            );
+            expect(mapRepository.lastQuery?.southWest, finalViewport.southWest);
+
+            mapHandle.emitInteraction(
+              BellugaMapInteractionEvent(
+                type: BellugaMapInteractionType.zoom,
+                zoom: 15,
+                viewport: finalViewport,
+                userGesture: true,
+              ),
+            );
+            await tester.pump(const Duration(milliseconds: 301));
+            expect(
+              mapRepository.fetchPointsCallCount,
+              callsBeforeDebounce + 1,
+              reason: 'the canonical viewport fingerprint must not refetch',
+            );
+          }
+        }
+      },
+    );
+
+    testWidgets(
+      'keeps filter pages independent from pan and rejects a stale page append',
+      (tester) async {
+        final mapHandle = _FakeMapHandle(
+          initialCenter: _buildCoordinate('-20', '-40'),
+        );
+        final localController = _buildMapController(
+          poiRepository: _buildPoiRepository(mapRepository: mapRepository),
+          userLocationRepository: userLocationRepository,
+          telemetryRepository: telemetry,
+          mapHandle: mapHandle,
+          appData: _buildAppData(),
+        );
+        addTearDown(localController.onDispose);
+        final firstPage = Completer<PoiFilterPage>();
+        mapRepository.queuedFilterPageCompleters.add(firstPage);
+        await localController.init(
+          initialLocationGateResult:
+              LocationPermissionGateResult.continueWithoutLocation,
+        );
+        await tester.pump();
+        final restaurants = _buildCategory(
+          key: 'restaurants',
+          label: 'Restaurantes',
+          tags: const <String>{},
+          serverQuery: _buildServerQuery(
+            source: 'account_profile',
+            types: const <String>{'restaurante'},
+          ),
+        );
+
+        localController.toggleCatalogCategoryFilter(restaurants);
+        await tester.pump();
+        expect(mapRepository.fetchFilterPageCallCount, 1);
+        expect(mapRepository.requestedFilterPages, <int>[1]);
+        firstPage.complete(
+          _buildFilterPage(
+            page: 1,
+            hasMore: true,
+            items: <CityPoiModel>[_buildPoi(id: 'restaurant-1')],
+          ),
+        );
+        await tester.pump();
+        await tester.pump();
+
+        final staleSecondPage = Completer<PoiFilterPage>();
+        mapRepository.queuedFilterPageCompleters.add(staleSecondPage);
+        final staleLoad = localController.loadMoreFilterResults();
+        await tester.pump();
+        expect(mapRepository.requestedFilterPages, <int>[1, 2]);
+
+        final beachesPage = Completer<PoiFilterPage>();
+        mapRepository.queuedFilterPageCompleters.add(beachesPage);
+        final beaches = _buildCategory(
+          key: 'beaches',
+          label: 'Praias',
+          tags: const <String>{},
+          serverQuery: _buildServerQuery(
+            source: 'account_profile',
+            types: const <String>{'praia'},
+          ),
+        );
+        localController.toggleCatalogCategoryFilter(beaches);
+        await tester.pump();
+        expect(mapRepository.requestedFilterPages, <int>[1, 2, 1]);
+
+        beachesPage.complete(
+          _buildFilterPage(
+            page: 1,
+            hasMore: false,
+            items: <CityPoiModel>[_buildPoi(id: 'beach-1')],
+          ),
+        );
+        await tester.pump();
+        await tester.pump();
+        staleSecondPage.complete(
+          _buildFilterPage(
+            page: 2,
+            hasMore: false,
+            items: <CityPoiModel>[_buildPoi(id: 'stale-restaurant-2')],
+          ),
+        );
+        await staleLoad;
+        await tester.pump();
+
+        expect(
+          localController.filterResultPoisStreamValue.value?.map(
+            (poi) => poi.id,
+          ),
+          <String>['beach-1'],
+        );
+        final listCallsBeforePan = mapRepository.fetchFilterPageCallCount;
+        final sceneCallsBeforePan = mapRepository.fetchPointsCallCount;
+        mapHandle.emitInteraction(
+          BellugaMapInteractionEvent(
+            type: BellugaMapInteractionType.pan,
+            zoom: 15,
+            viewport: _buildViewport(seed: 80),
+            userGesture: true,
+          ),
+        );
+        await tester.pump(const Duration(milliseconds: 300));
+        await tester.pump();
+        expect(mapRepository.fetchPointsCallCount, sceneCallsBeforePan + 1);
+        expect(mapRepository.fetchFilterPageCallCount, listCallsBeforePan);
+        expect(
+          localController.filterResultPoisStreamValue.value?.map(
+            (poi) => poi.id,
+          ),
+          <String>['beach-1'],
+        );
+        await tester.pump(const Duration(seconds: 10));
       },
     );
 
@@ -3176,14 +3603,8 @@ void main() {
 
         expect(mapRepository.fetchPointsCallCount, 1);
         expect(_queryOrigin(mapRepository.lastQuery), isNotNull);
-        expect(
-          mapRepository.lastQuery!.origin!.latitude,
-          resolvedCoordinate.latitude,
-        );
-        expect(
-          mapRepository.lastQuery!.origin!.longitude,
-          resolvedCoordinate.longitude,
-        );
+        expect(mapRepository.lastQuery!.origin!.latitude, -20.0);
+        expect(mapRepository.lastQuery!.origin!.longitude, -40.0);
         expect(
           controller.filteredPoisStreamValue.value
               ?.map((poi) => poi.id)
@@ -3252,19 +3673,13 @@ void main() {
 
         expect(mapRepository.fetchPointsCallCount, 1);
         expect(_queryOrigin(mapRepository.lastQuery), isNotNull);
-        expect(
-          mapRepository.lastQuery!.origin!.latitude,
-          resolvedCoordinate.latitude,
-        );
-        expect(
-          mapRepository.lastQuery!.origin!.longitude,
-          resolvedCoordinate.longitude,
-        );
+        expect(mapRepository.lastQuery!.origin!.latitude, -20.0);
+        expect(mapRepository.lastQuery!.origin!.longitude, -40.0);
       },
     );
 
     test(
-      'retries one transient bootstrap failure for filters and pois before surfacing terminal map error',
+      'seeds bootstrap filters locally and retries a transient poi failure',
       () async {
         userLocationRepository.userLocationStreamValue.addValue(
           _buildCoordinate('-20.0', '-40.0'),
@@ -3273,28 +3688,20 @@ void main() {
           LocationResolutionPhase.resolved,
         );
         mapRepository
-          ..failFetchFiltersCount = 1
           ..failFetchPointsCount = 1
-          ..nextFilterOptions = PoiFilterOptions(
-            categories: <PoiFilterCategory>[
-              _buildCategory(key: 'events', label: 'Eventos'),
-            ],
-          )
           ..nextPois = <CityPoiModel>[_buildPoi(id: 'poi-bootstrap')];
 
         await controller.init();
         await _flushMicrotasks();
 
-        expect(mapRepository.fetchFiltersCallCount, 2);
         expect(mapRepository.fetchPointsCallCount, 2);
-        expect(_queryOrigin(mapRepository.lastFilterQuery), isNotNull);
         expect(controller.mapStatusStreamValue.value, MapStatus.ready);
         expect(controller.errorMessage.value, isNull);
         expect(
           controller.filterOptionsStreamValue.value?.categories
               .map((category) => category.key)
               .toList(),
-          equals(<String>['events']),
+          isEmpty,
         );
         expect(
           controller.filteredPoisStreamValue.value
@@ -3516,14 +3923,8 @@ void main() {
           controller.softLocationNoticeStreamValue.value,
           'Estamos usando sua localização para exibir eventos e lugares próximos a você.',
         );
-        expect(
-          mapRepository.lastQuery?.origin?.latitude,
-          resolvedCoordinate.latitude,
-        );
-        expect(
-          mapRepository.lastQuery?.origin?.longitude,
-          resolvedCoordinate.longitude,
-        );
+        expect(mapRepository.lastQuery?.origin?.latitude, -20.0);
+        expect(mapRepository.lastQuery?.origin?.longitude, -40.0);
       },
     );
 
@@ -4180,6 +4581,7 @@ void main() {
           refId: 'evt-001',
         );
         mapRepository.nextPois = <CityPoiModel>[targetPoi];
+        mapRepository.nextLookupPoi = targetPoi;
 
         final localController = _buildMapController(
           poiRepository: _buildPoiRepository(mapRepository: mapRepository),
@@ -4752,7 +5154,7 @@ void main() {
           coverImageUri: 'https://tenant.test/media/poi-far-cover.png',
         );
 
-        controller.filteredPoisStreamValue.addValue(<CityPoiModel>[
+        controller.filterResultPoisStreamValue.addValue(<CityPoiModel>[
           selectedPoi,
           tallerAdjacentPoi,
         ]);
@@ -4870,7 +5272,7 @@ void main() {
         );
         controller.activeCatalogFilterKeyStreamValue.addValue('beach');
         controller.activeFilterLabelStreamValue.addValue('Praia');
-        controller.filteredPoisStreamValue.addValue(<CityPoiModel>[
+        controller.filterResultPoisStreamValue.addValue(<CityPoiModel>[
           _buildPoi(
             id: 'poi-far',
             name: 'Mais longe',
@@ -4923,7 +5325,7 @@ void main() {
         );
         controller.activeCatalogFilterKeyStreamValue.addValue('event');
         controller.activeFilterLabelStreamValue.addValue('Eventos');
-        controller.filteredPoisStreamValue.addValue(<CityPoiModel>[
+        controller.filterResultPoisStreamValue.addValue(<CityPoiModel>[
           _buildPoi(
             id: 'poi-later-near',
             name: 'Mais perto depois',
@@ -5389,49 +5791,6 @@ void main() {
           equals(<String>['events', 'praia', 'restaurant']),
         );
         orderedController.onDispose();
-      },
-    );
-
-    testWidgets(
-      'showFiltersTray retries backend filter fetch when catalog is still missing',
-      (tester) async {
-        final mapRepository = _FakeCityMapRepository()
-          ..throwOnFetchFilters = true;
-        final poiRepository = _buildPoiRepository(mapRepository: mapRepository);
-        final userLocationRepository = _FakeUserLocationRepository();
-        final telemetry = _FakeTelemetryRepository();
-        final mapHandle = _FakeMapHandle();
-        final retryController = _buildMapController(
-          poiRepository: poiRepository,
-          userLocationRepository: userLocationRepository,
-          telemetryRepository: telemetry,
-          mapHandle: mapHandle,
-        );
-
-        await retryController.loadFilters(force: true);
-        expect(mapRepository.fetchFiltersCallCount, 1);
-        expect(retryController.filterOptionsStreamValue.value, isNull);
-
-        mapRepository
-          ..throwOnFetchFilters = false
-          ..nextFilterOptions = PoiFilterOptions(
-            categories: <PoiFilterCategory>[
-              _buildCategory(key: 'events', label: 'Events'),
-            ],
-          );
-
-        retryController.showFiltersTray();
-        await tester.pump();
-        await tester.pump();
-
-        expect(mapRepository.fetchFiltersCallCount, 2);
-        expect(
-          retryController.filterOptionsStreamValue.value?.categories
-              .map((category) => category.key)
-              .toList(),
-          equals(<String>['events']),
-        );
-        await retryController.onDispose();
       },
     );
 
@@ -6463,7 +6822,7 @@ void main() {
           distanceMeters: 120,
         );
 
-        localController.filteredPoisStreamValue.addValue(<CityPoiModel>[
+        localController.filterResultPoisStreamValue.addValue(<CityPoiModel>[
           farPoi,
           selectedPoi,
         ]);
@@ -6529,7 +6888,7 @@ void main() {
               'https://tenant.test/media/praia-das-castanheiras-cover.png',
         );
 
-        localController.filteredPoisStreamValue.addValue(<CityPoiModel>[
+        localController.filterResultPoisStreamValue.addValue(<CityPoiModel>[
           firstPoi,
           secondPoi,
         ]);
@@ -6624,7 +6983,7 @@ void main() {
               description: 'Descricao factual da Praia do Meio.',
             );
 
-        localController.filteredPoisStreamValue.addValue(<CityPoiModel>[
+        localController.filterResultPoisStreamValue.addValue(<CityPoiModel>[
           firstPoi,
           selectedPoi,
           thirdPoi,
@@ -7254,7 +7613,9 @@ MapScreenController _buildMapController({
     poiRepository: poiRepository,
     userLocationRepository: userLocationRepository,
     telemetryRepository: telemetryRepository,
-    mapHandle: mapHandle,
+    mapHandle:
+        mapHandle ??
+        _FakeMapHandle(initialCenter: resolvedAppData.tenantDefaultOrigin),
     appData: resolvedAppData,
     appDataRepository: resolvedAppDataRepository,
     locationOriginService: LocationOriginService(

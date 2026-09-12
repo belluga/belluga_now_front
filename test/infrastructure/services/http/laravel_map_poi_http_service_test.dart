@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:belluga_now/domain/map/queries/poi_query.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
+import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_filter_key_value.dart';
@@ -31,79 +32,41 @@ void main() {
   });
 
   test(
-      'getPois sends authenticated array query params with Laravel-compatible encoding',
-      () async {
-    final adapter = _RecordingAdapter();
-    final dio = Dio()..httpClientAdapter = adapter;
-    final service = LaravelMapPoiHttpService(
-      context: BackendContext(
-        baseUrl: 'https://tenant.test/api',
-        adminUrl: 'https://tenant.test/admin/api',
-      ),
-      dio: dio,
-    );
+    'getPois sends authenticated array query params with Laravel-compatible encoding',
+    () async {
+      final adapter = _RecordingAdapter();
+      final dio = Dio()..httpClientAdapter = adapter;
+      final service = LaravelMapPoiHttpService(
+        context: BackendContext(
+          baseUrl: 'https://tenant.test/api',
+          adminUrl: 'https://tenant.test/admin/api',
+        ),
+        dio: dio,
+      );
 
-    await service.getPois(
-      _buildPoiQuery(
-        source: 'static_asset',
-        categoryKeys: <String>{'beach'},
-        types: <String>{'beach_spot'},
-        tags: <String>{'family'},
-        taxonomy: <String>{'cuisine:italian'},
-      ),
-    );
+      await service.getPois(
+        _buildPoiQuery(
+          source: 'static_asset',
+          categoryKeys: <String>{'beach'},
+          types: <String>{'beach_spot'},
+          tags: <String>{'family'},
+          taxonomy: <String>{'cuisine:italian'},
+        ),
+      );
 
-    final request = adapter.requests.single;
-    expect(request.path, '/v1/map/pois');
-    expect(request.headers['Accept'], 'application/json');
-    expect(request.headers['Authorization'], 'Bearer test-token');
-    expect(
-      request.uri.toString(),
-      contains('categories%5B%5D=beach'),
-    );
-    expect(
-      request.uri.toString(),
-      contains('types%5B%5D=beach_spot'),
-    );
-    expect(
-      request.uri.toString(),
-      contains('tags%5B%5D=family'),
-    );
-    expect(
-      request.uri.toString(),
-      contains('taxonomy%5B%5D=cuisine%3Aitalian'),
-    );
-  });
-
-  test(
-      'getFilters keeps server-query arrays compatible with Laravel validation',
-      () async {
-    final adapter = _RecordingAdapter();
-    final dio = Dio()..httpClientAdapter = adapter;
-    final service = LaravelMapPoiHttpService(
-      context: BackendContext(
-        baseUrl: 'https://tenant.test/api',
-        adminUrl: 'https://tenant.test/admin/api',
-      ),
-      dio: dio,
-    );
-
-    await service.getFilters(
-      _buildPoiQuery(
-        source: 'event',
-        types: <String>{'showcase'},
-      ),
-    );
-
-    final request = adapter.requests.single;
-    expect(request.path, '/v1/map/filters');
-    expect(request.headers['Accept'], 'application/json');
-    expect(request.headers['Authorization'], 'Bearer test-token');
-    expect(
-      request.uri.toString(),
-      contains('types%5B%5D=showcase'),
-    );
-  });
+      final request = adapter.requests.single;
+      expect(request.path, '/v1/map/pois');
+      expect(request.headers['Accept'], 'application/json');
+      expect(request.headers['Authorization'], 'Bearer test-token');
+      expect(request.uri.toString(), contains('categories%5B%5D=beach'));
+      expect(request.uri.toString(), contains('types%5B%5D=beach_spot'));
+      expect(request.uri.toString(), contains('tags%5B%5D=family'));
+      expect(
+        request.uri.toString(),
+        contains('taxonomy%5B%5D=cuisine%3Aitalian'),
+      );
+    },
+  );
 
   test('getPois bootstraps auth token when initially missing', () async {
     final authRepository =
@@ -129,31 +92,33 @@ void main() {
     expect(request.headers['Authorization'], 'Bearer refreshed-token');
   });
 
-  test('getPois revalidates persisted token before tenant-public map requests',
-      () async {
-    final authRepository =
-        GetIt.I.get<AuthRepositoryContract>() as _FakeAuthRepository;
-    authRepository.setUserToken(authRepoString('stale-token'));
-    authRepository.tokenAfterInit = 'refreshed-token';
-    authRepository.refreshTokenOnInit = true;
+  test(
+    'getPois revalidates persisted token before tenant-public map requests',
+    () async {
+      final authRepository =
+          GetIt.I.get<AuthRepositoryContract>() as _FakeAuthRepository;
+      authRepository.setUserToken(authRepoString('stale-token'));
+      authRepository.tokenAfterInit = 'refreshed-token';
+      authRepository.refreshTokenOnInit = true;
 
-    final adapter = _RecordingAdapter();
-    final dio = Dio()..httpClientAdapter = adapter;
-    final service = LaravelMapPoiHttpService(
-      context: BackendContext(
-        baseUrl: 'https://tenant.test/api',
-        adminUrl: 'https://tenant.test/admin/api',
-      ),
-      dio: dio,
-    );
+      final adapter = _RecordingAdapter();
+      final dio = Dio()..httpClientAdapter = adapter;
+      final service = LaravelMapPoiHttpService(
+        context: BackendContext(
+          baseUrl: 'https://tenant.test/api',
+          adminUrl: 'https://tenant.test/admin/api',
+        ),
+        dio: dio,
+      );
 
-    await service.getPois(_buildPoiQuery());
+      await service.getPois(_buildPoiQuery());
 
-    final request = adapter.requests.single;
-    expect(authRepository.ensureTenantPublicIdentityReadyCallCount, 1);
-    expect(authRepository.initCallCount, 0);
-    expect(request.headers['Authorization'], 'Bearer refreshed-token');
-  });
+      final request = adapter.requests.single;
+      expect(authRepository.ensureTenantPublicIdentityReadyCallCount, 1);
+      expect(authRepository.initCallCount, 0);
+      expect(request.headers['Authorization'], 'Bearer refreshed-token');
+    },
+  );
 
   test('getPois fails closed when auth repository is missing', () async {
     await GetIt.I.reset();
@@ -192,14 +157,14 @@ void main() {
       dio: dio,
     );
 
-    final pois = await service.getPois(_buildPoiQuery());
+    final scene = await service.getPois(_buildPoiQuery());
 
-    expect(pois, hasLength(1));
-    expect(pois.first.visual, isNotNull);
-    expect(pois.first.visual?.mode, 'icon');
-    expect(pois.first.visual?.icon, 'restaurant');
-    expect(pois.first.visual?.color, '#EB2528');
-    expect(pois.first.visual?.iconColor, '#101010');
+    expect(scene.points, hasLength(1));
+    expect(scene.points.first.visual, isNotNull);
+    expect(scene.points.first.visual?.mode, 'icon');
+    expect(scene.points.first.visual?.icon, 'restaurant');
+    expect(scene.points.first.visual?.color, '#EB2528');
+    expect(scene.points.first.visual?.iconColor, '#101010');
   });
 
   test('getPois preserves image visual contract from stacks payload', () async {
@@ -213,63 +178,42 @@ void main() {
       dio: dio,
     );
 
-    final pois = await service.getPois(_buildPoiQuery());
+    final scene = await service.getPois(_buildPoiQuery());
 
-    expect(pois, hasLength(1));
-    expect(pois.first.visual, isNotNull);
-    expect(pois.first.visual?.mode, 'image');
+    expect(scene.points, hasLength(1));
+    expect(scene.points.first.visual, isNotNull);
+    expect(scene.points.first.visual?.mode, 'image');
     expect(
-      pois.first.visual?.imageUri,
+      scene.points.first.visual?.imageUri,
       'https://tenant.test/api/v1/media/event-types/type-1/type_asset?v=9',
     );
   });
-  test('getPois rejects map requests without a resolved origin', () async {
-    final adapter = _RecordingAdapter();
-    final dio = Dio()..httpClientAdapter = adapter;
-    final service = LaravelMapPoiHttpService(
-      context: BackendContext(
-        baseUrl: 'https://tenant.test/api',
-        adminUrl: 'https://tenant.test/admin/api',
-      ),
-      dio: dio,
-    );
-
-    await expectLater(
-      () => service.getPois(PoiQuery()),
-      throwsA(
-        isA<StateError>().having(
-          (error) => error.message,
-          'message',
-          contains('requires a resolved origin'),
+  test(
+    'getPois rejects map requests without complete viewport bounds',
+    () async {
+      final adapter = _RecordingAdapter();
+      final dio = Dio()..httpClientAdapter = adapter;
+      final service = LaravelMapPoiHttpService(
+        context: BackendContext(
+          baseUrl: 'https://tenant.test/api',
+          adminUrl: 'https://tenant.test/admin/api',
         ),
-      ),
-    );
-    expect(adapter.requests, isEmpty);
-  });
+        dio: dio,
+      );
 
-  test('getFilters rejects map requests without a resolved origin', () async {
-    final adapter = _RecordingAdapter();
-    final dio = Dio()..httpClientAdapter = adapter;
-    final service = LaravelMapPoiHttpService(
-      context: BackendContext(
-        baseUrl: 'https://tenant.test/api',
-        adminUrl: 'https://tenant.test/admin/api',
-      ),
-      dio: dio,
-    );
-
-    await expectLater(
-      () => service.getFilters(PoiQuery()),
-      throwsA(
-        isA<StateError>().having(
-          (error) => error.message,
-          'message',
-          contains('requires a resolved origin'),
+      await expectLater(
+        () => service.getPois(PoiQuery()),
+        throwsA(
+          isA<StateError>().having(
+            (error) => error.message,
+            'message',
+            contains('requires complete viewport bounds'),
+          ),
         ),
-      ),
-    );
-    expect(adapter.requests, isEmpty);
-  });
+      );
+      expect(adapter.requests, isEmpty);
+    },
+  );
 }
 
 PoiQuery _buildPoiQuery({
@@ -281,13 +225,24 @@ PoiQuery _buildPoiQuery({
 }) {
   return PoiQuery(
     origin: _buildOrigin(),
+    northEast: CityCoordinate(
+      latitudeValue: LatitudeValue()..parse('-20.30'),
+      longitudeValue: LongitudeValue()..parse('-40.30'),
+    ),
+    southWest: CityCoordinate(
+      latitudeValue: LatitudeValue()..parse('-20.33'),
+      longitudeValue: LongitudeValue()..parse('-40.33'),
+    ),
+    maxDistanceMetersValue: DistanceInMetersValue()..parse('2500'),
     sourceValue: _buildSourceValue(source),
-    categoryKeyValues:
-        categoryKeys == null ? null : _buildFilterKeyValues(categoryKeys),
+    categoryKeyValues: categoryKeys == null
+        ? null
+        : _buildFilterKeyValues(categoryKeys),
     typeValues: types == null ? null : _buildFilterTypeValues(types),
     tagValues: tags == null ? null : _buildTagValues(tags),
-    taxonomyTokenValues:
-        taxonomy == null ? null : _buildTaxonomyValues(taxonomy),
+    taxonomyTokenValues: taxonomy == null
+        ? null
+        : _buildTaxonomyValues(taxonomy),
   );
 }
 
@@ -422,8 +377,10 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
   Future<void> autoLogin() async {}
 
   @override
-  Future<void> loginWithEmailPassword(AuthRepositoryContractParamString email,
-      AuthRepositoryContractParamString password) async {}
+  Future<void> loginWithEmailPassword(
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString password,
+  ) async {}
 
   @override
   Future<void> signUpWithEmailPassword(
@@ -434,19 +391,23 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
 
   @override
   Future<void> sendTokenRecoveryPassword(
-      AuthRepositoryContractParamString email,
-      AuthRepositoryContractParamString codigoEnviado) async {}
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString codigoEnviado,
+  ) async {}
 
   @override
   Future<void> logout() async {}
 
   @override
-  Future<void> createNewPassword(AuthRepositoryContractParamString newPassword,
-      AuthRepositoryContractParamString confirmPassword) async {}
+  Future<void> createNewPassword(
+    AuthRepositoryContractParamString newPassword,
+    AuthRepositoryContractParamString confirmPassword,
+  ) async {}
 
   @override
   Future<void> sendPasswordResetEmail(
-      AuthRepositoryContractParamString email) async {}
+    AuthRepositoryContractParamString email,
+  ) async {}
 
   @override
   Future<void> updateUser(UserCustomData data) async {}
@@ -467,13 +428,11 @@ class _RecordingAdapter implements HttpClientAdapter {
     requests.add(options);
     final body = switch (options.path) {
       '/v1/map/filters' => <String, dynamic>{
-          'categories': const <Object>[],
-          'tags': const <Object>[],
-          'taxonomy_terms': const <Object>[],
-        },
-      _ => <String, dynamic>{
-          'stacks': const <Object>[],
-        },
+        'categories': const <Object>[],
+        'tags': const <Object>[],
+        'taxonomy_terms': const <Object>[],
+      },
+      _ => <String, dynamic>{'stacks': const <Object>[]},
     };
     return ResponseBody.fromString(
       jsonEncode(body),
@@ -511,10 +470,7 @@ class _PoiStacksAdapter implements HttpClientAdapter {
               'description': 'Descricao',
               'address': 'Endereco',
               'category_slug': 'restaurant',
-              'location': {
-                'lat': -20.0,
-                'lng': -40.0,
-              },
+              'location': {'lat': -20.0, 'lng': -40.0},
               'visual': {
                 'mode': {'value': 'icon'},
                 'icon': {'value': 'restaurant'},
@@ -561,10 +517,7 @@ class _PoiImageStacksAdapter implements HttpClientAdapter {
               'description': 'Descricao',
               'address': 'Endereco',
               'category_slug': 'event',
-              'location': {
-                'lat': -20.0,
-                'lng': -40.0,
-              },
+              'location': {'lat': -20.0, 'lng': -40.0},
               'visual': {
                 'mode': {'value': 'image'},
                 'image_uri': {
