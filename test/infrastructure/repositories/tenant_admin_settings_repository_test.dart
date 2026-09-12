@@ -66,6 +66,45 @@ void main() {
     );
   });
 
+  test('rejects malformed home favorites pin readback', () async {
+    final adapter = _RoutingAdapter(
+      homeFavoritesPinnedProfilePayload: const <String, dynamic>{
+        'data': 'malformed',
+      },
+    );
+    final repository = TenantAdminSettingsRepository(
+      dio: Dio()..httpClientAdapter = adapter,
+      tenantScope: _MutableTenantScope('https://tenant-a.test'),
+    );
+
+    await expectLater(
+      repository.fetchHomeFavoritesPinnedProfile(),
+      throwsA(isA<Exception>()),
+    );
+  });
+
+  test('rejects incomplete home favorites pin invariants', () async {
+    final adapter = _RoutingAdapter(
+      homeFavoritesPinnedProfilePayload: const <String, dynamic>{
+        'data': {
+          'setting_type': 'home_favorites_pinned_profile',
+          'value': <String, dynamic>{},
+          'availability': 'unset',
+          'selected_profile': null,
+        },
+      },
+    );
+    final repository = TenantAdminSettingsRepository(
+      dio: Dio()..httpClientAdapter = adapter,
+      tenantScope: _MutableTenantScope('https://tenant-a.test'),
+    );
+
+    await expectLater(
+      repository.fetchHomeFavoritesPinnedProfile(),
+      throwsA(isA<FormatException>()),
+    );
+  });
+
   test('fetchFirebaseSettings parses firebase response', () async {
     final adapter = _RoutingAdapter();
     final scope = _MutableTenantScope('https://tenant-a.test');
@@ -2033,6 +2072,7 @@ class _RoutingAdapter implements HttpClientAdapter {
     this.pushStatusPayload,
     this.createDomainValidationMessage,
     this.pushCredentialsResponseData,
+    this.homeFavoritesPinnedProfilePayload,
     List<Map<String, dynamic>>? domainsPayload,
     Map<String, dynamic>? appDomainsPayload,
     List<Map<String, dynamic>>? pushCredentialsPayload,
@@ -2098,6 +2138,7 @@ class _RoutingAdapter implements HttpClientAdapter {
   final Map<String, dynamic>? pushStatusPayload;
   final String? createDomainValidationMessage;
   final Object? pushCredentialsResponseData;
+  final Map<String, dynamic>? homeFavoritesPinnedProfilePayload;
   final Map<String, dynamic> _appDomainsPayload;
   final Map<String, bool> _typedAppDomainPersistedByPlatform;
   final List<Map<String, dynamic>> _pushCredentialsPayload;
@@ -2204,6 +2245,9 @@ class _RoutingAdapter implements HttpClientAdapter {
     }
 
     if (path.endsWith('/settings/values/home_favorites_pinned_profile')) {
+      if (homeFavoritesPinnedProfilePayload != null) {
+        return _jsonResponse(homeFavoritesPinnedProfilePayload!);
+      }
       final profileId = method == 'PATCH'
           ? (options.data as Map)['account_profile_id']?.toString()
           : 'profile-1';

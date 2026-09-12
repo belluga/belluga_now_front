@@ -35,31 +35,51 @@ class TenantAdminSettingsResponseDecoder {
     final payload = _envelopeDecoder.decodeDataMap(
       rawResponse,
       label: 'home favorites pinned profile settings',
-      emptyWhenDataIsNotMap: true,
+      fallbackToRoot: false,
     );
     final valueRaw = payload['value'];
-    final value = valueRaw is Map
-        ? Map<String, dynamic>.from(valueRaw)
-        : const <String, dynamic>{};
+    if (payload['setting_type'] != 'home_favorites_pinned_profile' ||
+        valueRaw is! Map ||
+        !valueRaw.containsKey('account_profile_id')) {
+      throw const FormatException(
+        'Unexpected home favorites pinned profile settings response shape.',
+      );
+    }
+    final value = Map<String, dynamic>.from(valueRaw);
     final selectedRaw = payload['selected_profile'];
-    final selected = selectedRaw is Map
-        ? Map<String, dynamic>.from(selectedRaw)
-        : const <String, dynamic>{};
-
     final accountProfileId = _normalizeOptionalText(
       value['account_profile_id'],
     );
+    final availability = _normalizeOptionalText(payload['availability']);
+    final selected = selectedRaw is Map
+        ? Map<String, dynamic>.from(selectedRaw)
+        : null;
+    final selectedId = _normalizeOptionalText(selected?['id']);
+    final selectedDisplayName = _normalizeOptionalText(
+      selected?['display_name'],
+    );
+    final isValid = switch (availability) {
+      'unset' => accountProfileId == null && selectedRaw == null,
+      'unavailable' => accountProfileId != null && selectedRaw == null,
+      'available' =>
+        accountProfileId != null &&
+            selectedId == accountProfileId &&
+            selectedDisplayName != null,
+      _ => false,
+    };
+    if (!isValid) {
+      throw const FormatException(
+        'Invalid home favorites pinned profile settings invariants.',
+      );
+    }
+
     return TenantAdminHomeFavoritesPinnedProfileSettings(
       accountProfileIdValue: accountProfileId == null
           ? null
           : TenantAdminAccountProfileIdValue(accountProfileId),
-      availabilityValue: TenantAdminLowercaseTokenValue.fromRaw(
-        payload['availability'],
-        defaultValue: 'unset',
-        isRequired: false,
-      ),
+      availabilityValue: TenantAdminLowercaseTokenValue.fromRaw(availability),
       selectedProfileDisplayNameValue: TenantAdminOptionalTextValue()
-        ..parse(selected['display_name']?.toString()),
+        ..parse(selectedDisplayName),
     );
   }
 
