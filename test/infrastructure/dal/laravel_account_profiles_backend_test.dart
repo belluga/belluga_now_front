@@ -1067,6 +1067,11 @@ void main() {
                     'profile_type': 'artist',
                     'party_type': 'artist',
                   },
+                  {
+                    'display_name': 'Identidade ausente',
+                    'profile_type': 'artist',
+                    'party_type': 'artist',
+                  },
                 ],
               },
             ],
@@ -1107,6 +1112,7 @@ void main() {
         profile?.agendaEvents.first.primaryCounterpart?.profileType,
         'artist',
       );
+      expect(profile?.agendaEvents.last.linkedAccountProfiles, hasLength(1));
       expect(profile?.agendaEvents.first.venueId, '507f1f77bcf86cd799439011');
       expect(profile?.agendaEvents.first.venueTitle, 'Casa Marracini');
       expect(profile?.agendaEvents.first.eventTypeLabel, 'Show');

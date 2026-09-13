@@ -3285,6 +3285,156 @@ void main() {
       },
     );
 
+    testWidgets('uses the farthest viewport corner as the covering radius', (
+      tester,
+    ) async {
+      final mapHandle = _FakeMapHandle(isReady: false);
+      final localController = _buildMapController(
+        poiRepository: _buildPoiRepository(mapRepository: mapRepository),
+        userLocationRepository: userLocationRepository,
+        telemetryRepository: telemetry,
+        mapHandle: mapHandle,
+        appData: _buildAppData(),
+      );
+      addTearDown(localController.onDispose);
+      await localController.init(
+        initialLocationGateResult:
+            LocationPermissionGateResult.continueWithoutLocation,
+      );
+
+      mapHandle.emitInteraction(
+        BellugaMapInteractionEvent(
+          type: BellugaMapInteractionType.ready,
+          zoom: 12,
+          viewport: BellugaMapViewport(
+            northEast: _buildCoordinate('20.1', '-39.9'),
+            southWest: _buildCoordinate('19.9', '-40.1'),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(
+        mapRepository.lastQuery?.maxDistanceMetersValue?.value,
+        closeTo(15260.82, 0.1),
+      );
+      await tester.pump(const Duration(seconds: 10));
+    });
+
+    testWidgets(
+      'keeps the committed scene when a newer rejected viewport supersedes an in-flight request',
+      (tester) async {
+        final mapHandle = _FakeMapHandle(isReady: false);
+        final localController = _buildMapController(
+          poiRepository: _buildPoiRepository(mapRepository: mapRepository),
+          userLocationRepository: userLocationRepository,
+          telemetryRepository: telemetry,
+          mapHandle: mapHandle,
+          appData: _buildAppData(),
+        );
+        addTearDown(localController.onDispose);
+        await localController.init(
+          initialLocationGateResult:
+              LocationPermissionGateResult.continueWithoutLocation,
+        );
+
+        mapRepository.nextPois = <CityPoiModel>[_buildPoi(id: 'committed')];
+        mapHandle.emitInteraction(
+          BellugaMapInteractionEvent(
+            type: BellugaMapInteractionType.ready,
+            zoom: 15,
+            viewport: _buildViewport(seed: 1),
+          ),
+        );
+        await tester.pump();
+
+        final staleRequest = Completer<PoiSceneResult>();
+        mapRepository.queuedSceneCompleters.add(staleRequest);
+        mapHandle.emitInteraction(
+          BellugaMapInteractionEvent(
+            type: BellugaMapInteractionType.pan,
+            zoom: 15,
+            viewport: _buildViewport(seed: 2),
+            userGesture: true,
+          ),
+        );
+        await tester.pump(const Duration(milliseconds: 300));
+
+        mapHandle.emitInteraction(
+          BellugaMapInteractionEvent(
+            type: BellugaMapInteractionType.pan,
+            zoom: 6,
+            viewport: BellugaMapViewport(
+              northEast: _buildCoordinate('-19', '-39'),
+              southWest: _buildCoordinate('-21', '-41'),
+            ),
+            userGesture: true,
+          ),
+        );
+        await tester.pump(const Duration(milliseconds: 300));
+
+        staleRequest.complete(
+          _buildScene(
+            isPartial: false,
+            points: <CityPoiModel>[_buildPoi(id: 'stale')],
+          ),
+        );
+        await tester.pump();
+        await tester.pump();
+
+        expect(
+          localController.filteredPoisStreamValue.value?.map((poi) => poi.id),
+          <String>['committed'],
+        );
+      },
+    );
+
+    testWidgets(
+      'hydrates the canonical scene after a settled programmatic camera move',
+      (tester) async {
+        final mapHandle = _FakeMapHandle(isReady: false);
+        final localController = _buildMapController(
+          poiRepository: _buildPoiRepository(mapRepository: mapRepository),
+          userLocationRepository: userLocationRepository,
+          telemetryRepository: telemetry,
+          mapHandle: mapHandle,
+          appData: _buildAppData(),
+        );
+        addTearDown(localController.onDispose);
+        await localController.init(
+          initialLocationGateResult:
+              LocationPermissionGateResult.continueWithoutLocation,
+        );
+
+        mapHandle.emitInteraction(
+          BellugaMapInteractionEvent(
+            type: BellugaMapInteractionType.ready,
+            zoom: 15,
+            viewport: _buildViewport(seed: 1),
+          ),
+        );
+        await tester.pump();
+        final callsBeforeMove = mapRepository.fetchPointsCallCount;
+        final nextViewport = _buildViewport(seed: 20);
+
+        mapHandle.emitInteraction(
+          BellugaMapInteractionEvent(
+            type: BellugaMapInteractionType.pan,
+            zoom: 15,
+            viewport: nextViewport,
+            userGesture: false,
+          ),
+        );
+        await tester.pump(const Duration(milliseconds: 300));
+        await tester.pump();
+
+        expect(mapRepository.fetchPointsCallCount, callsBeforeMove + 1);
+        expect(mapRepository.lastQuery?.northEast, nextViewport.northEast);
+        expect(mapRepository.lastQuery?.southWest, nextViewport.southWest);
+        await tester.pump(const Duration(seconds: 10));
+      },
+    );
+
     testWidgets(
       'coalesces 5 10 and 20 settled viewport bursts and deduplicates fingerprints',
       (tester) async {

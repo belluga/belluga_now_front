@@ -1180,6 +1180,7 @@ class MapScreenController implements Disposable {
     if (viewport == null) {
       return;
     }
+    final requestSequence = ++_poiRequestSequence;
     final viewportQuery = _queryForViewport(query, viewport);
     if (viewportQuery == null) {
       sceneNoticeStreamValue.addValue(
@@ -1187,7 +1188,6 @@ class MapScreenController implements Disposable {
       );
       return;
     }
-    final requestSequence = ++_poiRequestSequence;
     final resolvedQuery = await _resolveRuntimeQuery(viewportQuery);
     if (_isDisposed || !_isLatestPoiRequest(requestSequence)) {
       return;
@@ -1270,7 +1270,10 @@ class MapScreenController implements Disposable {
       return null;
     }
     final center = _coordinate((north + south) / 2, (east + west) / 2);
-    final radius = _distanceMeters(center, viewport.northEast);
+    final radius = math.max(
+      _distanceMeters(center, viewport.northEast),
+      _distanceMeters(center, viewport.southWest),
+    );
     if (!radius.isFinite ||
         radius <= 0 ||
         radius > _appData.mapRadiusMaxMeters) {
@@ -3482,7 +3485,7 @@ class MapScreenController implements Disposable {
       }
       if (event.isViewportChange) {
         clearSelectedPoi(preserveMarkerMemory: false);
-        if (event.userGesture && event.viewport != null) {
+        if (event.viewport != null) {
           _queueViewportScene(event.viewport!);
         }
       } else if (event.type == BellugaMapInteractionType.emptyTap) {

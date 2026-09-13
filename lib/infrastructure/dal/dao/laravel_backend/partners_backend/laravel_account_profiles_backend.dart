@@ -1050,11 +1050,12 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
         continue;
       }
       final id = json['id']?.toString().trim() ?? '';
+      if (id.isEmpty) {
+        continue;
+      }
       linkedAccountProfiles.add(
         AccountProfileSummary(
-          idValue: AccountProfileTextValue(
-            id.isEmpty ? 'name:$displayName' : id,
-          ),
+          idValue: AccountProfileTextValue(id),
           nameValue: AccountProfileNameValue()..parse(displayName),
           profileTypeValue: AccountProfileTypeValue(profileType),
           avatarValue: thumb == null || thumb.isEmpty
