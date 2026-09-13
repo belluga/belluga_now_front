@@ -2532,6 +2532,13 @@ class MapScreenController implements Disposable {
       if (focusLeadingResultOnSuccess) {
         await _focusLeadingFilteredResult();
       }
+    } catch (error) {
+      if (!_isDisposed) {
+        debugPrint('Failed to reload Map filter results: $error');
+        _setMapMessage(
+          'Não foi possível carregar os resultados do filtro. Tente novamente.',
+        );
+      }
     } finally {
       if (_isDisposed) {
         _filterInteractionLocked = false;
@@ -2586,7 +2593,14 @@ class MapScreenController implements Disposable {
       taxonomyTokenValues: resolved.taxonomyTokenValues,
       searchTermValue: resolved.searchTermValue,
     );
-    await _loadFilterListPage(generation: generation, page: 1, append: false);
+    final loaded = await _loadFilterListPage(
+      generation: generation,
+      page: 1,
+      append: false,
+    );
+    if (!loaded && !_isDisposed && generation == _filterListGeneration) {
+      throw StateError('Failed to load the first Map filter result page.');
+    }
   }
 
   Future<void> loadMoreFilterResults() async {
@@ -2596,6 +2610,21 @@ class MapScreenController implements Disposable {
         _filterListQuery == null) {
       return;
     }
+    if (_filterListPage == 0) {
+      _beginFilterReloadInteraction();
+      await _runFilterReload(
+        _composeQuery(
+          categoryKeys: _activeCategoryKeys,
+          source: _activeSource ?? '',
+          types: _activeTypes,
+          taxonomy: _activeTaxonomyTokens,
+          tags: _activeTags,
+        ),
+        appliedCatalogFilterKeyOnSuccess: _activeCatalogFilterKey,
+        focusLeadingResultOnSuccess: true,
+      );
+      return;
+    }
     await _loadFilterListPage(
       generation: _filterListGeneration,
       page: _filterListPage + 1,
@@ -2603,14 +2632,14 @@ class MapScreenController implements Disposable {
     );
   }
 
-  Future<void> _loadFilterListPage({
+  Future<bool> _loadFilterListPage({
     required int generation,
     required int page,
     required bool append,
   }) async {
     final query = _filterListQuery;
     if (query == null) {
-      return;
+      return false;
     }
     isFilterListLoadingStreamValue.addValue(true);
     try {
@@ -2620,7 +2649,7 @@ class MapScreenController implements Disposable {
         pageSize: PoiPositiveIntValue()..parse('10'),
       );
       if (_isDisposed || generation != _filterListGeneration) {
-        return;
+        return false;
       }
       final prior = append
           ? filterResultPoisStreamValue.value ?? const <CityPoiModel>[]
@@ -2633,10 +2662,17 @@ class MapScreenController implements Disposable {
       );
       _filterListPage = result.page;
       filterListHasMoreStreamValue.addValue(result.hasMore);
+      _setMapMessage(null);
+      return true;
     } catch (error) {
       if (!_isDisposed && generation == _filterListGeneration) {
         debugPrint('Failed to load Map filter list page: $error');
+        filterListHasMoreStreamValue.addValue(true);
+        _setMapMessage(
+          'Não foi possível carregar os resultados do filtro. Tente novamente.',
+        );
       }
+      return false;
     } finally {
       if (!_isDisposed && generation == _filterListGeneration) {
         isFilterListLoadingStreamValue.addValue(false);

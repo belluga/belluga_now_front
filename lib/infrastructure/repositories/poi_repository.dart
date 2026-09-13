@@ -260,19 +260,6 @@ class PoiRepository implements PoiRepositoryContract {
 
     final snapshot = List<CityPoiModel>.unmodifiable(filtered);
     filteredPoisStreamValue.addValue(snapshot);
-
-    if (_filterMode == PoiFilterMode.none) {
-      return;
-    }
-
-    final selected = selectedPoiStreamValue.value;
-    if (selected == null) {
-      return;
-    }
-    final stillContains = snapshot.any((poi) => poi.id == selected.id);
-    if (!stillContains) {
-      clearSelection();
-    }
   }
 
   bool _supportsPoiHydration(CityPoiModel poi) {

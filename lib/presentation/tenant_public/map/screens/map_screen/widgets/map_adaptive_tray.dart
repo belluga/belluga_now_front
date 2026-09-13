@@ -452,7 +452,11 @@ class _FilterResultsTrayBody extends StatelessWidget {
                       ? const CircularProgressIndicator()
                       : OutlinedButton(
                           onPressed: controller.loadMoreFilterResults,
-                          child: const Text('Carregar mais'),
+                          child: Text(
+                            orderedPois.isEmpty
+                                ? 'Tentar novamente'
+                                : 'Carregar mais',
+                          ),
                         ),
                 ),
               );

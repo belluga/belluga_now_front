@@ -322,6 +322,7 @@ class _FakeCityMapRepository implements CityMapRepositoryContract {
   List<CityPoiModel> nextStackItems = const <CityPoiModel>[];
   CityPoiModel? nextLookupPoi;
   bool throwOnFetchPoints = false;
+  bool throwOnFetchFilterPage = false;
   bool throwOnFetchStackItems = false;
   bool throwOnLookupPoi = false;
   bool throwOnFetchFilters = false;
@@ -380,6 +381,9 @@ class _FakeCityMapRepository implements CityMapRepositoryContract {
     lastFilterQuery = query;
     filterPageQueries.add(query);
     requestedFilterPages.add(page.value);
+    if (throwOnFetchFilterPage) {
+      throw Exception('forced filter page failure');
+    }
     if (queuedFilterPageCompleters.isNotEmpty) {
       return queuedFilterPageCompleters.removeAt(0).future;
     }
@@ -3447,8 +3451,9 @@ void main() {
       'programmatic camera move',
       (tester) async {
         final mapHandle = _FakeMapHandle(isReady: false);
+        final poiRepository = _buildPoiRepository(mapRepository: mapRepository);
         final localController = _buildMapController(
-          poiRepository: _buildPoiRepository(mapRepository: mapRepository),
+          poiRepository: poiRepository,
           userLocationRepository: userLocationRepository,
           telemetryRepository: telemetry,
           mapHandle: mapHandle,
@@ -3471,6 +3476,8 @@ void main() {
         final callsBeforeMove = mapRepository.fetchPointsCallCount;
         final nextViewport = _buildViewport(seed: 20);
         final selectedPoi = _buildPoi(id: 'programmatic-focus');
+        poiRepository.applyFilterMode(PoiFilterMode.server);
+        poiRepository.replaceFilterResults(<CityPoiModel>[selectedPoi]);
         await localController.handleMarkerTap(selectedPoi);
         expect(
           localController.selectedPoiStreamValue.value?.id,
@@ -3495,6 +3502,57 @@ void main() {
           localController.selectedPoiStreamValue.value?.id,
           selectedPoi.id,
         );
+        await tester.pump(const Duration(seconds: 10));
+      },
+    );
+
+    testWidgets(
+      'does not commit a catalog filter when its first near page fails',
+      (tester) async {
+        final localController = _buildMapController(
+          poiRepository: _buildPoiRepository(mapRepository: mapRepository),
+          userLocationRepository: userLocationRepository,
+          telemetryRepository: telemetry,
+          mapHandle: _FakeMapHandle(),
+          appData: _buildAppData(),
+        );
+        addTearDown(localController.onDispose);
+        await localController.init();
+        await tester.pump();
+        mapRepository.throwOnFetchFilterPage = true;
+        final category = _buildCategory(
+          key: 'beach',
+          label: 'Praias',
+          tags: const <String>{},
+          serverQuery: _buildServerQuery(
+            source: 'static_asset',
+            types: const <String>{'beach_spot'},
+          ),
+        );
+
+        localController.toggleCatalogCategoryFilter(category);
+        await tester.pump();
+        await tester.pump();
+
+        expect(
+          localController.appliedCatalogFilterKeyStreamValue.value,
+          isNull,
+        );
+        expect(localController.filterResultPoisStreamValue.value, isEmpty);
+        expect(localController.filterListHasMoreStreamValue.value, isTrue);
+        expect(
+          localController.statusMessageStreamValue.value,
+          'Não foi possível carregar os resultados do filtro. Tente novamente.',
+        );
+        mapRepository.throwOnFetchFilterPage = false;
+        await localController.loadMoreFilterResults();
+        await tester.pump();
+
+        expect(
+          localController.appliedCatalogFilterKeyStreamValue.value,
+          'beach',
+        );
+        expect(localController.statusMessageStreamValue.value, isNull);
         await tester.pump(const Duration(seconds: 10));
       },
     );
@@ -5577,6 +5635,26 @@ void main() {
         expect(laterTop, lessThan(pastTop));
       },
     );
+
+    testWidgets('failed first filter page exposes a retry action', (
+      tester,
+    ) async {
+      final router = _RecordingStackRouter()..canPopResult = false;
+
+      await _pumpMapScreen(
+        tester,
+        router: router,
+        fallbackRoute: const TenantHomeRoute(),
+      );
+
+      controller.mapTrayModeStreamValue.addValue(MapTrayMode.filterResults);
+      controller.filterResultPoisStreamValue.addValue(const <CityPoiModel>[]);
+      controller.filterListHasMoreStreamValue.addValue(true);
+      await tester.pump();
+
+      expect(find.text('Tentar novamente'), findsOneWidget);
+      expect(find.text('Carregar mais'), findsNothing);
+    });
 
     testWidgets('selected filter state exposes an explicit clear affordance', (
       tester,
