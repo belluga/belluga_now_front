@@ -31,6 +31,7 @@ class TenantAdminHomeFavoritesPinnedProfileController implements Disposable {
   final errorStreamValue = StreamValue<String?>();
   String? _draftAccountProfileId;
   String? _draftDisplayName;
+  int _draftRevision = 0;
   bool _isDisposed = false;
 
   String? get draftAccountProfileId => _draftAccountProfileId;
@@ -71,6 +72,7 @@ class TenantAdminHomeFavoritesPinnedProfileController implements Disposable {
     if (_isDisposed) return;
     _draftAccountProfileId = profile.id;
     _draftDisplayName = profile.displayName;
+    _draftRevision += 1;
     settingsStreamValue.addValue(settingsStreamValue.value);
   }
 
@@ -78,6 +80,7 @@ class TenantAdminHomeFavoritesPinnedProfileController implements Disposable {
     if (_isDisposed) return;
     _draftAccountProfileId = null;
     _draftDisplayName = null;
+    _draftRevision += 1;
     settingsStreamValue.addValue(settingsStreamValue.value);
   }
 
@@ -87,6 +90,7 @@ class TenantAdminHomeFavoritesPinnedProfileController implements Disposable {
         !hasAuthoritativeBaseline) {
       return false;
     }
+    final submittedDraftRevision = _draftRevision;
     isSavingStreamValue.addValue(true);
     try {
       final value = await _settingsRepository.updateHomeFavoritesPinnedProfile(
@@ -95,7 +99,7 @@ class TenantAdminHomeFavoritesPinnedProfileController implements Disposable {
             : TenantAdminAccountProfileIdValue(_draftAccountProfileId!),
       );
       if (_isDisposed) return false;
-      _apply(value);
+      _apply(value, replaceDraft: submittedDraftRevision == _draftRevision);
       errorStreamValue.addValue(null);
       return true;
     } catch (error) {
@@ -107,9 +111,14 @@ class TenantAdminHomeFavoritesPinnedProfileController implements Disposable {
     }
   }
 
-  void _apply(TenantAdminHomeFavoritesPinnedProfileSettings value) {
-    _draftAccountProfileId = value.accountProfileId;
-    _draftDisplayName = value.selectedProfileDisplayName;
+  void _apply(
+    TenantAdminHomeFavoritesPinnedProfileSettings value, {
+    bool replaceDraft = true,
+  }) {
+    if (replaceDraft) {
+      _draftAccountProfileId = value.accountProfileId;
+      _draftDisplayName = value.selectedProfileDisplayName;
+    }
     settingsStreamValue.addValue(value);
   }
 

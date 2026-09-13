@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:belluga_now/domain/repositories/tenant_admin_account_profile_candidates_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_settings_repository_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_candidate.dart';
@@ -14,11 +16,14 @@ class _FakeSettingsRepository extends Fake
     this.initial,
     this.updated, {
     this.fetchFailuresBeforeSuccess = 0,
+    this.updateCompleter,
   });
 
   final TenantAdminHomeFavoritesPinnedProfileSettings initial;
   final TenantAdminHomeFavoritesPinnedProfileSettings updated;
   int fetchFailuresBeforeSuccess;
+  final Completer<TenantAdminHomeFavoritesPinnedProfileSettings>?
+  updateCompleter;
   int updateCalls = 0;
   TenantAdminAccountProfileIdValue? savedId;
 
@@ -39,6 +44,9 @@ class _FakeSettingsRepository extends Fake
   }) async {
     updateCalls += 1;
     savedId = accountProfileId;
+    if (updateCompleter case final completer?) {
+      return completer.future;
+    }
     return accountProfileId == null ? _unsetSettings() : updated;
   }
 }
@@ -92,31 +100,101 @@ void main() {
     },
   );
 
-  test('initial read failure cannot clear an unknown persisted value', () async {
-    final settingsRepository = _FakeSettingsRepository(
-      _settings('profile-1', 'Profile One'),
-      _settings('profile-1', 'Profile One'),
-      fetchFailuresBeforeSuccess: 1,
-    );
+  test(
+    'initial read failure cannot clear an unknown persisted value',
+    () async {
+      final settingsRepository = _FakeSettingsRepository(
+        _settings('profile-1', 'Profile One'),
+        _settings('profile-1', 'Profile One'),
+        fetchFailuresBeforeSuccess: 1,
+      );
+      final controller = TenantAdminHomeFavoritesPinnedProfileController(
+        settingsRepository: settingsRepository,
+        candidatesRepository: _FakeCandidatesRepository(),
+      );
+
+      await controller.init();
+
+      expect(controller.hasAuthoritativeBaseline, isFalse);
+      expect(await controller.save(), isFalse);
+      expect(settingsRepository.updateCalls, 0);
+
+      await controller.init();
+
+      expect(controller.hasAuthoritativeBaseline, isTrue);
+      expect(controller.draftAccountProfileId, 'profile-1');
+
+      controller.onDispose();
+    },
+  );
+
+  test(
+    'save response cannot overwrite a draft changed while pending',
+    () async {
+      final updateCompleter =
+          Completer<TenantAdminHomeFavoritesPinnedProfileSettings>();
+      final settingsRepository = _FakeSettingsRepository(
+        _settings('profile-1', 'Profile One'),
+        _settings('profile-2', 'Profile Two'),
+        updateCompleter: updateCompleter,
+      );
+      final controller = TenantAdminHomeFavoritesPinnedProfileController(
+        settingsRepository: settingsRepository,
+        candidatesRepository: _FakeCandidatesRepository(),
+      );
+
+      await controller.init();
+      controller.select(_selection('profile-2', 'Profile Two'));
+      final saveFuture = controller.save();
+
+      controller.select(_selection('profile-3', 'Profile Three'));
+      updateCompleter.complete(_settings('profile-2', 'Profile Two'));
+
+      expect(await saveFuture, isTrue);
+      expect(
+        controller.settingsStreamValue.value?.accountProfileId,
+        'profile-2',
+      );
+      expect(controller.draftAccountProfileId, 'profile-3');
+      expect(controller.draftDisplayName, 'Profile Three');
+
+      controller.onDispose();
+    },
+  );
+
+  test('save response cannot restore a draft cleared while pending', () async {
+    final updateCompleter =
+        Completer<TenantAdminHomeFavoritesPinnedProfileSettings>();
     final controller = TenantAdminHomeFavoritesPinnedProfileController(
-      settingsRepository: settingsRepository,
+      settingsRepository: _FakeSettingsRepository(
+        _settings('profile-1', 'Profile One'),
+        _settings('profile-2', 'Profile Two'),
+        updateCompleter: updateCompleter,
+      ),
       candidatesRepository: _FakeCandidatesRepository(),
     );
 
     await controller.init();
+    controller.select(_selection('profile-2', 'Profile Two'));
+    final saveFuture = controller.save();
 
-    expect(controller.hasAuthoritativeBaseline, isFalse);
-    expect(await controller.save(), isFalse);
-    expect(settingsRepository.updateCalls, 0);
+    controller.clear();
+    updateCompleter.complete(_settings('profile-2', 'Profile Two'));
 
-    await controller.init();
-
-    expect(controller.hasAuthoritativeBaseline, isTrue);
-    expect(controller.draftAccountProfileId, 'profile-1');
+    expect(await saveFuture, isTrue);
+    expect(controller.settingsStreamValue.value?.accountProfileId, 'profile-2');
+    expect(controller.draftAccountProfileId, isNull);
+    expect(controller.draftDisplayName, isNull);
 
     controller.onDispose();
   });
 }
+
+TenantAdminAccountProfileSelectionSummary _selection(String id, String name) =>
+    TenantAdminAccountProfileSelectionSummary(
+      idValue: TenantAdminAccountProfileIdValue(id),
+      displayNameValue: TenantAdminOptionalTextValue()..parse(name),
+    );
 
 TenantAdminHomeFavoritesPinnedProfileSettings _unsetSettings() =>
     TenantAdminHomeFavoritesPinnedProfileSettings(

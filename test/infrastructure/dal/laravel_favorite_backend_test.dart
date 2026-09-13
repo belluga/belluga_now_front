@@ -113,10 +113,7 @@ void main() {
     );
     expect(adapter.requests.single.connectTimeout, const Duration(seconds: 5));
     expect(adapter.requests.single.sendTimeout, const Duration(seconds: 12));
-    expect(
-      adapter.requests.single.receiveTimeout,
-      const Duration(seconds: 12),
-    );
+    expect(adapter.requests.single.receiveTimeout, const Duration(seconds: 12));
   });
 
   test('fetchFavoritesPage decodes pin separately from favorites', () async {
@@ -138,8 +135,22 @@ void main() {
     expect(page.pinned?.targetId, 'profile-pinned');
   });
 
-  test('fetchFavoritesPage ignores malformed pin without losing items', () async {
-    final adapter = _FavoritesApiAdapter(malformedPinned: true);
+  test('fetchFavoritesPage accepts a coherent event-backed pin', () async {
+    const eventPath = '/agenda/evento/pinned-show?occurrence=occ-pinned';
+    final adapter = _FavoritesApiAdapter(
+      pinnedOccurrenceStateOverrides: const {
+        'live_now_event_occurrence_id': 'occ-pinned',
+        'live_now_event_occurrence_at': '2026-03-22T20:00:00Z',
+      },
+      pinnedNavigationOverrides: const {
+        'kind': 'event',
+        'target_slug': 'pinned-show',
+        'target_path': eventPath,
+        'event_target_path': eventPath,
+        'event_target_slug': 'pinned-show',
+        'event_occurrence_id': 'occ-pinned',
+      },
+    );
     final dio = Dio()..httpClientAdapter = adapter;
 
     GetIt.I.registerSingleton<AuthRepositoryContract<UserContract>>(
@@ -151,8 +162,69 @@ void main() {
       dio: dio,
     ).fetchFavoritesPage(page: 1, pageSize: 10);
 
-    expect(page.pinned, isNull);
-    expect(page.items.single.id, 'profile-1');
+    expect(page.pinned?.eventTargetPath, eventPath);
+    expect(page.pinned?.liveNowEventOccurrenceId, 'occ-pinned');
+  });
+
+  test(
+    'fetchFavoritesPage ignores malformed pin without losing items',
+    () async {
+      final adapter = _FavoritesApiAdapter(malformedPinned: true);
+      final dio = Dio()..httpClientAdapter = adapter;
+
+      GetIt.I.registerSingleton<AuthRepositoryContract<UserContract>>(
+        _FakeAuthRepository(userTokenValue: 'test-token'),
+      );
+      GetIt.I.registerSingleton<AppData>(_buildAppData());
+
+      final page = await LaravelFavoriteBackend(
+        dio: dio,
+      ).fetchFavoritesPage(page: 1, pageSize: 10);
+
+      expect(page.pinned, isNull);
+      expect(page.items.single.id, 'profile-1');
+    },
+  );
+
+  test('fetchFavoritesPage rejects malformed pin scalar members', () async {
+    final cases = <_MalformedPinnedCase>[
+      const _MalformedPinnedCase(root: {'target_id': 7}),
+      const _MalformedPinnedCase(target: {'id': 7}),
+      const _MalformedPinnedCase(target: {'display_name': 7}),
+      const _MalformedPinnedCase(
+        occurrenceState: {'live_now_event_occurrence_id': 7},
+      ),
+      const _MalformedPinnedCase(
+        occurrenceState: {'next_event_occurrence_at': 7},
+      ),
+      const _MalformedPinnedCase(navigation: {'target_path': 7}),
+      const _MalformedPinnedCase(
+        navigation: {'can_open_public_detail': 'true'},
+      ),
+    ];
+
+    for (final malformedCase in cases) {
+      final adapter = _FavoritesApiAdapter(
+        pinnedRootOverrides: malformedCase.root,
+        pinnedTargetOverrides: malformedCase.target,
+        pinnedOccurrenceStateOverrides: malformedCase.occurrenceState,
+        pinnedNavigationOverrides: malformedCase.navigation,
+      );
+      final dio = Dio()..httpClientAdapter = adapter;
+
+      GetIt.I.registerSingleton<AuthRepositoryContract<UserContract>>(
+        _FakeAuthRepository(userTokenValue: 'test-token'),
+      );
+      GetIt.I.registerSingleton<AppData>(_buildAppData());
+
+      final page = await LaravelFavoriteBackend(
+        dio: dio,
+      ).fetchFavoritesPage(page: 1, pageSize: 10);
+
+      expect(page.pinned, isNull, reason: malformedCase.toString());
+      expect(page.items.single.id, 'profile-1');
+      await GetIt.I.reset();
+    }
   });
 
   test(
@@ -310,7 +382,10 @@ void main() {
 
     expect(favorites, hasLength(2));
     expect(adapter.requests, hasLength(3));
-    expect(adapter.requests.first.headers['Authorization'], 'Bearer test-token');
+    expect(
+      adapter.requests.first.headers['Authorization'],
+      'Bearer test-token',
+    );
     expect(
       adapter.requests[1].headers['Authorization'],
       'Bearer refreshed-token',
@@ -334,7 +409,10 @@ void main() {
     expect(page.items, hasLength(1));
     expect(adapter.requests, hasLength(2));
     expect(adapter.requests.first.queryParameters['page'], 2);
-    expect(adapter.requests.first.headers['Authorization'], 'Bearer test-token');
+    expect(
+      adapter.requests.first.headers['Authorization'],
+      'Bearer test-token',
+    );
     expect(
       adapter.requests.last.headers['Authorization'],
       'Bearer refreshed-token',
@@ -421,6 +499,10 @@ class _FavoritesApiAdapter implements HttpClientAdapter {
     this.firstPageNavigationRemovals = const <String>{},
     this.unauthorizedFirstGet = false,
     this.malformedPinned = false,
+    this.pinnedRootOverrides = const <String, Object?>{},
+    this.pinnedTargetOverrides = const <String, Object?>{},
+    this.pinnedOccurrenceStateOverrides = const <String, Object?>{},
+    this.pinnedNavigationOverrides = const <String, Object?>{},
   });
 
   final List<_RecordedRequest> requests = <_RecordedRequest>[];
@@ -431,6 +513,10 @@ class _FavoritesApiAdapter implements HttpClientAdapter {
   final Set<String> firstPageNavigationRemovals;
   final bool unauthorizedFirstGet;
   final bool malformedPinned;
+  final Map<String, Object?> pinnedRootOverrides;
+  final Map<String, Object?> pinnedTargetOverrides;
+  final Map<String, Object?> pinnedOccurrenceStateOverrides;
+  final Map<String, Object?> pinnedNavigationOverrides;
 
   @override
   void close({bool force = false}) {}
@@ -466,7 +552,8 @@ class _FavoritesApiAdapter implements HttpClientAdapter {
       );
     }
 
-    if (unauthorizedFirstGet && requests.where((request) => request.method == 'GET').length == 1) {
+    if (unauthorizedFirstGet &&
+        requests.where((request) => request.method == 'GET').length == 1) {
       throw DioException.badResponse(
         statusCode: 401,
         requestOptions: options,
@@ -531,15 +618,20 @@ class _FavoritesApiAdapter implements HttpClientAdapter {
               'public_detail_path': '/parceiro/pinned-profile',
             },
             'occurrence_state': {
-              'next_event_occurrence_at': '2026-03-22T20:00:00Z',
+              'next_event_occurrence_id': null,
+              'next_event_occurrence_at': null,
               'last_event_occurrence_at': null,
               'live_now_event_occurrence_id': null,
               'live_now_event_occurrence_at': null,
             },
             'navigation': {
               'kind': 'account_profile',
+              'target_slug': 'pinned-profile',
               'target_path': '/parceiro/pinned-profile',
               'profile_target_path': '/parceiro/pinned-profile',
+              'event_target_path': null,
+              'event_target_slug': null,
+              'event_occurrence_id': null,
               'can_open_public_detail': true,
             },
           },
@@ -563,6 +655,35 @@ class _FavoritesApiAdapter implements HttpClientAdapter {
           'has_more': true,
         },
       };
+      final pageData = payload['data'];
+      if (pageData is Map) {
+        final pinnedRaw = pageData['pinned'];
+        if (pinnedRaw is Map) {
+          final pinned = Map<String, Object?>.from(pinnedRaw);
+          pinned.addAll(pinnedRootOverrides);
+          final targetRaw = pinned['target'];
+          if (targetRaw is Map) {
+            final target = Map<String, Object?>.from(targetRaw);
+            target.addAll(pinnedTargetOverrides);
+            pinned['target'] = target;
+          }
+          final occurrenceStateRaw = pinned['occurrence_state'];
+          if (occurrenceStateRaw is Map) {
+            final occurrenceState = Map<String, Object?>.from(
+              occurrenceStateRaw,
+            );
+            occurrenceState.addAll(pinnedOccurrenceStateOverrides);
+            pinned['occurrence_state'] = occurrenceState;
+          }
+          final navigationRaw = pinned['navigation'];
+          if (navigationRaw is Map) {
+            final navigation = Map<String, Object?>.from(navigationRaw);
+            navigation.addAll(pinnedNavigationOverrides);
+            pinned['navigation'] = navigation;
+          }
+          pageData['pinned'] = pinned;
+        }
+      }
       if (malformedPinned) {
         final data = payload['data'];
         if (data is Map) {
@@ -622,6 +743,24 @@ class _FavoritesApiAdapter implements HttpClientAdapter {
   }
 }
 
+class _MalformedPinnedCase {
+  const _MalformedPinnedCase({
+    this.root = const <String, Object?>{},
+    this.target = const <String, Object?>{},
+    this.occurrenceState = const <String, Object?>{},
+    this.navigation = const <String, Object?>{},
+  });
+
+  final Map<String, Object?> root;
+  final Map<String, Object?> target;
+  final Map<String, Object?> occurrenceState;
+  final Map<String, Object?> navigation;
+
+  @override
+  String toString() =>
+      'root=$root target=$target occurrence=$occurrenceState navigation=$navigation';
+}
+
 class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
   _FakeAuthRepository({required this.userTokenValue, this.tokenAfterInit});
 
@@ -669,7 +808,8 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
   }
 
   @override
-  Future<void> recoverTenantPublicIdentityAfterUnauthorizedPublicRequest() async {
+  Future<void>
+  recoverTenantPublicIdentityAfterUnauthorizedPublicRequest() async {
     recoverCalls += 1;
     userTokenValue = 'refreshed-token';
   }
