@@ -18,6 +18,7 @@ import 'package:belluga_now/domain/app_data/value_object/environment_name_value.
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/domain/favorite/projections/favorite_resume.dart';
 import 'package:belluga_now/domain/favorite/value_objects/favorite_primary_flag_value.dart';
+import 'package:belluga_now/domain/favorite/value_objects/favorite_resume_values.dart';
 import 'package:belluga_now/domain/invites/invite_accept_result.dart';
 import 'package:belluga_now/domain/invites/invite_contact_match.dart';
 import 'package:belluga_now/domain/invites/invite_decline_result.dart';
@@ -146,11 +147,19 @@ class _TestTenantHomeAgendaController extends MockTenantHomeAgendaController {
 
 class _TestFavoritesSectionController extends MockFavoritesSectionController {
   _TestFavoritesSectionController()
-    : _hasMoreFavoritesStreamValue = StreamValue<bool>(defaultValue: false),
+    : _pinnedFavoriteStreamValue = StreamValue<FavoriteResume?>(
+        defaultValue: null,
+      ),
+      _hasMoreFavoritesStreamValue = StreamValue<bool>(defaultValue: false),
       _isPageLoadingStreamValue = StreamValue<bool>(defaultValue: false);
 
+  final StreamValue<FavoriteResume?> _pinnedFavoriteStreamValue;
   final StreamValue<bool> _hasMoreFavoritesStreamValue;
   final StreamValue<bool> _isPageLoadingStreamValue;
+
+  @override
+  StreamValue<FavoriteResume?> get pinnedFavoriteStreamValue =>
+      _pinnedFavoriteStreamValue;
 
   @override
   StreamValue<bool> get hasMoreFavoritesStreamValue =>
@@ -158,6 +167,10 @@ class _TestFavoritesSectionController extends MockFavoritesSectionController {
 
   @override
   StreamValue<bool> get isPageLoadingStreamValue => _isPageLoadingStreamValue;
+
+  @override
+  FavoriteChipHaloState haloStateFor(FavoriteResume favorite) =>
+      favorite.haloState;
 
   @override
   Future<void> loadNextPage() async {}

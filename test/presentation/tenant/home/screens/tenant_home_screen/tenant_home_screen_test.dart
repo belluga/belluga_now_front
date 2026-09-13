@@ -17,6 +17,7 @@ import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_
 import 'package:belluga_now/presentation/tenant_public/widgets/section_header.dart';
 import 'package:belluga_now/domain/upcoming_ocurrence/projections/upcoming_ocurrence_resume.dart';
 import 'package:belluga_now/domain/favorite/projections/favorite_resume.dart';
+import 'package:belluga_now/domain/favorite/value_objects/favorite_resume_values.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';
@@ -69,10 +70,14 @@ class _TestFavoritesSectionController extends MockFavoritesSectionController {
     : _navigationTargetStreamValue = StreamValue<FavoriteNavigationTarget?>(
         defaultValue: null,
       ),
+      _pinnedFavoriteStreamValue = StreamValue<FavoriteResume?>(
+        defaultValue: null,
+      ),
       _hasMoreFavoritesStreamValue = StreamValue<bool>(defaultValue: false),
       _isPageLoadingStreamValue = StreamValue<bool>(defaultValue: false);
 
   final StreamValue<FavoriteNavigationTarget?> _navigationTargetStreamValue;
+  final StreamValue<FavoriteResume?> _pinnedFavoriteStreamValue;
   final StreamValue<bool> _hasMoreFavoritesStreamValue;
   final StreamValue<bool> _isPageLoadingStreamValue;
 
@@ -81,11 +86,19 @@ class _TestFavoritesSectionController extends MockFavoritesSectionController {
       _navigationTargetStreamValue;
 
   @override
+  StreamValue<FavoriteResume?> get pinnedFavoriteStreamValue =>
+      _pinnedFavoriteStreamValue;
+
+  @override
   StreamValue<bool> get hasMoreFavoritesStreamValue =>
       _hasMoreFavoritesStreamValue;
 
   @override
   StreamValue<bool> get isPageLoadingStreamValue => _isPageLoadingStreamValue;
+
+  @override
+  FavoriteChipHaloState haloStateFor(FavoriteResume favorite) =>
+      favorite.haloState;
 
   @override
   Future<void> loadNextPage() async {}
