@@ -188,8 +188,7 @@ void main() {
 
   test('fetchFavoritesPage rejects malformed pin scalar members', () async {
     final cases = <_MalformedPinnedCase>[
-      const _MalformedPinnedCase(root: {'target_id': 7}),
-      const _MalformedPinnedCase(target: {'id': 7}),
+      const _MalformedPinnedCase(root: {'target_id': 7}, target: {'id': 7}),
       const _MalformedPinnedCase(target: {'display_name': 7}),
       const _MalformedPinnedCase(
         occurrenceState: {'live_now_event_occurrence_id': 7},
@@ -225,6 +224,96 @@ void main() {
       expect(page.items.single.id, 'profile-1');
       await GetIt.I.reset();
     }
+  });
+
+  test(
+    'fetchFavoritesPage rejects invalid pin contract relationships',
+    () async {
+      final cases = <_MalformedPinnedCase>[
+        const _MalformedPinnedCase(root: {'favorite_id': 'edge-1'}),
+        const _MalformedPinnedCase(
+          root: {'favorited_at': '2026-03-22T20:00:00Z'},
+        ),
+        const _MalformedPinnedCase(
+          occurrenceState: {'next_event_occurrence_at': 'not-a-date'},
+        ),
+        const _MalformedPinnedCase(
+          occurrenceState: {'next_event_occurrence_id': 'occ-next'},
+        ),
+        const _MalformedPinnedCase(navigation: {'kind': 'unknown'}),
+        const _MalformedPinnedCase(
+          navigation: {'profile_target_path': '/parceiro/another-profile'},
+        ),
+        const _MalformedPinnedCase(
+          occurrenceState: {
+            'next_event_occurrence_id': 'occ-next',
+            'next_event_occurrence_at': '2026-03-22T20:00:00Z',
+          },
+          navigation: {
+            'kind': 'event',
+            'target_slug': 'next-show',
+            'target_path': '/agenda/evento/next-show?occurrence=other',
+            'event_target_path': '/agenda/evento/next-show?occurrence=other',
+            'event_target_slug': 'next-show',
+            'event_occurrence_id': 'other',
+          },
+        ),
+      ];
+
+      for (final malformedCase in cases) {
+        final adapter = _FavoritesApiAdapter(
+          pinnedRootOverrides: malformedCase.root,
+          pinnedTargetOverrides: malformedCase.target,
+          pinnedOccurrenceStateOverrides: malformedCase.occurrenceState,
+          pinnedNavigationOverrides: malformedCase.navigation,
+        );
+        final dio = Dio()..httpClientAdapter = adapter;
+
+        GetIt.I.registerSingleton<AuthRepositoryContract<UserContract>>(
+          _FakeAuthRepository(userTokenValue: 'test-token'),
+        );
+        GetIt.I.registerSingleton<AppData>(_buildAppData());
+
+        final page = await LaravelFavoriteBackend(
+          dio: dio,
+        ).fetchFavoritesPage(page: 1, pageSize: 10);
+
+        expect(page.pinned, isNull, reason: malformedCase.toString());
+        expect(page.items.single.id, 'profile-1');
+        await GetIt.I.reset();
+      }
+    },
+  );
+
+  test('fetchFavoritesPage accepts a coherent upcoming-event pin', () async {
+    const eventPath = '/agenda/evento/next-show?occurrence=occ-next';
+    final adapter = _FavoritesApiAdapter(
+      pinnedOccurrenceStateOverrides: const {
+        'next_event_occurrence_id': 'occ-next',
+        'next_event_occurrence_at': '2026-03-22T20:00:00Z',
+      },
+      pinnedNavigationOverrides: const {
+        'kind': 'event',
+        'target_slug': 'next-show',
+        'target_path': eventPath,
+        'event_target_path': eventPath,
+        'event_target_slug': 'next-show',
+        'event_occurrence_id': 'occ-next',
+      },
+    );
+    final dio = Dio()..httpClientAdapter = adapter;
+
+    GetIt.I.registerSingleton<AuthRepositoryContract<UserContract>>(
+      _FakeAuthRepository(userTokenValue: 'test-token'),
+    );
+    GetIt.I.registerSingleton<AppData>(_buildAppData());
+
+    final page = await LaravelFavoriteBackend(
+      dio: dio,
+    ).fetchFavoritesPage(page: 1, pageSize: 10);
+
+    expect(page.pinned?.eventTargetPath, eventPath);
+    expect(page.pinned?.nextEventOccurrenceAt, isNotNull);
   });
 
   test(

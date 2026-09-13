@@ -87,6 +87,7 @@ class TenantAdminHomeFavoritesPinnedProfileController implements Disposable {
   Future<bool> save() async {
     if (_isDisposed ||
         isLoadingStreamValue.value ||
+        isSavingStreamValue.value ||
         !hasAuthoritativeBaseline) {
       return false;
     }

@@ -162,6 +162,37 @@ void main() {
     },
   );
 
+  test('save drops duplicate submission while one is pending', () async {
+    final updateCompleter =
+        Completer<TenantAdminHomeFavoritesPinnedProfileSettings>();
+    final settingsRepository = _FakeSettingsRepository(
+      _settings('profile-1', 'Profile One'),
+      _settings('profile-2', 'Profile Two'),
+      updateCompleter: updateCompleter,
+    );
+    final controller = TenantAdminHomeFavoritesPinnedProfileController(
+      settingsRepository: settingsRepository,
+      candidatesRepository: _FakeCandidatesRepository(),
+    );
+
+    await controller.init();
+    controller.select(_selection('profile-2', 'Profile Two'));
+    final firstSave = controller.save();
+    final duplicateSave = controller.save();
+
+    await Future<void>.delayed(Duration.zero);
+    expect(settingsRepository.updateCalls, 1);
+    expect(controller.isSavingStreamValue.value, isTrue);
+
+    updateCompleter.complete(_settings('profile-2', 'Profile Two'));
+
+    expect(await firstSave, isTrue);
+    expect(await duplicateSave, isFalse);
+    expect(controller.isSavingStreamValue.value, isFalse);
+
+    controller.onDispose();
+  });
+
   test('save response cannot restore a draft cleared while pending', () async {
     final updateCompleter =
         Completer<TenantAdminHomeFavoritesPinnedProfileSettings>();
