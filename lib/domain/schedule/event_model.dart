@@ -1,12 +1,11 @@
 export 'value_objects/event_model_values.dart';
 
-import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
+import 'package:belluga_now/domain/partners/account_profile_summary.dart';
 import 'package:belluga_now/domain/schedule/event_occurrence_option.dart';
 import 'package:belluga_now/domain/schedule/event_profile_group.dart';
 import 'package:belluga_now/domain/schedule/event_programming_item.dart';
 import 'package:belluga_now/domain/schedule/event_schedule_display.dart';
 import 'package:belluga_now/domain/thumb/thumb_model.dart';
-import 'package:belluga_now/domain/partner/partner_resume.dart';
 import 'package:belluga_now/domain/schedule/friend_resume.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
@@ -38,12 +37,12 @@ class EventModel {
   final TitleValue title;
   final HTMLContentValue content;
   final DescriptionValue location;
-  final PartnerResume? venue;
+  final AccountProfileSummary? venue;
   final ThumbModel? thumb;
   final DateTimeValue dateTimeStart;
   final DateTimeValue? dateTimeEnd;
-  final List<EventLinkedAccountProfile> linkedAccountProfiles;
-  final List<EventLinkedAccountProfile> counterpartPreviewProfiles;
+  final List<AccountProfileSummary> linkedAccountProfiles;
+  final List<AccountProfileSummary> counterpartPreviewProfiles;
   final EventCounterpartCountValue? counterpartCountValue;
   final List<EventProfileGroup> profileGroups;
   final List<EventOccurrenceOption> occurrences;
@@ -69,8 +68,7 @@ class EventModel {
   EventModelPrimInt get totalConfirmed => totalConfirmedValue.value;
   EventModelPrimString get slug => slugValue.value;
   DateTime? get confirmedAt => confirmedAtValue.value;
-  List<EventTagValue> get tags =>
-      List<EventTagValue>.unmodifiable(tagValues);
+  List<EventTagValue> get tags => List<EventTagValue>.unmodifiable(tagValues);
   EventOccurrenceOption? get selectedOccurrence {
     for (final occurrence in occurrences) {
       if (occurrence.isSelected) {
@@ -118,21 +116,17 @@ class EventModel {
     return List<EventProgrammingItem>.unmodifiable(items);
   }
 
-  List<EventLinkedAccountProfile> get counterpartProfiles {
-    return List<EventLinkedAccountProfile>.unmodifiable(
+  List<AccountProfileSummary> get counterpartProfiles {
+    return List<AccountProfileSummary>.unmodifiable(
       counterpartPreviewProfiles.where((profile) {
-        final normalizedPartyType = profile.partyType?.trim().toLowerCase();
         final normalizedProfileType = profile.profileType.trim().toLowerCase();
-        return normalizedPartyType != 'venue' &&
-            normalizedProfileType != 'venue';
+        return normalizedProfileType != 'venue';
       }),
     );
   }
 
-  List<EventLinkedAccountProfile> get heroCounterpartProfiles {
-    return List<EventLinkedAccountProfile>.unmodifiable(
-      counterpartPreviewProfiles,
-    );
+  List<AccountProfileSummary> get heroCounterpartProfiles {
+    return List<AccountProfileSummary>.unmodifiable(counterpartPreviewProfiles);
   }
 
   int get counterpartCount =>
@@ -140,7 +134,7 @@ class EventModel {
 
   bool get hasCounterparts => counterpartProfiles.isNotEmpty;
 
-  EventLinkedAccountProfile? get primaryCounterpart =>
+  AccountProfileSummary? get primaryCounterpart =>
       hasCounterparts ? counterpartProfiles.first : null;
 
   EventModelPrimString get counterpartNamesLabel => counterpartProfiles
@@ -153,9 +147,7 @@ class EventModel {
         .map((tag) => tag.value.trim())
         .where((t) => t.isNotEmpty)
         .toSet();
-    return List<EventTagValue>.unmodifiable(
-      cleaned.map(EventTagValue.new),
-    );
+    return List<EventTagValue>.unmodifiable(cleaned.map(EventTagValue.new));
   }
 
   EventModel({
@@ -169,9 +161,9 @@ class EventModel {
     required this.thumb,
     required this.dateTimeStart,
     required this.dateTimeEnd,
-    List<EventLinkedAccountProfile> linkedAccountProfiles = const [],
-    List<EventLinkedAccountProfile> counterpartPreviewProfiles =
-        const <EventLinkedAccountProfile>[],
+    List<AccountProfileSummary> linkedAccountProfiles = const [],
+    List<AccountProfileSummary> counterpartPreviewProfiles =
+        const <AccountProfileSummary>[],
     this.counterpartCountValue,
     List<EventProfileGroup> profileGroups = const [],
     List<EventOccurrenceOption> occurrences = const [],
@@ -184,13 +176,12 @@ class EventModel {
     this.sentInvites,
     this.friendsGoing,
     required this.totalConfirmedValue,
-  }) : linkedAccountProfiles = List<EventLinkedAccountProfile>.unmodifiable(
+  }) : linkedAccountProfiles = List<AccountProfileSummary>.unmodifiable(
          linkedAccountProfiles,
        ),
-       counterpartPreviewProfiles =
-           List<EventLinkedAccountProfile>.unmodifiable(
-             counterpartPreviewProfiles,
-           ),
+       counterpartPreviewProfiles = List<AccountProfileSummary>.unmodifiable(
+         counterpartPreviewProfiles,
+       ),
        profileGroups = List<EventProfileGroup>.unmodifiable(profileGroups),
        occurrences = List<EventOccurrenceOption>.unmodifiable(occurrences),
        programmingItems = List<EventProgrammingItem>.unmodifiable(

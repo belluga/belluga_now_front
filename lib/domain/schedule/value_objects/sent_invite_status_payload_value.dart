@@ -2,9 +2,9 @@ import 'dart:collection';
 
 class SentInviteStatusPayloadValue extends MapBase<String, dynamic> {
   SentInviteStatusPayloadValue(Map<String, dynamic> raw)
-      : _value = Map<String, dynamic>.unmodifiable(
-          Map<String, dynamic>.from(raw),
-        );
+    : _value = Map<String, dynamic>.unmodifiable(
+        Map<String, dynamic>.from(raw),
+      );
 
   final Map<String, dynamic> _value;
 

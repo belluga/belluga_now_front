@@ -2,9 +2,11 @@ import 'package:belluga_now/domain/repositories/landlord_auth_repository_contrac
 import 'package:belluga_now/domain/repositories/tenant_admin_settings_repository_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_home_favorites_pinned_profile_settings.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_settings.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_count_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_account_profile_id_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_discovery_filters_settings_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_lowercase_token_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
@@ -55,6 +57,43 @@ class TenantAdminSettingsRepository
   @override
   void clearBrandingSettings() {
     _brandingSettingsStreamValue.addValue(null);
+  }
+
+  @override
+  Future<TenantAdminHomeFavoritesPinnedProfileSettings>
+  fetchHomeFavoritesPinnedProfile() async {
+    try {
+      final response = await _dio.getUri(
+        _buildTenantSettingsValuesUri(
+          namespace: 'home_favorites_pinned_profile',
+        ),
+        options: Options(headers: _buildHeaders()),
+      );
+      return _responseDecoder.decodeHomeFavoritesPinnedProfile(response.data);
+    } on DioException catch (error) {
+      throw _wrapError(error, 'load home favorites pinned profile');
+    }
+  }
+
+  @override
+  Future<TenantAdminHomeFavoritesPinnedProfileSettings>
+  updateHomeFavoritesPinnedProfile({
+    required TenantAdminAccountProfileIdValue? accountProfileId,
+  }) async {
+    try {
+      final response = await _dio.patchUri(
+        _buildTenantSettingsValuesUri(
+          namespace: 'home_favorites_pinned_profile',
+        ),
+        data: _requestEncoder.encodeHomeFavoritesPinnedProfilePatch(
+          accountProfileId,
+        ),
+        options: Options(headers: _buildHeaders()),
+      );
+      return _responseDecoder.decodeHomeFavoritesPinnedProfile(response.data);
+    } on DioException catch (error) {
+      throw _wrapError(error, 'update home favorites pinned profile');
+    }
   }
 
   @override

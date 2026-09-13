@@ -14,7 +14,6 @@ class TenantAdminProfileTypeCapabilities {
     required TenantAdminFlagValue isPoiEnabled,
     TenantAdminFlagValue? isReferenceLocationEnabled,
     required TenantAdminFlagValue hasBio,
-    required TenantAdminFlagValue hasContent,
     required TenantAdminFlagValue hasTaxonomies,
     required TenantAdminFlagValue hasAvatar,
     required TenantAdminFlagValue hasCover,
@@ -45,7 +44,6 @@ class TenantAdminProfileTypeCapabilities {
         TenantAdminProfileTypeCapabilityKey.isReferenceLocationEnabled.apiValue:
             isReferenceLocationEnabled.value,
       TenantAdminProfileTypeCapabilityKey.hasBio.apiValue: hasBio.value,
-      TenantAdminProfileTypeCapabilityKey.hasContent.apiValue: hasContent.value,
       TenantAdminProfileTypeCapabilityKey.hasTaxonomies.apiValue:
           hasTaxonomies.value,
       TenantAdminProfileTypeCapabilityKey.hasAvatar.apiValue: hasAvatar.value,
@@ -88,9 +86,6 @@ class TenantAdminProfileTypeCapabilities {
         TenantAdminProfileTypeCapabilityKey.isReferenceLocationEnabled,
       ),
       hasBio: normalized.flagValue(TenantAdminProfileTypeCapabilityKey.hasBio),
-      hasContent: normalized.flagValue(
-        TenantAdminProfileTypeCapabilityKey.hasContent,
-      ),
       hasTaxonomies: normalized.flagValue(
         TenantAdminProfileTypeCapabilityKey.hasTaxonomies,
       ),
@@ -127,7 +122,6 @@ class TenantAdminProfileTypeCapabilities {
     required TenantAdminFlagValue isPoiEnabled,
     required TenantAdminFlagValue isReferenceLocationEnabled,
     required TenantAdminFlagValue hasBio,
-    required TenantAdminFlagValue hasContent,
     required TenantAdminFlagValue hasTaxonomies,
     required TenantAdminFlagValue hasAvatar,
     required TenantAdminFlagValue hasCover,
@@ -144,7 +138,6 @@ class TenantAdminProfileTypeCapabilities {
        isPoiEnabledValue = isPoiEnabled,
        isReferenceLocationEnabledValue = isReferenceLocationEnabled,
        hasBioValue = hasBio,
-       hasContentValue = hasContent,
        hasTaxonomiesValue = hasTaxonomies,
        hasAvatarValue = hasAvatar,
        hasCoverValue = hasCover,
@@ -162,7 +155,6 @@ class TenantAdminProfileTypeCapabilities {
   final TenantAdminFlagValue isPoiEnabledValue;
   final TenantAdminFlagValue isReferenceLocationEnabledValue;
   final TenantAdminFlagValue hasBioValue;
-  final TenantAdminFlagValue hasContentValue;
   final TenantAdminFlagValue hasTaxonomiesValue;
   final TenantAdminFlagValue hasAvatarValue;
   final TenantAdminFlagValue hasCoverValue;
@@ -180,7 +172,6 @@ class TenantAdminProfileTypeCapabilities {
   bool get isPoiEnabled => isPoiEnabledValue.value;
   bool get isReferenceLocationEnabled => isReferenceLocationEnabledValue.value;
   bool get hasBio => hasBioValue.value;
-  bool get hasContent => hasContentValue.value;
   bool get hasTaxonomies => hasTaxonomiesValue.value;
   bool get hasAvatar => hasAvatarValue.value;
   bool get hasCover => hasCoverValue.value;
@@ -207,8 +198,6 @@ class TenantAdminProfileTypeCapabilities {
       TenantAdminProfileTypeCapabilityKey.isReferenceLocationEnabled.apiValue:
           isReferenceLocationEnabledValue.value,
       TenantAdminProfileTypeCapabilityKey.hasBio.apiValue: hasBioValue.value,
-      TenantAdminProfileTypeCapabilityKey.hasContent.apiValue:
-          hasContentValue.value,
       TenantAdminProfileTypeCapabilityKey.hasTaxonomies.apiValue:
           hasTaxonomiesValue.value,
       TenantAdminProfileTypeCapabilityKey.hasAvatar.apiValue:

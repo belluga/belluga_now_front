@@ -88,7 +88,6 @@ abstract class TenantAdminAccountProfilesRepositoryContract
     TenantAdminTaxonomyTerms taxonomyTerms =
         const TenantAdminTaxonomyTerms.empty(),
     TenantAdminAccountProfilesRepoString? bio,
-    TenantAdminAccountProfilesRepoString? content,
     TenantAdminAccountProfilesRepoString? avatarUrl,
     TenantAdminAccountProfilesRepoString? coverUrl,
     TenantAdminMediaUpload? avatarUpload,
@@ -111,7 +110,6 @@ abstract class TenantAdminAccountProfilesRepositoryContract
     TenantAdminLocation? location,
     TenantAdminTaxonomyTerms? taxonomyTerms,
     TenantAdminAccountProfilesRepoString? bio,
-    TenantAdminAccountProfilesRepoString? content,
     TenantAdminAccountProfilesRepoString? avatarUrl,
     TenantAdminAccountProfilesRepoString? coverUrl,
     TenantAdminAccountProfilesRepoBool? removeAvatar,

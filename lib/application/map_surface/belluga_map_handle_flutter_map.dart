@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:belluga_now/application/map_surface/belluga_map_handle_contract.dart';
 import 'package:belluga_now/application/map_surface/belluga_map_interaction.dart';
+import 'package:belluga_now/application/map_surface/belluga_map_viewport.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -49,6 +50,19 @@ class BellugaMapHandle implements BellugaMapHandleContract {
   }
 
   @override
+  BellugaMapViewport? get currentViewport {
+    try {
+      final bounds = _mapController.camera.visibleBounds;
+      return BellugaMapViewport(
+        northEast: CityCoordinate.fromLatLng(bounds.northEast),
+        southWest: CityCoordinate.fromLatLng(bounds.southWest),
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  @override
   void markReady() {
     if (_isDisposed || _isReady) {
       return;
@@ -58,6 +72,7 @@ class BellugaMapHandle implements BellugaMapHandleContract {
       BellugaMapInteractionEvent(
         type: BellugaMapInteractionType.ready,
         zoom: currentZoom,
+        viewport: currentViewport,
       ),
     );
   }
@@ -71,10 +86,7 @@ class BellugaMapHandle implements BellugaMapHandleContract {
   }
 
   @override
-  bool moveTo(
-    CityCoordinate coordinate, {
-    required double zoom,
-  }) {
+  bool moveTo(CityCoordinate coordinate, {required double zoom}) {
     try {
       if (_matchesCurrentCamera(coordinate, zoom)) {
         return true;
@@ -126,10 +138,7 @@ class BellugaMapHandle implements BellugaMapHandleContract {
     required double viewportHeight,
     required double verticalViewportAnchor,
   }) {
-    return Offset(
-      0,
-      (verticalViewportAnchor - 0.5) * viewportHeight,
-    );
+    return Offset(0, (verticalViewportAnchor - 0.5) * viewportHeight);
   }
 
   bool _matchesCurrentCamera(CityCoordinate coordinate, double zoom) {
@@ -162,8 +171,9 @@ class BellugaMapHandle implements BellugaMapHandleContract {
     try {
       final bounds = LatLngBounds.fromPoints(
         coordinates
-            .map((coordinate) =>
-                LatLng(coordinate.latitude, coordinate.longitude))
+            .map(
+              (coordinate) => LatLng(coordinate.latitude, coordinate.longitude),
+            )
             .toList(growable: false),
       );
       return _mapController.fitCamera(

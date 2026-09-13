@@ -189,11 +189,15 @@ class _HomeAgendaSectionViewState extends State<HomeAgendaSectionView> {
                           ),
                         ),
                     ],
-                    body: HomeAgendaBody(
-                      controller: widget.controller,
-                      catalog: catalog,
-                      selection: selection,
-                    ),
+                    scrollViewBuilder:
+                        ({required headerSlivers, required scrollController}) =>
+                            HomeAgendaBody(
+                              controller: widget.controller,
+                              catalog: catalog,
+                              selection: selection,
+                              headerSlivers: headerSlivers,
+                              scrollController: scrollController,
+                            ),
                   ),
                 );
               },

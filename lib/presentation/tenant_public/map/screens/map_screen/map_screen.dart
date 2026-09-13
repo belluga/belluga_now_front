@@ -69,9 +69,7 @@ class _MapScreenState extends State<MapScreen> {
 
     return Theme(
       data: theme,
-      child: RouteInstanceScope(
-        child: _buildScaffold(),
-      ),
+      child: RouteInstanceScope(child: _buildScaffold()),
     );
   }
 
@@ -83,11 +81,7 @@ class _MapScreenState extends State<MapScreen> {
         body: Stack(
           children: [
             Column(
-              children: [
-                Expanded(
-                  child: MapLayers(controller: _controller),
-                ),
-              ],
+              children: [Expanded(child: MapLayers(controller: _controller))],
             ),
             SafeArea(
               child: Padding(
@@ -147,17 +141,13 @@ class _MapScreenState extends State<MapScreen> {
                   curve: Curves.easeOutCubic,
                   offset: Offset.zero,
                   child: AnimatedOpacity(
-                    key: const ValueKey<String>(
-                      'map-bottom-controls-opacity',
-                    ),
+                    key: const ValueKey<String>('map-bottom-controls-opacity'),
                     duration: const Duration(milliseconds: 180),
                     curve: Curves.easeOutCubic,
                     opacity: 1,
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
-                      children: [
-                        MapAdaptiveTray(controller: _controller),
-                      ],
+                      children: [MapAdaptiveTray(controller: _controller)],
                     ),
                   ),
                 ),
@@ -197,6 +187,24 @@ class _MapScreenState extends State<MapScreen> {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
+                        StreamValueBuilder<String?>(
+                          streamValue: _controller.sceneNoticeStreamValue,
+                          builder: (_, message) {
+                            final text = message?.trim() ?? '';
+                            if (text.isEmpty) {
+                              return const SizedBox.shrink();
+                            }
+                            return Card(
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 10,
+                                ),
+                                child: Text(text, textAlign: TextAlign.center),
+                              ),
+                            );
+                          },
+                        ),
                         MapSoftLocationNoticeBanner(controller: _controller),
                         StreamValueBuilder<String>(
                           streamValue:
@@ -227,8 +235,10 @@ class _MapScreenState extends State<MapScreen> {
       );
     }
 
-    final deckIndex =
-        _controller.deckIndexForSelectedPoi(selectedPoi, deckPois);
+    final deckIndex = _controller.deckIndexForSelectedPoi(
+      selectedPoi,
+      deckPois,
+    );
     final safeFallbackHeight = _safePoiDeckHeight(context);
     return _clampPoiDeckHeight(
       context,
@@ -276,7 +286,8 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   Widget _buildAnchoredClusterPicker() {
-    final pois = _controller.clusterPickerPoisStreamValue.value ??
+    final pois =
+        _controller.clusterPickerPoisStreamValue.value ??
         const <CityPoiModel>[];
     if (pois.isEmpty) {
       return const SizedBox.shrink();
@@ -298,15 +309,9 @@ class _MapScreenState extends State<MapScreen> {
           return CustomSingleChildLayout(
             delegate: _ClusterPickerPopoverLayoutDelegate(
               anchorOffset: anchorOffset,
-              screenSize: Size(
-                constraints.maxWidth,
-                constraints.maxHeight,
-              ),
+              screenSize: Size(constraints.maxWidth, constraints.maxHeight),
             ),
-            child: PoiClusterPickerPopover(
-              controller: _controller,
-              pois: pois,
-            ),
+            child: PoiClusterPickerPopover(controller: _controller, pois: pois),
           );
         },
       ),
@@ -381,8 +386,9 @@ class _ClusterPickerPopoverLayoutDelegate extends SingleChildLayoutDelegate {
 
   @override
   BoxConstraints getConstraintsForChild(BoxConstraints constraints) {
-    final maxWidth =
-        (screenSize.width - (_sidePadding * 2)).clamp(220.0, 320.0).toDouble();
+    final maxWidth = (screenSize.width - (_sidePadding * 2))
+        .clamp(220.0, 320.0)
+        .toDouble();
     final maxHeight = (screenSize.height - _topPadding - _bottomPadding)
         .clamp(120.0, 320.0)
         .toDouble();
@@ -413,7 +419,8 @@ class _ClusterPickerPopoverLayoutDelegate extends SingleChildLayoutDelegate {
 
   @override
   bool shouldRelayout(
-      covariant _ClusterPickerPopoverLayoutDelegate oldDelegate) {
+    covariant _ClusterPickerPopoverLayoutDelegate oldDelegate,
+  ) {
     return oldDelegate.anchorOffset != anchorOffset ||
         oldDelegate.screenSize != screenSize;
   }

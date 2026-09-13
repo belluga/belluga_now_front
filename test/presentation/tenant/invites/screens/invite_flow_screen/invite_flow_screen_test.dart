@@ -24,18 +24,18 @@ import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_id_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_inviter_id_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_sender_display_name_candidate_value.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_fields.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
-import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
+import 'package:belluga_now/domain/partners/account_profile_summary.dart';
 import 'package:belluga_now/domain/schedule/event_profile_group.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
-import 'package:belluga_now/domain/schedule/value_objects/event_linked_account_profile_text_value.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_text_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_profile_group_order_value.dart';
-import 'package:belluga_now/domain/partners/value_objects/account_profile_type_value.dart';
 import 'package:belluga_now/domain/upcoming_ocurrence/projections/upcoming_ocurrence_resume.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_flow_screen/controllers/invite_flow_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_flow_screen/invite_flow_screen.dart';
@@ -1881,18 +1881,16 @@ InviteModel _buildInviteWithParticipantGroups(String id) {
     ],
     profileGroups: [
       EventProfileGroup(
-        idValue: EventLinkedAccountProfileTextValue('bandas'),
-        labelValue: EventLinkedAccountProfileTextValue('Bandas'),
+        idValue: AccountProfileTextValue('bandas'),
+        labelValue: AccountProfileTextValue('Bandas'),
         orderValue: EventProfileGroupOrderValue(0),
-        accountProfileIdValues: [EventLinkedAccountProfileTextValue(bandId)],
+        accountProfileIdValues: [AccountProfileTextValue(bandId)],
       ),
       EventProfileGroup(
-        idValue: EventLinkedAccountProfileTextValue('expositores'),
-        labelValue: EventLinkedAccountProfileTextValue('Expositores'),
+        idValue: AccountProfileTextValue('expositores'),
+        labelValue: AccountProfileTextValue('Expositores'),
         orderValue: EventProfileGroupOrderValue(1),
-        accountProfileIdValues: [
-          EventLinkedAccountProfileTextValue(exhibitorId),
-        ],
+        accountProfileIdValues: [AccountProfileTextValue(exhibitorId)],
       ),
     ],
     venueAccountProfileId: venueId,
@@ -1962,14 +1960,14 @@ InviteModel _buildInviteWithSelectableCandidates(String id) {
   );
 }
 
-EventLinkedAccountProfile _linkedProfile({
+AccountProfileSummary _linkedProfile({
   required String id,
   required String name,
   required String profileType,
 }) {
-  return EventLinkedAccountProfile(
-    idValue: EventLinkedAccountProfileTextValue(id),
-    displayNameValue: EventLinkedAccountProfileTextValue(name),
+  return AccountProfileSummary(
+    idValue: AccountProfileTextValue(id),
+    nameValue: AccountProfileNameValue()..parse(name),
     profileTypeValue: AccountProfileTypeValue(profileType),
   );
 }

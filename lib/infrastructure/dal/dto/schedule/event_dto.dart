@@ -1,21 +1,14 @@
 import 'package:belluga_now/application/rich_text/safe_rich_html.dart';
-import 'package:belluga_now/domain/invites/invite_partner_type.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
-import 'package:belluga_now/domain/partner/partner_resume.dart';
-import 'package:belluga_now/domain/partner/value_objects/invite_partner_hero_image_value.dart';
-import 'package:belluga_now/domain/partner/value_objects/invite_partner_logo_image_value.dart';
-import 'package:belluga_now/domain/partner/value_objects/invite_partner_name_value.dart';
-import 'package:belluga_now/domain/partner/value_objects/invite_partner_tagline_value.dart';
+import 'package:belluga_now/domain/partners/account_profile_summary.dart';
 import 'package:belluga_now/domain/partners/account_profile_gallery_group.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_gallery_player_aspect_ratio_value.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_fields.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_nested_group_fields.dart';
-import 'package:belluga_now/domain/partners/value_objects/account_profile_nested_group_member_text_value.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_text_value.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_public_detail_path_value.dart';
-import 'package:belluga_now/domain/partners/value_objects/account_profile_tag_value.dart';
-import 'package:belluga_now/domain/partners/value_objects/account_profile_type_value.dart';
-import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/event_occurrence_option.dart';
 import 'package:belluga_now/domain/schedule/event_profile_group.dart';
@@ -24,7 +17,6 @@ import 'package:belluga_now/domain/schedule/event_type_model.dart';
 import 'package:belluga_now/domain/schedule/friend_resume.dart';
 import 'package:belluga_now/domain/schedule/invite_status.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
-import 'package:belluga_now/domain/schedule/value_objects/event_linked_account_profile_text_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_counterpart_count_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_is_confirmed_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_occurrence_values.dart';
@@ -92,8 +84,8 @@ class EventDTO {
   final ThumbDTO? thumb;
   final String dateTimeStart;
   final String? dateTimeEnd;
-  final List<EventLinkedAccountProfile> linkedAccountProfiles;
-  final List<EventLinkedAccountProfile> counterpartPreview;
+  final List<AccountProfileSummary> linkedAccountProfiles;
+  final List<AccountProfileSummary> counterpartPreview;
   final int? counterpartCount;
   final List<EventProfileGroup> profileGroups;
   final List<EventOccurrenceOption> occurrences;
@@ -122,7 +114,7 @@ class EventDTO {
       locationPayload: locationPayload,
       geoLocationPayload: geoLocationPayload,
     );
-    const linkedProfiles = <EventLinkedAccountProfile>[];
+    const linkedProfiles = <AccountProfileSummary>[];
     final counterpartPreview = _resolveLinkedAccountProfiles(
       linkedProfilesRaw: json['counterpart_preview'],
     );
@@ -204,7 +196,9 @@ class EventDTO {
             longitudeValue: LongitudeValue()..parse(longitude!.toString()),
           )
         : null;
-    final venueDomain = venue != null ? _mapPartnerResume(venue!) : null;
+    final venueDomain = venue != null
+        ? _mapAccountProfileSummary(venue!)
+        : null;
     final selectedOccurrenceId = _selectedOccurrenceIdForInvites();
 
     final receivedInvitesDomain = receivedInvites
@@ -336,7 +330,7 @@ class EventDTO {
     return null;
   }
 
-  static List<EventLinkedAccountProfile> _resolveLinkedAccountProfiles({
+  static List<AccountProfileSummary> _resolveLinkedAccountProfiles({
     required Object? linkedProfilesRaw,
   }) => EventPublicProfilePayloadDecoder.resolveLinkedAccountProfiles(
     linkedProfilesRaw: linkedProfilesRaw,
@@ -344,7 +338,7 @@ class EventDTO {
 
   static List<EventProfileGroup> _resolveProfileGroups(
     Object? raw, {
-    List<EventLinkedAccountProfile> linkedAccountProfiles = const [],
+    List<AccountProfileSummary> linkedAccountProfiles = const [],
   }) => EventPublicProfilePayloadDecoder.resolveProfileGroups(
     raw,
     linkedAccountProfiles: linkedAccountProfiles,
@@ -352,7 +346,7 @@ class EventDTO {
 
   static List<EventOccurrenceOption> _resolveOccurrences({
     required Object? occurrencesRaw,
-    required List<EventLinkedAccountProfile> linkedAccountProfiles,
+    required List<AccountProfileSummary> linkedAccountProfiles,
     required String? fallbackOccurrenceId,
     required String? fallbackDateTimeStart,
     required String? fallbackDateTimeEnd,
@@ -403,8 +397,8 @@ class EventDTO {
 
       resolved.add(
         EventOccurrenceOption(
-          occurrenceIdValue: EventLinkedAccountProfileTextValue(occurrenceId),
-          occurrenceSlugValue: EventLinkedAccountProfileTextValue(
+          occurrenceIdValue: AccountProfileTextValue(occurrenceId),
+          occurrenceSlugValue: AccountProfileTextValue(
             _asNullableString(row['occurrence_slug'])?.trim() ?? '',
           ),
           dateTimeStartValue: DateTimeValue(isRequired: true)..parse(start),
@@ -457,9 +451,7 @@ class EventDTO {
           endTimeValue: endTime.isEmpty
               ? null
               : EventProgrammingTimeValue(endTime),
-          titleValue: title.isEmpty
-              ? null
-              : EventLinkedAccountProfileTextValue(title),
+          titleValue: title.isEmpty ? null : AccountProfileTextValue(title),
           linkedAccountProfiles: _resolveLinkedAccountProfiles(
             linkedProfilesRaw: item['linked_account_profiles'],
           ),
@@ -484,7 +476,7 @@ class EventDTO {
     return const <Object?>[];
   }
 
-  static EventLinkedAccountProfile? _toLinkedAccountProfile(
+  static AccountProfileSummary? _toLinkedAccountProfile(
     Map<String, dynamic> profile,
   ) {
     final id = _asString(profile['id'])?.trim() ?? '';
@@ -501,7 +493,7 @@ class EventDTO {
     }
 
     final taxonomyTermsRaw = profile['taxonomy_terms'];
-    final taxonomyTerms = EventLinkedAccountProfileTaxonomyTerms();
+    final taxonomyTerms = AccountProfileTaxonomyTerms();
     if (taxonomyTermsRaw is List) {
       for (final entry in taxonomyTermsRaw) {
         final term = _asMap(entry);
@@ -532,23 +524,28 @@ class EventDTO {
         _asString(profile['profile_type'])?.trim().isNotEmpty == true
         ? _asString(profile['profile_type'])!.trim()
         : (_asString(profile['party_type'])?.trim() ?? '');
+    if (profileType.isEmpty) {
+      return null;
+    }
     final locationCoordinates = _resolveProfileCoordinates(profile);
 
-    return EventLinkedAccountProfile(
-      idValue: EventLinkedAccountProfileTextValue(id),
-      displayNameValue: EventLinkedAccountProfileTextValue(displayName),
+    return AccountProfileSummary(
+      idValue: AccountProfileTextValue(id),
+      nameValue: AccountProfileNameValue()..parse(displayName),
       profileTypeValue: AccountProfileTypeValue(profileType),
+      partyTypeValue: switch (_asString(profile['party_type'])?.trim()) {
+        final value when value != null && value.isNotEmpty =>
+          AccountProfileTextValue(value),
+        _ => null,
+      },
       slugValue: _optionalLinkedAccountProfileSlugValue(profile: profile),
-      avatarUrlValue: _thumbUriValueOrNull(
+      avatarValue: _thumbUriValueOrNull(
         _asNullableString(profile['avatar_url'] ?? profile['logo_url']),
       ),
-      coverUrlValue: _thumbUriValueOrNull(
+      coverValue: _thumbUriValueOrNull(
         _asNullableString(profile['cover_url'] ?? profile['hero_image_url']),
       ),
-      partyTypeValue: _textValueOrNull(
-        _asNullableString(profile['party_type']),
-      ),
-      locationAddressValue: _textValueOrNull(
+      locationAddressValue: _accountProfileLocationAddressValueOrNull(
         _resolveProfileLocationAddress(profile),
       ),
       locationLatitudeValue: _latitudeValueOrNull(locationCoordinates.latitude),
@@ -558,7 +555,7 @@ class EventDTO {
       canOpenPublicDetailValue: _booleanValue(
         _resolveCanOpenPublicDetail(profile),
       ),
-      publicDetailPathValue: _textValueOrNull(
+      publicDetailPathValue: _accountProfilePublicDetailPathValueOrNull(
         _resolvePublicDetailPath(profile),
       ),
       taxonomyTerms: taxonomyTerms,
@@ -642,12 +639,22 @@ class EventDTO {
     return path;
   }
 
-  static EventLinkedAccountProfileTextValue? _textValueOrNull(String? raw) {
+  static AccountProfileLocationAddressValue?
+  _accountProfileLocationAddressValueOrNull(String? raw) {
     final normalized = raw?.trim();
     if (normalized == null || normalized.isEmpty) {
       return null;
     }
-    return EventLinkedAccountProfileTextValue(normalized);
+    return AccountProfileLocationAddressValue()..parse(normalized);
+  }
+
+  static AccountProfilePublicDetailPathValue?
+  _accountProfilePublicDetailPathValueOrNull(String? raw) {
+    final normalized = raw?.trim();
+    if (normalized == null || normalized.isEmpty) {
+      return null;
+    }
+    return AccountProfilePublicDetailPathValue(normalized);
   }
 
   static DomainBooleanValue _booleanValue(bool raw) {
@@ -872,33 +879,43 @@ class EventDTO {
     }
   }
 
-  PartnerResume _mapPartnerResume(Map<String, dynamic> dto) {
+  AccountProfileSummary? _mapAccountProfileSummary(Map<String, dynamic> dto) {
+    final id = _asNullableString(dto['id'])?.trim() ?? '';
+    final displayName = _asNullableString(dto['display_name'])?.trim() ?? '';
+    final profileType =
+        _asNullableString(dto['profile_type'])?.trim().isNotEmpty == true
+        ? _asNullableString(dto['profile_type'])!.trim()
+        : (_asNullableString(dto['party_type'])?.trim() ?? '');
+    if (id.isEmpty || displayName.isEmpty || profileType.isEmpty) {
+      return null;
+    }
     SlugValue? slugValue;
     final slugRaw = dto['slug']?.toString();
     if (slugRaw != null && slugRaw.isNotEmpty) {
       slugValue = SlugValue()..parse(slugRaw);
     }
 
-    InvitePartnerTaglineValue? taglineValue;
+    DescriptionValue? taglineValue;
     final taglineRaw = dto['tagline']?.toString();
     if (taglineRaw != null && taglineRaw.isNotEmpty) {
-      taglineValue = InvitePartnerTaglineValue()..parse(taglineRaw);
+      taglineValue = DescriptionValue(defaultValue: '', minLenght: 0)
+        ..parse(taglineRaw);
     }
 
-    InvitePartnerLogoImageValue? logoImageValue;
+    ThumbUriValue? avatarValue;
     final logoUrl = normalizeTenantPublicMediaUrl(
       dto['logo_url']?.toString() ?? dto['avatar_url']?.toString(),
     );
     if (logoUrl != null && logoUrl.isNotEmpty) {
-      logoImageValue = InvitePartnerLogoImageValue()..parse(logoUrl);
+      avatarValue = _thumbUriValueOrNull(logoUrl);
     }
 
-    InvitePartnerHeroImageValue? heroImageValue;
+    ThumbUriValue? coverValue;
     final heroUrl = normalizeTenantPublicMediaUrl(
       dto['hero_image_url']?.toString() ?? dto['cover_url']?.toString(),
     );
     if (heroUrl != null && heroUrl.isNotEmpty) {
-      heroImageValue = InvitePartnerHeroImageValue()..parse(heroUrl);
+      coverValue = _thumbUriValueOrNull(heroUrl);
     }
     final publicDetailPath = dto['public_detail_path']?.toString().trim() ?? '';
     final bio = _asNullableString(dto['bio'])?.trim();
@@ -907,15 +924,16 @@ class EventDTO {
       dto['gallery_groups'],
     );
 
-    return PartnerResume(
-      idValue: MongoIDValue()..parse(dto['id']?.toString() ?? ''),
-      nameValue: InvitePartnerNameValue()
-        ..parse(dto['display_name']?.toString() ?? ''),
+    return AccountProfileSummary(
+      idValue: AccountProfileTextValue(id),
+      nameValue: AccountProfileNameValue()..parse(displayName),
       slugValue: slugValue,
-      type: InviteAccountProfileType.mercadoProducer,
-      profileTypeValue: AccountProfileTypeValue(
-        _asNullableString(dto['profile_type'])?.trim() ?? '',
-      ),
+      profileTypeValue: AccountProfileTypeValue(profileType),
+      partyTypeValue: switch (_asNullableString(dto['party_type'])?.trim()) {
+        final value when value != null && value.isNotEmpty =>
+          AccountProfileTextValue(value),
+        _ => null,
+      },
       canOpenPublicDetailValue:
           DomainBooleanValue(defaultValue: false, isRequired: false)..parse(
             (_asBool(dto['can_open_public_detail']) &&
@@ -926,12 +944,12 @@ class EventDTO {
         publicDetailPath,
       ),
       taglineValue: taglineValue,
-      logoImageValue: logoImageValue,
-      heroImageValue: heroImageValue,
+      avatarValue: avatarValue,
+      coverValue: coverValue,
       bioValue: bio == null || bio.isEmpty
           ? null
           : (DescriptionValue(defaultValue: '', minLenght: 0)..parse(bio)),
-      taxonomyLabelValues: taxonomyLabels
+      tagValues: taxonomyLabels
           .map(AccountProfileTagValue.new)
           .toList(growable: false),
       galleryGroupValues: galleryGroups,
@@ -1028,10 +1046,10 @@ class EventDTO {
               _asNullableString(item['item_id'])?.trim() ??
                   'gallery-item-$groupIndex-$itemIndex',
             ),
-            titleValue: AccountProfileNestedGroupMemberTextValue(
+            titleValue: AccountProfileTextValue(
               _asNullableString(item['title']) ?? '',
             ),
-            descriptionValue: AccountProfileNestedGroupMemberTextValue(
+            descriptionValue: AccountProfileTextValue(
               _asNullableString(item['description']) ?? '',
             ),
             orderValue: AccountProfileNestedGroupOrderValue(
@@ -1042,9 +1060,7 @@ class EventDTO {
             cardUrlValue: _optionalThumbUriValue(cardUrl),
             modalUrlValue: _optionalThumbUriValue(modalUrl),
             type: type,
-            youtubeVideoIdValue: AccountProfileNestedGroupMemberTextValue(
-              youtubeVideoId,
-            ),
+            youtubeVideoIdValue: AccountProfileTextValue(youtubeVideoId),
             playerAspectRatioValue: AccountProfileGalleryPlayerAspectRatioValue(
               item['player_aspect_ratio'],
             ),

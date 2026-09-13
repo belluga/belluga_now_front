@@ -1,6 +1,6 @@
 import 'package:belluga_now/domain/invites/invite_inviter_type.dart';
 import 'package:belluga_now/domain/invites/invite_inviter_principal.dart';
-import 'package:belluga_now/domain/invites/invite_partner_summary.dart';
+import 'package:belluga_now/domain/partners/account_profile_summary.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_acceptance_status_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_inviter_avatar_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_inviter_id_value.dart';
@@ -14,7 +14,7 @@ class InviteInviter {
     this.principal,
     InviteInviterAvatarValue? avatarValue,
     InviteAcceptanceStatusValue? statusValue,
-    this.partner,
+    this.accountProfile,
   }) : avatarValue = avatarValue ?? InviteInviterAvatarValue(),
        statusValue =
            statusValue ??
@@ -29,7 +29,7 @@ class InviteInviter {
   final InviteInviterPrincipal? principal;
   final InviteInviterAvatarValue avatarValue;
   final InviteAcceptanceStatusValue statusValue;
-  final InvitePartnerSummary? partner;
+  final AccountProfileSummary? accountProfile;
 
   String get inviteId => inviteIdValue.value;
   String get candidateName => nameValue.value;

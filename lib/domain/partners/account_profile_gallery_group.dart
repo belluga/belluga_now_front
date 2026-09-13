@@ -10,8 +10,8 @@ class AccountProfileGalleryGroup {
     required this.orderValue,
     List<AccountProfileGalleryItem>? items,
   }) : items = List<AccountProfileGalleryItem>.unmodifiable(
-          items ?? const <AccountProfileGalleryItem>[],
-        );
+         items ?? const <AccountProfileGalleryItem>[],
+       );
 
   final AccountProfileNestedGroupIdValue groupIdValue;
   final AccountProfileNestedGroupLabelValue subtitleValue;

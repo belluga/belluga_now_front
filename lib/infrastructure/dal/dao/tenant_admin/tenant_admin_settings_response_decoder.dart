@@ -1,8 +1,10 @@
 import 'package:belluga_now/application/tenant_admin/settings/tenant_admin_discovery_filters_settings_canonicalizer.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_settings.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_home_favorites_pinned_profile_settings.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_app_link_path_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_account_profile_id_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_android_app_identifier_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_boolean_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_discovery_filters_settings_value.dart';
@@ -27,6 +29,65 @@ class TenantAdminSettingsResponseDecoder {
   }) : _envelopeDecoder = envelopeDecoder ?? const RawJsonEnvelopeDecoder();
 
   final RawJsonEnvelopeDecoder _envelopeDecoder;
+
+  TenantAdminHomeFavoritesPinnedProfileSettings
+  decodeHomeFavoritesPinnedProfile(Object? rawResponse) {
+    final payload = _envelopeDecoder.decodeDataMap(
+      rawResponse,
+      label: 'home favorites pinned profile settings',
+      fallbackToRoot: false,
+    );
+    final valueRaw = payload['value'];
+    if (payload['setting_type'] != 'home_favorites_pinned_profile' ||
+        valueRaw is! Map ||
+        !valueRaw.containsKey('account_profile_id')) {
+      throw const FormatException(
+        'Unexpected home favorites pinned profile settings response shape.',
+      );
+    }
+    final value = Map<String, dynamic>.from(valueRaw);
+    final selectedRaw = payload['selected_profile'];
+    final selected = selectedRaw is Map
+        ? Map<String, dynamic>.from(selectedRaw)
+        : null;
+    final accountProfileIdRaw = value['account_profile_id'];
+    final selectedIdRaw = selected?['id'];
+    final selectedDisplayNameRaw = selected?['display_name'];
+    if (!_isNullOrNonEmptyString(accountProfileIdRaw) ||
+        !_isNullOrNonEmptyString(selectedIdRaw) ||
+        !_isNullOrNonEmptyString(selectedDisplayNameRaw)) {
+      throw const FormatException(
+        'Unexpected home favorites pinned profile settings value shape.',
+      );
+    }
+    final accountProfileId = _normalizeOptionalText(accountProfileIdRaw);
+    final availability = _normalizeOptionalText(payload['availability']);
+    final selectedId = _normalizeOptionalText(selectedIdRaw);
+    final selectedDisplayName = _normalizeOptionalText(selectedDisplayNameRaw);
+    final isValid = switch (availability) {
+      'unset' => accountProfileId == null && selectedRaw == null,
+      'unavailable' => accountProfileId != null && selectedRaw == null,
+      'available' =>
+        accountProfileId != null &&
+            selectedId == accountProfileId &&
+            selectedDisplayName != null,
+      _ => false,
+    };
+    if (!isValid) {
+      throw const FormatException(
+        'Invalid home favorites pinned profile settings invariants.',
+      );
+    }
+
+    return TenantAdminHomeFavoritesPinnedProfileSettings(
+      accountProfileIdValue: accountProfileId == null
+          ? null
+          : TenantAdminAccountProfileIdValue(accountProfileId),
+      availabilityValue: TenantAdminLowercaseTokenValue.fromRaw(availability),
+      selectedProfileDisplayNameValue: TenantAdminOptionalTextValue()
+        ..parse(selectedDisplayName),
+    );
+  }
 
   TenantAdminMapUiSettings decodeMapUiSettings(
     Object? rawResponse, {
@@ -1177,6 +1238,10 @@ class TenantAdminSettingsResponseDecoder {
       return null;
     }
     return normalized;
+  }
+
+  bool _isNullOrNonEmptyString(Object? raw) {
+    return raw == null || (raw is String && raw.trim().isNotEmpty);
   }
 
   int? _parseInt(Object? value) {

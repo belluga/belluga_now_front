@@ -250,6 +250,7 @@ class FavoritePreviewDTO {
       badge: favorite.badge,
       isPrimaryValue: favorite.isPrimaryValue,
       targetType: targetType,
+      targetId: _trimOrNull(targetId),
       profileType: _trimOrNull(profileType),
       coverImageUriValue: _thumbUriFromString(coverUrl),
       canOpenPublicDetail: canOpenPublicDetail,

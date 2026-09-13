@@ -3,7 +3,8 @@ import 'package:belluga_now/infrastructure/dal/dao/backend_context.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/shared/tenant_public_auth_headers.dart';
 import 'package:belluga_now/infrastructure/dal/dto/map/city_poi_dto.dart';
-import 'package:belluga_now/infrastructure/dal/dto/map/map_filters_dto.dart';
+import 'package:belluga_now/infrastructure/dal/dto/map/map_poi_page_dto.dart';
+import 'package:belluga_now/infrastructure/dal/dto/map/map_poi_scene_dto.dart';
 import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
 
@@ -37,7 +38,7 @@ class LaravelMapPoiHttpService {
     return resolved.baseUrl;
   }
 
-  Future<List<CityPoiDTO>> getPois(PoiQuery query, {String? stackKey}) async {
+  Future<MapPoiSceneDTO> getPois(PoiQuery query, {String? stackKey}) async {
     final params = _buildMapQueryParams(query, stackKey: stackKey);
 
     final response =
@@ -65,7 +66,7 @@ class LaravelMapPoiHttpService {
     }
 
     final shouldExpandItems = (stackKey ?? '').trim().isNotEmpty;
-    return stacks
+    final points = stacks
         .map(_normalizeMap)
         .whereType<Map<String, dynamic>>()
         .map(
@@ -75,6 +76,10 @@ class LaravelMapPoiHttpService {
           ),
         )
         .toList(growable: false);
+    return MapPoiSceneDTO(
+      points: points,
+      isPartial: payload['is_partial'] == true,
+    );
   }
 
   Future<CityPoiDTO?> lookupPoiByReference({
@@ -124,13 +129,21 @@ class LaravelMapPoiHttpService {
     }
   }
 
-  Future<MapFiltersDTO> getFilters(PoiQuery query) async {
+  Future<MapPoiPageDTO> getNearPage(
+    PoiQuery query, {
+    required int page,
+    int pageSize = 10,
+  }) async {
     final response =
         await TenantPublicAuthHeaders.retryOnceOnUnauthorized<Response>(
           includeJsonAccept: true,
           action: (headers) => _dio.get(
-            '/v1/map/filters',
-            queryParameters: _buildMapQueryParams(query),
+            '/v1/map/near',
+            queryParameters: <String, dynamic>{
+              ..._buildOriginQueryParams(query),
+              'page': page,
+              'page_size': pageSize,
+            },
             options: Options(
               headers: headers,
               listFormat: ListFormat.multiCompatible,
@@ -141,9 +154,22 @@ class LaravelMapPoiHttpService {
     final raw = response.data;
     final payload = _normalizeMap(raw);
     if (payload == null) {
-      throw Exception('Unexpected /v1/map/filters response envelope');
+      throw Exception('Unexpected /v1/map/near response envelope');
     }
-    return MapFiltersDTO.fromJson(payload);
+    final items = payload['items'];
+    if (items is! List) {
+      throw Exception('Unexpected /v1/map/near items payload');
+    }
+    return MapPoiPageDTO(
+      page: (payload['page'] as num?)?.toInt() ?? page,
+      pageSize: (payload['page_size'] as num?)?.toInt() ?? pageSize,
+      hasMore: payload['has_more'] == true,
+      items: items
+          .map(_normalizeMap)
+          .whereType<Map<String, dynamic>>()
+          .map(CityPoiDTO.fromJson)
+          .toList(growable: false),
+    );
   }
 
   Map<String, dynamic> _buildMapQueryParams(
@@ -151,6 +177,15 @@ class LaravelMapPoiHttpService {
     String? stackKey,
   }) {
     final params = _buildQueryParams(query, stackKey: stackKey);
+    if (!query.hasBounds ||
+        params['ne_lat'] == null ||
+        params['ne_lng'] == null ||
+        params['sw_lat'] == null ||
+        params['sw_lng'] == null) {
+      throw StateError(
+        'LaravelMapPoiHttpService requires complete viewport bounds before calling /v1/map/pois.',
+      );
+    }
     final originLat = params['origin_lat'];
     final originLng = params['origin_lng'];
     if (originLat == null || originLng == null) {
@@ -158,6 +193,26 @@ class LaravelMapPoiHttpService {
         'LaravelMapPoiHttpService requires a resolved origin before calling map endpoints.',
       );
     }
+    final radius = params['max_distance_meters'];
+    if (radius is! num || !radius.isFinite || radius <= 0) {
+      throw StateError(
+        'LaravelMapPoiHttpService requires a positive viewport covering radius before calling /v1/map/pois.',
+      );
+    }
+    return params;
+  }
+
+  Map<String, dynamic> _buildOriginQueryParams(PoiQuery query) {
+    final params = _buildQueryParams(query);
+    if (params['origin_lat'] == null || params['origin_lng'] == null) {
+      throw StateError(
+        'LaravelMapPoiHttpService requires a resolved origin before calling /v1/map/near.',
+      );
+    }
+    params.remove('ne_lat');
+    params.remove('ne_lng');
+    params.remove('sw_lat');
+    params.remove('sw_lng');
     return params;
   }
 

@@ -629,7 +629,6 @@ class TenantAdminEventsResponseDecoder {
       avatarUrl: _asString(row['avatar_url']),
       coverUrl: _asString(row['cover_url']),
       bio: _asString(row['bio']),
-      content: _asString(row['content']),
       location: lat != null && lng != null
           ? tenantAdminLocationFromRaw(latitude: lat, longitude: lng)
           : null,
@@ -670,7 +669,6 @@ class TenantAdminEventsResponseDecoder {
       avatarUrl: _asString(row['avatar_url']),
       coverUrl: _asString(row['cover_url']),
       bio: _asString(row['bio']),
-      content: _asString(row['content']),
       taxonomyTerms: (() {
         final terms = TenantAdminTaxonomyTerms();
         for (final taxonomyTerm in taxonomyTerms) {

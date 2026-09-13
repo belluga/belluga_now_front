@@ -4,11 +4,14 @@ import 'package:belluga_now/domain/map/filters/poi_filter_options.dart';
 import 'package:belluga_now/domain/map/filters/poi_filter_mode.dart';
 import 'package:belluga_now/domain/map/map_region_definition.dart';
 import 'package:belluga_now/domain/map/queries/poi_query.dart';
+import 'package:belluga_now/domain/map/projections/poi_filter_page.dart';
+import 'package:belluga_now/domain/map/projections/poi_scene_result.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_reference_id_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_positive_int_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_reference_type_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_stack_key_value.dart';
-import 'package:belluga_now/domain/partners/account_profile_model.dart';
+import 'package:belluga_now/domain/partners/account_profile_complete.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/city_map_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/poi_repository_contract.dart';
@@ -27,10 +30,10 @@ class PoiRepository implements PoiRepositoryContract {
     AccountProfilesRepositoryContract? accountProfilesRepository,
     ScheduleRepositoryContract? scheduleRepository,
     StaticAssetsRepositoryContract? staticAssetsRepository,
-  })  : _dataSource = dataSource ?? GetIt.I.get<CityMapRepositoryContract>(),
-        _accountProfilesRepositoryOverride = accountProfilesRepository,
-        _scheduleRepositoryOverride = scheduleRepository,
-        _staticAssetsRepositoryOverride = staticAssetsRepository;
+  }) : _dataSource = dataSource ?? GetIt.I.get<CityMapRepositoryContract>(),
+       _accountProfilesRepositoryOverride = accountProfilesRepository,
+       _scheduleRepositoryOverride = scheduleRepository,
+       _staticAssetsRepositoryOverride = staticAssetsRepository;
 
   final CityMapRepositoryContract _dataSource;
   final AccountProfilesRepositoryContract? _accountProfilesRepositoryOverride;
@@ -49,19 +52,27 @@ class PoiRepository implements PoiRepositoryContract {
       _staticAssetsRepositoryOverride ??
       _resolveOptionalRepository<StaticAssetsRepositoryContract>();
 
-  final allPoisStreamValue =
-      StreamValue<List<CityPoiModel>?>(defaultValue: null);
+  final allPoisStreamValue = StreamValue<List<CityPoiModel>?>(
+    defaultValue: null,
+  );
   @override
-  final filteredPoisStreamValue =
-      StreamValue<List<CityPoiModel>?>(defaultValue: null);
+  final filteredPoisStreamValue = StreamValue<List<CityPoiModel>?>(
+    defaultValue: null,
+  );
   @override
-  final stackItemsStreamValue =
-      StreamValue<List<CityPoiModel>?>(defaultValue: null);
+  final stackItemsStreamValue = StreamValue<List<CityPoiModel>?>(
+    defaultValue: null,
+  );
+  @override
+  final filterResultPoisStreamValue = StreamValue<List<CityPoiModel>?>(
+    defaultValue: null,
+  );
   @override
   final selectedPoiStreamValue = StreamValue<CityPoiModel?>();
   @override
-  final filterModeStreamValue =
-      StreamValue<PoiFilterMode>(defaultValue: PoiFilterMode.none);
+  final filterModeStreamValue = StreamValue<PoiFilterMode>(
+    defaultValue: PoiFilterMode.none,
+  );
   PoiFilterMode _filterMode = PoiFilterMode.none;
 
   @override
@@ -70,24 +81,51 @@ class PoiRepository implements PoiRepositoryContract {
   final poiHydrationRevisionStreamValue = StreamValue<int>(defaultValue: 0);
   final Map<String, Future<void>> _poiHydrationInFlightById =
       <String, Future<void>>{};
-  final Map<String, AccountProfileModel> _hydratedAccountProfilesByPoiId =
-      <String, AccountProfileModel>{};
+  final Map<String, AccountProfileComplete> _hydratedAccountProfilesByPoiId =
+      <String, AccountProfileComplete>{};
   final Map<String, EventModel> _hydratedEventsByPoiId = <String, EventModel>{};
   final Map<String, PublicStaticAssetModel> _hydratedStaticAssetsByPoiId =
       <String, PublicStaticAssetModel>{};
 
   @override
   Future<List<CityPoiModel>> fetchPoints(PoiQuery query) async {
-    final cityPois = await _dataSource.fetchPoints(query);
-    final snapshot = List<CityPoiModel>.unmodifiable(cityPois);
-    _setAllPois(snapshot);
-    return snapshot;
+    final scene = await fetchScene(query);
+    publishScene(scene);
+    return scene.points;
+  }
+
+  @override
+  Future<PoiSceneResult> fetchScene(PoiQuery query) =>
+      _dataSource.fetchScene(query);
+
+  @override
+  void publishScene(PoiSceneResult scene) {
+    _setAllPois(scene.points);
+  }
+
+  @override
+  void replaceFilterResults(List<CityPoiModel> points) {
+    filterResultPoisStreamValue.addValue(
+      List<CityPoiModel>.unmodifiable(points),
+    );
+  }
+
+  @override
+  Future<PoiFilterPage> fetchFilterPage(
+    PoiQuery query, {
+    required PoiPositiveIntValue page,
+    required PoiPositiveIntValue pageSize,
+  }) => _dataSource.fetchFilterPage(query, page: page, pageSize: pageSize);
+
+  @override
+  void seedFilterOptions(PoiFilterOptions options) {
+    filterOptionsStreamValue.addValue(options);
   }
 
   Future<void> initializePoiStreams(PoiQuery query) async {
-    if (filterOptionsStreamValue.value == null) {
-      await fetchFilters(query);
-    }
+    filterOptionsStreamValue.addValue(
+      filterOptionsStreamValue.value ?? PoiFilterOptions(categories: const []),
+    );
   }
 
   @override
@@ -100,10 +138,7 @@ class PoiRepository implements PoiRepositoryContract {
     required PoiStackKeyValue stackKey,
     required PoiQuery query,
   }) {
-    return _dataSource.fetchStackItems(
-      query: query,
-      stackKey: stackKey,
-    );
+    return _dataSource.fetchStackItems(query: query, stackKey: stackKey);
   }
 
   @override
@@ -111,10 +146,7 @@ class PoiRepository implements PoiRepositoryContract {
     required PoiReferenceTypeValue refType,
     required PoiReferenceIdValue refId,
   }) {
-    return _dataSource.fetchPoiByReference(
-      refType: refType,
-      refId: refId,
-    );
+    return _dataSource.fetchPoiByReference(refType: refType, refId: refId);
   }
 
   @override
@@ -122,18 +154,8 @@ class PoiRepository implements PoiRepositoryContract {
     required PoiStackKeyValue stackKey,
     required PoiQuery query,
   }) async {
-    final stackItems = await fetchStackItems(
-      stackKey: stackKey,
-      query: query,
-    );
+    final stackItems = await fetchStackItems(stackKey: stackKey, query: query);
     setStackItems(stackItems);
-  }
-
-  @override
-  Future<PoiFilterOptions> fetchFilters(PoiQuery query) async {
-    final filters = await _dataSource.fetchFilters(query);
-    filterOptionsStreamValue.addValue(filters);
-    return filters;
   }
 
   @override
@@ -212,7 +234,7 @@ class PoiRepository implements PoiRepositoryContract {
   void clearFilters() => applyFilterMode(PoiFilterMode.none);
 
   @override
-  AccountProfileModel? hydratedAccountProfileForPoi(CityPoiModel poi) {
+  AccountProfileComplete? hydratedAccountProfileForPoi(CityPoiModel poi) {
     return _hydratedAccountProfilesByPoiId[poi.id];
   }
 
@@ -238,19 +260,6 @@ class PoiRepository implements PoiRepositoryContract {
 
     final snapshot = List<CityPoiModel>.unmodifiable(filtered);
     filteredPoisStreamValue.addValue(snapshot);
-
-    if (_filterMode == PoiFilterMode.none) {
-      return;
-    }
-
-    final selected = selectedPoiStreamValue.value;
-    if (selected == null) {
-      return;
-    }
-    final stillContains = snapshot.any((poi) => poi.id == selected.id);
-    if (!stillContains) {
-      clearSelection();
-    }
   }
 
   bool _supportsPoiHydration(CityPoiModel poi) {
@@ -328,8 +337,9 @@ class PoiRepository implements PoiRepositoryContract {
   }
 
   void _bumpPoiHydrationRevision() {
-    poiHydrationRevisionStreamValue
-        .addValue(poiHydrationRevisionStreamValue.value + 1);
+    poiHydrationRevisionStreamValue.addValue(
+      poiHydrationRevisionStreamValue.value + 1,
+    );
   }
 
   bool _isPartnerPoi(CityPoiModel poi) {

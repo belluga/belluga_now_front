@@ -1,10 +1,7 @@
 import 'package:value_object_pattern/value_object.dart';
 
 class EngagementNextShowAtValue extends ValueObject<DateTime?> {
-  EngagementNextShowAtValue({
-    super.defaultValue,
-    super.isRequired = false,
-  });
+  EngagementNextShowAtValue({super.defaultValue, super.isRequired = false});
 
   @override
   DateTime? doParse(dynamic parseValue) {

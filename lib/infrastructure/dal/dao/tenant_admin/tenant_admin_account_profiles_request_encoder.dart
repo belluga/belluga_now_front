@@ -143,7 +143,6 @@ class TenantAdminAccountProfilesRequestEncoder {
     TenantAdminTaxonomyTerms taxonomyTerms =
         const TenantAdminTaxonomyTerms.empty(),
     String? bio,
-    String? content,
     String? avatarUrl,
     String? coverUrl,
     List<TenantAdminNestedProfileGroup> nestedProfileGroups =
@@ -166,7 +165,6 @@ class TenantAdminAccountProfilesRequestEncoder {
             .map((term) => {'type': term.type, 'value': term.value})
             .toList(),
       'bio': ?bio,
-      'content': ?content,
       'avatar_url': ?avatarUrl,
       'cover_url': ?coverUrl,
       'contact_mode': contactMode.rawValue,
@@ -187,7 +185,6 @@ class TenantAdminAccountProfilesRequestEncoder {
     TenantAdminLocation? location,
     TenantAdminTaxonomyTerms? taxonomyTerms,
     String? bio,
-    String? content,
     String? avatarUrl,
     String? coverUrl,
     bool? removeAvatar,
@@ -218,7 +215,6 @@ class TenantAdminAccountProfilesRequestEncoder {
           .toList();
     }
     if (bio != null) payload['bio'] = bio;
-    if (content != null) payload['content'] = content;
     if (avatarUrl != null) payload['avatar_url'] = avatarUrl;
     if (coverUrl != null) payload['cover_url'] = coverUrl;
     if (removeAvatar == true) payload['remove_avatar'] = true;

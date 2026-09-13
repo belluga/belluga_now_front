@@ -17,7 +17,6 @@ class TenantAdminProfileTypeDTO {
     required this.isPoiEnabled,
     required this.isReferenceLocationEnabled,
     required this.hasBio,
-    required this.hasContent,
     required this.hasTaxonomies,
     required this.hasAvatar,
     required this.hasCover,
@@ -41,7 +40,6 @@ class TenantAdminProfileTypeDTO {
   final bool isPoiEnabled;
   final bool isReferenceLocationEnabled;
   final bool hasBio;
-  final bool hasContent;
   final bool hasTaxonomies;
   final bool hasAvatar;
   final bool hasCover;
@@ -96,7 +94,6 @@ class TenantAdminProfileTypeDTO {
       isReferenceLocationEnabled:
           capabilityMap['is_reference_location_enabled'] == true,
       hasBio: capabilityMap['has_bio'] == true,
-      hasContent: capabilityMap['has_content'] == true,
       hasTaxonomies: capabilityMap['has_taxonomies'] == true,
       hasAvatar: capabilityMap['has_avatar'] == true,
       hasCover: capabilityMap['has_cover'] == true,
@@ -127,7 +124,6 @@ class TenantAdminProfileTypeDTO {
           isReferenceLocationEnabled,
         ),
         hasBio: TenantAdminFlagValue(hasBio),
-        hasContent: TenantAdminFlagValue(hasContent),
         hasTaxonomies: TenantAdminFlagValue(hasTaxonomies),
         hasAvatar: TenantAdminFlagValue(hasAvatar),
         hasCover: TenantAdminFlagValue(hasCover),

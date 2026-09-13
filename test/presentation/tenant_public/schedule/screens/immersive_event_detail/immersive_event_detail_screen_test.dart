@@ -20,26 +20,23 @@ import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/invites/invite_next_step.dart';
 import 'package:belluga_now/domain/invites/invite_runtime_settings.dart';
 import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
-import 'package:belluga_now/domain/invites/invite_partner_type.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
-import 'package:belluga_now/domain/partner/partner_resume.dart';
 import 'package:belluga_now/domain/partners/account_profile_gallery_group.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_gallery_player_aspect_ratio_value.dart';
-import 'package:belluga_now/domain/partners/account_profile_model.dart';
-import 'package:belluga_now/domain/partners/account_profile_nested_group_member.dart';
+import 'package:belluga_now/domain/partners/account_profile_complete.dart';
+import 'package:belluga_now/domain/partners/account_profile_summary.dart';
 import 'package:belluga_now/domain/partners/account_profile_nested_group_member_page.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_nested_group_fields.dart';
-import 'package:belluga_now/domain/partners/value_objects/account_profile_nested_group_member_text_value.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_text_value.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_name_value.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_location_address_value.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_public_detail_path_value.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_tag_value.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_type_value.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
-import 'package:belluga_now/domain/partner/value_objects/invite_partner_hero_image_value.dart';
-import 'package:belluga_now/domain/partner/value_objects/invite_partner_logo_image_value.dart';
-import 'package:belluga_now/domain/partner/value_objects/invite_partner_name_value.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
@@ -48,7 +45,6 @@ import 'package:belluga_now/domain/repositories/proximity_preferences_repository
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
 import 'package:belluga_now/domain/proximity_preferences/proximity_preference.dart';
-import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/event_occurrence_option.dart';
 import 'package:belluga_now/domain/schedule/event_profile_group.dart';
@@ -56,11 +52,13 @@ import 'package:belluga_now/domain/schedule/event_programming_item.dart';
 import 'package:belluga_now/domain/schedule/event_type_model.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_counterpart_count_value.dart';
-import 'package:belluga_now/domain/schedule/value_objects/event_linked_account_profile_text_value.dart';
 import 'package:belluga_now/domain/value_objects/domain_boolean_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_profile_group_order_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_is_confirmed_value.dart';
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
+import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/immersive_detail_screen.dart';
+import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/tabs/immersive_section_subtitle.dart';
+import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/tabs/immersive_section_title.dart';
 import 'package:belluga_now/presentation/shared/widgets/account_profile_overlapping_identity_card.dart';
 import 'package:belluga_now/presentation/shared/promotion/screens/app_promotion_screen/controllers/app_promotion_screen_controller.dart';
 import 'package:belluga_now/presentation/shared/promotion/screens/app_promotion_screen/controllers/app_promotion_store_platform.dart';
@@ -329,15 +327,14 @@ void main() {
       final membersPath =
           '/api/v1/events/evento-de-teste/related_profile_tabs/atracoes/members';
       final repository = _FakeAccountProfilesRepository()
-        ..nestedGroupMembersByPath[membersPath] =
-            <AccountProfileNestedGroupMember>[
-              AccountProfileNestedGroupMember(
-                idValue: MongoIDValue()..parse('507f1f77bcf86cd799439099'),
-                nameValue: AccountProfileNameValue()..parse('Banda Azul'),
-                slugValue: SlugValue()..parse('banda-azul'),
-                profileTypeValue: AccountProfileTypeValue('band'),
-              ),
-            ];
+        ..nestedGroupMembersByPath[membersPath] = <AccountProfileSummary>[
+          AccountProfileSummary(
+            idValue: AccountProfileTextValue('507f1f77bcf86cd799439099'),
+            nameValue: AccountProfileNameValue()..parse('Banda Azul'),
+            slugValue: SlugValue()..parse('banda-azul'),
+            profileTypeValue: AccountProfileTypeValue('band'),
+          ),
+        ];
       GetIt.I.registerSingleton<ImmersiveEventDetailController>(
         ImmersiveEventDetailController(
           userEventsRepository: _FakeUserEventsRepository(),
@@ -423,12 +420,12 @@ void main() {
         ..fetchNestedGroupMembersPageHandler =
             (String membersPath, String cursor, String search) async {
               if (membersPath != artistsMembersPath) {
-                return const AccountProfileNestedGroupMemberPage.empty();
+                return const AccountProfileSummaryPage.empty();
               }
 
               if (cursor.isEmpty) {
-                return AccountProfileNestedGroupMemberPage(
-                  items: <AccountProfileNestedGroupMember>[
+                return AccountProfileSummaryPage(
+                  items: <AccountProfileSummary>[
                     _buildNestedGroupMember(
                       id: 'artist-1',
                       name: 'Artista 1',
@@ -436,9 +433,7 @@ void main() {
                       slug: 'artista-1',
                     ),
                   ],
-                  nextCursorValue: AccountProfileNestedGroupMemberTextValue(
-                    retryCursor,
-                  ),
+                  nextCursorValue: AccountProfileTextValue(retryCursor),
                 );
               }
 
@@ -446,8 +441,8 @@ void main() {
                 throw StateError('later page failed');
               }
 
-              return AccountProfileNestedGroupMemberPage(
-                items: <AccountProfileNestedGroupMember>[
+              return AccountProfileSummaryPage(
+                items: <AccountProfileSummary>[
                   _buildNestedGroupMember(
                     id: 'artist-2',
                     name: 'Artista 2',
@@ -572,25 +567,23 @@ void main() {
       const secondMembersPath =
           '/api/v1/events/pw-crud-event-1785004799637/related_profile_tabs/event-tab-2e387ea9a96a86cd/members';
       final repository = _FakeAccountProfilesRepository()
-        ..nestedGroupMembersByPath[firstMembersPath] =
-            <AccountProfileNestedGroupMember>[
-              AccountProfileNestedGroupMember(
-                idValue: MongoIDValue()..parse('507f1f77bcf86cd799439221'),
-                nameValue: AccountProfileNameValue()..parse('Child Item #1'),
-                slugValue: SlugValue()..parse('child-item-1'),
-                profileTypeValue: AccountProfileTypeValue('venue'),
-              ),
-            ]
-        ..nestedGroupMembersByPath[secondMembersPath] =
-            <AccountProfileNestedGroupMember>[
-              AccountProfileNestedGroupMember(
-                idValue: MongoIDValue()..parse('507f1f77bcf86cd799439222'),
-                nameValue: AccountProfileNameValue()
-                  ..parse('Readonly Fixture 2cc71741'),
-                slugValue: SlugValue()..parse('readonly-fixture-2cc71741'),
-                profileTypeValue: AccountProfileTypeValue('artist'),
-              ),
-            ];
+        ..nestedGroupMembersByPath[firstMembersPath] = <AccountProfileSummary>[
+          AccountProfileSummary(
+            idValue: AccountProfileTextValue('507f1f77bcf86cd799439221'),
+            nameValue: AccountProfileNameValue()..parse('Child Item #1'),
+            slugValue: SlugValue()..parse('child-item-1'),
+            profileTypeValue: AccountProfileTypeValue('venue'),
+          ),
+        ]
+        ..nestedGroupMembersByPath[secondMembersPath] = <AccountProfileSummary>[
+          AccountProfileSummary(
+            idValue: AccountProfileTextValue('507f1f77bcf86cd799439222'),
+            nameValue: AccountProfileNameValue()
+              ..parse('Readonly Fixture 2cc71741'),
+            slugValue: SlugValue()..parse('readonly-fixture-2cc71741'),
+            profileTypeValue: AccountProfileTypeValue('artist'),
+          ),
+        ];
       GetIt.I.registerSingleton<ImmersiveEventDetailController>(
         ImmersiveEventDetailController(
           userEventsRepository: _FakeUserEventsRepository(),
@@ -2071,19 +2064,18 @@ void main() {
           '/api/v1/events/evento-de-teste/related_profile_tabs/artists/members';
       final nestedArtistId = _nestedGroupMemberId('artist-1');
       final accountProfilesRepository = _FakeAccountProfilesRepository()
-        ..nestedGroupMembersByPath[membersPath] =
-            <AccountProfileNestedGroupMember>[
-              _buildNestedGroupMember(
-                id: 'artist-1',
-                name: 'Ananda Torres',
-                profileType: 'artist',
-                slug: 'ananda-torres',
-                avatarUrl: 'https://example.com/ananda.png',
-                coverUrl: 'https://example.com/ananda-cover.png',
-                publicDetailPath: '/parceiro/ananda-torres',
-                tags: const ['Samba'],
-              ),
-            ];
+        ..nestedGroupMembersByPath[membersPath] = <AccountProfileSummary>[
+          _buildNestedGroupMember(
+            id: 'artist-1',
+            name: 'Ananda Torres',
+            profileType: 'artist',
+            slug: 'ananda-torres',
+            avatarUrl: 'https://example.com/ananda.png',
+            coverUrl: 'https://example.com/ananda-cover.png',
+            publicDetailPath: '/parceiro/ananda-torres',
+            tags: const ['Samba'],
+          ),
+        ];
       GetIt.I.registerSingleton<ImmersiveEventDetailController>(
         ImmersiveEventDetailController(
           userEventsRepository: userEventsRepository,
@@ -2204,16 +2196,15 @@ void main() {
           '/api/v1/events/evento-de-teste/related_profile_tabs/artists/members';
       final nestedArtistId = _nestedGroupMemberId('artist-path');
       final accountProfilesRepository = _FakeAccountProfilesRepository()
-        ..nestedGroupMembersByPath[membersPath] =
-            <AccountProfileNestedGroupMember>[
-              _buildNestedGroupMember(
-                id: 'artist-path',
-                name: 'Perfil com caminho canônico',
-                profileType: 'artist',
-                slug: 'perfil-com-caminho',
-                publicDetailPath: '/perfil-customizado/perfil-com-caminho',
-              ),
-            ];
+        ..nestedGroupMembersByPath[membersPath] = <AccountProfileSummary>[
+          _buildNestedGroupMember(
+            id: 'artist-path',
+            name: 'Perfil com caminho canônico',
+            profileType: 'artist',
+            slug: 'perfil-com-caminho',
+            publicDetailPath: '/perfil-customizado/perfil-com-caminho',
+          ),
+        ];
       GetIt.I.registerSingleton<ImmersiveEventDetailController>(
         ImmersiveEventDetailController(
           userEventsRepository: userEventsRepository,
@@ -2345,18 +2336,17 @@ void main() {
       final userEventsRepository = _FakeUserEventsRepository();
       final invitesRepository = _FakeInvitesRepository();
       final accountProfilesRepository = _FakeAccountProfilesRepository()
-        ..nestedGroupMembersByPath[membersPath] =
-            <AccountProfileNestedGroupMember>[
-              _buildNestedGroupMember(
-                id: 'artist-relative',
-                name: 'Perfil relativo',
-                profileType: 'artist',
-                slug: 'perfil-relativo',
-                avatarUrl: expectedAvatarUrl,
-                coverUrl: expectedCoverUrl,
-                publicDetailPath: '/parceiro/perfil-relativo',
-              ),
-            ];
+        ..nestedGroupMembersByPath[membersPath] = <AccountProfileSummary>[
+          _buildNestedGroupMember(
+            id: 'artist-relative',
+            name: 'Perfil relativo',
+            profileType: 'artist',
+            slug: 'perfil-relativo',
+            avatarUrl: expectedAvatarUrl,
+            coverUrl: expectedCoverUrl,
+            publicDetailPath: '/parceiro/perfil-relativo',
+          ),
+        ];
       GetIt.I.registerSingleton<ImmersiveEventDetailController>(
         ImmersiveEventDetailController(
           userEventsRepository: userEventsRepository,
@@ -2473,17 +2463,16 @@ void main() {
       final userEventsRepository = _FakeUserEventsRepository();
       final invitesRepository = _FakeInvitesRepository();
       final accountProfilesRepository = _FakeAccountProfilesRepository()
-        ..nestedGroupMembersByPath[membersPath] =
-            <AccountProfileNestedGroupMember>[
-              _buildNestedGroupMember(
-                id: 'artist-relative',
-                name: 'Perfil relativo',
-                profileType: 'artist',
-                slug: 'perfil-relativo',
-                avatarUrl: expectedAvatarUrl,
-                publicDetailPath: '/parceiro/perfil-relativo',
-              ),
-            ];
+        ..nestedGroupMembersByPath[membersPath] = <AccountProfileSummary>[
+          _buildNestedGroupMember(
+            id: 'artist-relative',
+            name: 'Perfil relativo',
+            profileType: 'artist',
+            slug: 'perfil-relativo',
+            avatarUrl: expectedAvatarUrl,
+            publicDetailPath: '/parceiro/perfil-relativo',
+          ),
+        ];
       GetIt.I.registerSingleton<ImmersiveEventDetailController>(
         ImmersiveEventDetailController(
           userEventsRepository: userEventsRepository,
@@ -2610,17 +2599,16 @@ void main() {
       final userEventsRepository = _FakeUserEventsRepository();
       final invitesRepository = _FakeInvitesRepository();
       final accountProfilesRepository = _FakeAccountProfilesRepository()
-        ..nestedGroupMembersByPath[membersPath] =
-            <AccountProfileNestedGroupMember>[
-              _buildNestedGroupMember(
-                id: 'artist-relative',
-                name: 'Perfil relativo',
-                profileType: 'artist',
-                slug: 'perfil-relativo',
-                avatarUrl: expectedAvatarUrl,
-                publicDetailPath: '/parceiro/perfil-relativo',
-              ),
-            ];
+        ..nestedGroupMembersByPath[membersPath] = <AccountProfileSummary>[
+          _buildNestedGroupMember(
+            id: 'artist-relative',
+            name: 'Perfil relativo',
+            profileType: 'artist',
+            slug: 'perfil-relativo',
+            avatarUrl: expectedAvatarUrl,
+            publicDetailPath: '/parceiro/perfil-relativo',
+          ),
+        ];
       GetIt.I.registerSingleton<ImmersiveEventDetailController>(
         ImmersiveEventDetailController(
           userEventsRepository: userEventsRepository,
@@ -2691,16 +2679,15 @@ void main() {
           '/api/v1/events/evento-de-teste/related_profile_tabs/artists/members';
       final nestedArtistId = _nestedGroupMemberId('artist-static');
       final accountProfilesRepository = _FakeAccountProfilesRepository()
-        ..nestedGroupMembersByPath[membersPath] =
-            <AccountProfileNestedGroupMember>[
-              _buildNestedGroupMember(
-                id: 'artist-static',
-                name: 'Perfil sem rota',
-                profileType: 'artist',
-                slug: 'perfil-sem-rota',
-                canOpenPublicDetail: false,
-              ),
-            ];
+        ..nestedGroupMembersByPath[membersPath] = <AccountProfileSummary>[
+          _buildNestedGroupMember(
+            id: 'artist-static',
+            name: 'Perfil sem rota',
+            profileType: 'artist',
+            slug: 'perfil-sem-rota',
+            canOpenPublicDetail: false,
+          ),
+        ];
       GetIt.I.registerSingleton<ImmersiveEventDetailController>(
         ImmersiveEventDetailController(
           userEventsRepository: userEventsRepository,
@@ -2781,15 +2768,14 @@ void main() {
           '/api/v1/events/evento-de-teste/related_profile_tabs/artists/members';
       final nestedArtistId = _nestedGroupMemberId('artist-1');
       final accountProfilesRepository = _FakeAccountProfilesRepository()
-        ..nestedGroupMembersByPath[membersPath] =
-            <AccountProfileNestedGroupMember>[
-              _buildNestedGroupMember(
-                id: 'artist-1',
-                name: 'Ananda Torres',
-                profileType: 'artist',
-                slug: 'ananda-torres',
-              ),
-            ];
+        ..nestedGroupMembersByPath[membersPath] = <AccountProfileSummary>[
+          _buildNestedGroupMember(
+            id: 'artist-1',
+            name: 'Ananda Torres',
+            profileType: 'artist',
+            slug: 'ananda-torres',
+          ),
+        ];
       final authRepository = _FakeAuthRepository(authorized: false);
       final appDataRepository = _FakeAppDataRepository(_buildAppData());
       GetIt.I.registerSingleton<AppData>(_buildAppData());
@@ -2892,7 +2878,7 @@ void main() {
       final nestedArtistId = _nestedGroupMemberId('artist-1');
       final accountProfilesRepository = _FakeAccountProfilesRepository()
         ..nestedGroupMembersByPath[membersPath] =
-            List<AccountProfileNestedGroupMember>.generate(
+            List<AccountProfileSummary>.generate(
               4,
               (index) => _buildNestedGroupMember(
                 id: 'artist-${index + 1}',
@@ -2919,9 +2905,7 @@ void main() {
         pendingChildren: const [],
         type: const RouteType.material(),
       );
-      final linkedProfiles = List<EventLinkedAccountProfile>.generate(4, (
-        index,
-      ) {
+      final linkedProfiles = List<AccountProfileSummary>.generate(4, (index) {
         final position = index + 1;
         return _buildLinkedAccountProfile(
           id: 'artist-$position',
@@ -3062,16 +3046,15 @@ void main() {
           '/api/v1/events/evento-de-teste/related_profile_tabs/artists/members';
       final nestedArtistId = _nestedGroupMemberId('artist-1');
       final accountProfilesRepository = _FakeAccountProfilesRepository()
-        ..nestedGroupMembersByPath[membersPath] =
-            <AccountProfileNestedGroupMember>[
-              _buildNestedGroupMember(
-                id: 'artist-1',
-                name: 'Ananda Torres',
-                profileType: 'artist',
-                slug: 'ananda-torres',
-                publicDetailPath: '/perfil-customizado/perfil-com-caminho',
-              ),
-            ];
+        ..nestedGroupMembersByPath[membersPath] = <AccountProfileSummary>[
+          _buildNestedGroupMember(
+            id: 'artist-1',
+            name: 'Ananda Torres',
+            profileType: 'artist',
+            slug: 'ananda-torres',
+            publicDetailPath: '/perfil-customizado/perfil-com-caminho',
+          ),
+        ];
       GetIt.I.registerSingleton<ImmersiveEventDetailController>(
         ImmersiveEventDetailController(
           userEventsRepository: userEventsRepository,
@@ -3210,119 +3193,6 @@ void main() {
   });
 
   testWidgets(
-    'event hero compact chip opens first available profile type tab when first profile is untyped',
-    (tester) async {
-      final userEventsRepository = _FakeUserEventsRepository();
-      final invitesRepository = _FakeInvitesRepository();
-      const membersPath =
-          '/api/v1/events/evento-de-teste/related_profile_tabs/artists/members';
-      final nestedArtistId = _nestedGroupMemberId('artist-1');
-      final accountProfilesRepository = _FakeAccountProfilesRepository()
-        ..nestedGroupMembersByPath[membersPath] =
-            List<AccountProfileNestedGroupMember>.generate(
-              3,
-              (index) => _buildNestedGroupMember(
-                id: 'artist-${index + 1}',
-                name: 'Artista ${index + 1}',
-                profileType: 'artist',
-                slug: 'artista-${index + 1}',
-              ),
-            );
-      GetIt.I.registerSingleton<ImmersiveEventDetailController>(
-        ImmersiveEventDetailController(
-          userEventsRepository: userEventsRepository,
-          invitesRepository: invitesRepository,
-          authRepository: _FakeAuthRepository(authorized: true),
-          appDataRepository: _FakeAppDataRepository(_buildAppData()),
-          accountProfilesRepository: accountProfilesRepository,
-        ),
-      );
-
-      final router = _RecordingStackRouter();
-      final routeData = RouteData(
-        route: _FakeRouteMatch(fullPath: '/agenda/evento/evento-de-teste'),
-        router: router,
-        stackKey: const ValueKey('stack'),
-        pendingChildren: const [],
-        type: const RouteType.material(),
-      );
-      final linkedProfiles = [
-        _buildLinkedAccountProfile(
-          id: 'untagged-1',
-          displayName: 'Perfil sem tipo',
-          profileType: '',
-          slug: 'perfil-sem-tipo',
-        ),
-        ...List<EventLinkedAccountProfile>.generate(3, (index) {
-          final position = index + 1;
-          return _buildLinkedAccountProfile(
-            id: 'artist-$position',
-            displayName: 'Artista $position',
-            profileType: 'artist',
-            slug: 'artista-$position',
-          );
-        }),
-      ];
-
-      await tester.pumpWidget(
-        StackRouterScope(
-          controller: router,
-          stateHash: 0,
-          child: MaterialApp(
-            home: _routeScopedHome(
-              routeData: routeData,
-              child: ImmersiveEventDetailScreen(
-                event: _buildEvent(
-                  linkedProfiles: linkedProfiles,
-                  profileGroups: [
-                    _buildProfileGroup(
-                      id: 'artists',
-                      label: 'Artists',
-                      membersPath: membersPath,
-                      memberCount: 3,
-                      accountProfileIds: const [
-                        'artist-1',
-                        'artist-2',
-                        'artist-3',
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      );
-
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
-
-      expect(
-        find.byKey(const Key('eventHeroCounterpartChip_untagged-1')),
-        findsOneWidget,
-      );
-      expect(
-        find.byKey(const Key('eventHeroCounterpartChip_artist-1')),
-        findsNothing,
-      );
-      expect(
-        find.byKey(const Key('eventHeroMoreProfilesChip')),
-        findsOneWidget,
-      );
-      expect(find.text('e mais 3'), findsOneWidget);
-
-      await tester.tap(find.byKey(const Key('eventHeroMoreProfilesChip')));
-      await tester.pumpAndSettle();
-
-      expect(accountProfilesRepository.lastNestedGroupMembersPath, membersPath);
-      expect(
-        find.byKey(Key('linkedProfileCard_$nestedArtistId')),
-        findsOneWidget,
-      );
-    },
-  );
-
-  testWidgets(
     'event hero compacts multiple linked profiles and opens first profile type tab',
     (tester) async {
       final userEventsRepository = _FakeUserEventsRepository();
@@ -3332,7 +3202,7 @@ void main() {
       final nestedArtistId = _nestedGroupMemberId('artist-1');
       final accountProfilesRepository = _FakeAccountProfilesRepository()
         ..nestedGroupMembersByPath[membersPath] =
-            List<AccountProfileNestedGroupMember>.generate(
+            List<AccountProfileSummary>.generate(
               3,
               (index) => _buildNestedGroupMember(
                 id: 'artist-${index + 1}',
@@ -3359,9 +3229,7 @@ void main() {
         pendingChildren: const [],
         type: const RouteType.material(),
       );
-      final linkedProfiles = List<EventLinkedAccountProfile>.generate(3, (
-        index,
-      ) {
+      final linkedProfiles = List<AccountProfileSummary>.generate(3, (index) {
         final position = index + 1;
         return _buildLinkedAccountProfile(
           id: 'artist-$position',
@@ -3931,6 +3799,10 @@ void main() {
       expect(find.byKey(const Key('eventLocalDescription')), findsOneWidget);
       expect(find.byKey(const Key('eventLocalGalleryStrip')), findsNothing);
       expect(find.text('Ambientes'), findsOneWidget);
+      expect(
+        find.widgetWithText(ImmersiveSectionSubtitle, 'Ambientes'),
+        findsOneWidget,
+      );
       expect(find.text('Vazia'), findsNothing);
       expect(find.text('Não deve aparecer'), findsNothing);
       final galleryRow = tester.widget<BellugaGalleryPreviewRow>(
@@ -4125,6 +3997,149 @@ void main() {
     },
   );
 
+  testWidgets('O Local hero delegates the whole profile navigation surface', (
+    tester,
+  ) async {
+    var profileOpenCount = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: EventLocalSection(
+            event: _buildEvent(venue: _buildVenueResume()),
+            profileTypeRegistry: null,
+            onOpenVenueProfile: () => profileOpenCount += 1,
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byKey(const Key('eventLocalProfileLink')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('eventLocalProfileLink')));
+    await tester.pump();
+
+    expect(profileOpenCount, 1);
+  });
+
+  testWidgets(
+    'event detail O Local pushes the model URL without replacing history',
+    (tester) async {
+      GetIt.I.registerSingleton<ImmersiveEventDetailController>(
+        ImmersiveEventDetailController(
+          userEventsRepository: _FakeUserEventsRepository(),
+          invitesRepository: _FakeInvitesRepository(),
+        ),
+      );
+      final router = _RecordingStackRouter();
+      final routeData = RouteData(
+        route: _FakeRouteMatch(fullPath: '/agenda/evento/evento-de-teste'),
+        router: router,
+        stackKey: const ValueKey('stack'),
+        pendingChildren: const [],
+        type: const RouteType.material(),
+      );
+
+      await tester.pumpWidget(
+        StackRouterScope(
+          controller: router,
+          stateHash: 0,
+          child: MaterialApp(
+            home: _routeScopedHome(
+              routeData: routeData,
+              child: ImmersiveEventDetailScreen(
+                event: _buildEvent(
+                  venue: _buildVenueResume(
+                    canOpenPublicDetail: true,
+                    publicDetailPath: '/parceiro/carvoeiro',
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      await _tapImmersiveTabByLabel(tester, 'O Local');
+      await tester.tap(find.byKey(const Key('eventLocalProfileLink')));
+      await tester.pump();
+
+      expect(router.lastPushedPath, '/parceiro/carvoeiro');
+      expect(router.lastReplacedPath, isNull);
+      expect(router.lastReplacedRoute, isNull);
+      expect(router.replaceAllRoutes, isEmpty);
+    },
+  );
+
+  for (final scenario
+      in <({String label, bool canOpenPublicDetail, String? publicDetailPath})>[
+        (
+          label: 'capability is false',
+          canOpenPublicDetail: false,
+          publicDetailPath: '/parceiro/carvoeiro',
+        ),
+        (
+          label: 'public detail path is blank',
+          canOpenPublicDetail: true,
+          publicDetailPath: '   ',
+        ),
+      ]) {
+    testWidgets(
+      'event detail keeps O Local hero non-actionable when ${scenario.label}',
+      (tester) async {
+        GetIt.I.registerSingleton<ImmersiveEventDetailController>(
+          ImmersiveEventDetailController(
+            userEventsRepository: _FakeUserEventsRepository(),
+            invitesRepository: _FakeInvitesRepository(),
+          ),
+        );
+        final router = _RecordingStackRouter();
+        final routeData = RouteData(
+          route: _FakeRouteMatch(fullPath: '/agenda/evento/evento-de-teste'),
+          router: router,
+          stackKey: const ValueKey('stack'),
+          pendingChildren: const [],
+          type: const RouteType.material(),
+        );
+
+        await tester.pumpWidget(
+          StackRouterScope(
+            controller: router,
+            stateHash: 0,
+            child: MaterialApp(
+              home: _routeScopedHome(
+                routeData: routeData,
+                child: ImmersiveEventDetailScreen(
+                  event: _buildEvent(
+                    venue: _buildVenueResume(
+                      canOpenPublicDetail: scenario.canOpenPublicDetail,
+                      publicDetailPath: scenario.publicDetailPath,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 100));
+        await _tapImmersiveTabByLabel(tester, 'O Local');
+
+        expect(
+          find.byKey(const Key('eventLocalIdentityPlate')),
+          findsOneWidget,
+        );
+        expect(find.byKey(const Key('eventLocalProfileLink')), findsNothing);
+        expect(
+          find.bySemanticsLabel('Abrir perfil de Carvoeiro'),
+          findsNothing,
+        );
+        expect(router.lastPushedPath, isNull);
+      },
+    );
+  }
+
   testWidgets(
     'event detail hides O Local when event lacks a sufficient venue reference',
     (tester) async {
@@ -4167,6 +4182,13 @@ void main() {
       expect(find.text('O Local'), findsNothing);
       expect(find.text('Como Chegar'), findsNothing);
       expect(find.byKey(const Key('immersiveTabLabel_0')), findsOneWidget);
+      final immersiveDetail = tester.widget<ImmersiveDetailScreen>(
+        find.byType(ImmersiveDetailScreen),
+      );
+      expect(
+        immersiveDetail.tabs.map((tab) => tab.title).toList(growable: false),
+        <String>['Sobre'],
+      );
     },
   );
 
@@ -4329,19 +4351,18 @@ void main() {
       const expositoresMembersPath =
           '/api/v1/events/evento-de-teste/related_profile_tabs/expositores/members';
       accountProfilesRepository
-        ..nestedGroupMembersByPath[bandasMembersPath] =
-            <AccountProfileNestedGroupMember>[
-              AccountProfileNestedGroupMember(
-                idValue: MongoIDValue()..parse('507f1f77bcf86cd799439091'),
-                nameValue: AccountProfileNameValue()..parse('Du Jorge'),
-                slugValue: SlugValue()..parse('du-jorge'),
-                profileTypeValue: AccountProfileTypeValue('band'),
-              ),
-            ]
+        ..nestedGroupMembersByPath[bandasMembersPath] = <AccountProfileSummary>[
+          AccountProfileSummary(
+            idValue: AccountProfileTextValue('507f1f77bcf86cd799439091'),
+            nameValue: AccountProfileNameValue()..parse('Du Jorge'),
+            slugValue: SlugValue()..parse('du-jorge'),
+            profileTypeValue: AccountProfileTypeValue('band'),
+          ),
+        ]
         ..nestedGroupMembersByPath[expositoresMembersPath] =
-            <AccountProfileNestedGroupMember>[
-              AccountProfileNestedGroupMember(
-                idValue: MongoIDValue()..parse('507f1f77bcf86cd799439092'),
+            <AccountProfileSummary>[
+              AccountProfileSummary(
+                idValue: AccountProfileTextValue('507f1f77bcf86cd799439092'),
                 nameValue: AccountProfileNameValue()..parse('Agro Sul'),
                 slugValue: SlugValue()..parse('agro-sul'),
                 profileTypeValue: AccountProfileTypeValue('producer'),
@@ -4390,19 +4411,20 @@ void main() {
           _buildProgrammingItem(time: '20:00', title: 'Feira da segunda data'),
         ];
         return _buildEvent(
+          venue: _buildVenueResume(),
           linkedProfiles: [band, exhibitor],
           profileGroups: [
-            _buildProfileGroup(
-              id: 'bandas',
-              label: 'Bandas',
-              membersPath: bandasMembersPath,
-              memberCount: 1,
-            ),
             _buildProfileGroup(
               id: 'expositores',
               label: 'Expositores',
               order: 1,
               membersPath: expositoresMembersPath,
+              memberCount: 1,
+            ),
+            _buildProfileGroup(
+              id: 'bandas',
+              label: 'Bandas',
+              membersPath: bandasMembersPath,
               memberCount: 1,
             ),
           ],
@@ -4473,12 +4495,48 @@ void main() {
       await tester.pump(const Duration(milliseconds: 450));
       await tester.pumpAndSettle();
 
+      ImmersiveDetailScreen immersiveDetail() => tester
+          .widget<ImmersiveDetailScreen>(find.byType(ImmersiveDetailScreen));
+      expect(
+        immersiveDetail().tabs.map((tab) => tab.title).toList(growable: false),
+        <String>['Sobre', 'Programação', 'Bandas', 'Expositores', 'O Local'],
+      );
+      expect(
+        find.widgetWithText(ImmersiveSectionTitle, 'Sobre'),
+        findsOneWidget,
+      );
+      expect(find.text('Sobre'), findsNWidgets(2));
+      expect(
+        find.widgetWithText(ImmersiveSectionTitle, 'Programação'),
+        findsOneWidget,
+      );
+      expect(find.text('Programação'), findsNWidgets(2));
       expect(find.text('Bandas'), findsWidgets);
       expect(find.text('Expositores'), findsWidgets);
       await _tapImmersiveTab(tester, 2);
+      expect(
+        find.widgetWithText(ImmersiveSectionTitle, 'Bandas'),
+        findsOneWidget,
+      );
+      expect(find.text('Bandas'), findsNWidgets(2));
       expect(find.text('Du Jorge'), findsWidgets);
       await _tapImmersiveTab(tester, 3);
+      expect(
+        find.widgetWithText(ImmersiveSectionTitle, 'Expositores'),
+        findsOneWidget,
+      );
+      expect(find.text('Expositores'), findsNWidgets(2));
       expect(find.text('Agro Sul'), findsWidgets);
+      await _tapImmersiveTab(tester, 4);
+      expect(
+        find.widgetWithText(ImmersiveSectionTitle, 'O Local'),
+        findsOneWidget,
+      );
+      expect(find.text('O Local'), findsNWidgets(2));
+      expect(
+        find.widgetWithText(ImmersiveSectionTitle, 'Como Chegar'),
+        findsNothing,
+      );
 
       await _tapImmersiveTab(tester, 1);
       await tester.tap(find.byKey(const Key('eventDateCardTap_occ-2')));
@@ -4488,93 +4546,139 @@ void main() {
       expect(selectedOccurrenceId, 'occ-2');
       expect(find.text('Bandas'), findsWidgets);
       expect(find.text('Expositores'), findsWidgets);
+      expect(
+        immersiveDetail().tabs.map((tab) => tab.title).toList(growable: false),
+        <String>['Sobre', 'Programação', 'Bandas', 'Expositores', 'O Local'],
+      );
       expect(find.text('Feira da segunda data'), findsOneWidget);
       expect(find.text('Show da primeira data'), findsNothing);
     },
   );
 
-  testWidgets('event detail programming tab renders occurrence schedule', (
-    tester,
-  ) async {
-    final userEventsRepository = _FakeUserEventsRepository();
-    final invitesRepository = _FakeInvitesRepository();
-    GetIt.I.registerSingleton<ImmersiveEventDetailController>(
-      ImmersiveEventDetailController(
-        userEventsRepository: userEventsRepository,
-        invitesRepository: invitesRepository,
-        authRepository: _FakeAuthRepository(authorized: true),
-      ),
-    );
+  testWidgets(
+    'event detail programming chips push exact paths and keep null targets inert',
+    (tester) async {
+      final userEventsRepository = _FakeUserEventsRepository();
+      final invitesRepository = _FakeInvitesRepository();
+      GetIt.I.registerSingleton<ImmersiveEventDetailController>(
+        ImmersiveEventDetailController(
+          userEventsRepository: userEventsRepository,
+          invitesRepository: invitesRepository,
+          authRepository: _FakeAuthRepository(authorized: true),
+        ),
+      );
 
-    final router = _RecordingStackRouter();
-    final routeData = RouteData(
-      route: _FakeRouteMatch(fullPath: '/agenda/evento/evento-de-teste'),
-      router: router,
-      stackKey: const ValueKey('stack'),
-      pendingChildren: const [],
-      type: const RouteType.material(),
-    );
-    final profile = _buildLinkedAccountProfile(
-      id: 'artist-1',
-      displayName: 'Coral XYZ',
-      profileType: 'artist',
-      slug: 'coral-xyz',
-      avatarUrl: 'https://example.com/avatar.png',
-    );
+      final router = _RecordingStackRouter();
+      final routeData = RouteData(
+        route: _FakeRouteMatch(fullPath: '/agenda/evento/evento-de-teste'),
+        router: router,
+        stackKey: const ValueKey('stack'),
+        pendingChildren: const [],
+        type: const RouteType.material(),
+      );
+      final profile = _buildLinkedAccountProfile(
+        id: 'artist-1',
+        displayName: 'Coral XYZ',
+        profileType: 'artist',
+        slug: 'unrelated-coral-slug',
+        publicDetailPath: '/perfil/caminho-exato-coral',
+        avatarUrl: 'https://example.com/avatar.png',
+      );
+      final ineligibleProfile = _buildLinkedAccountProfile(
+        id: 'artist-2',
+        displayName: 'Artista indisponível',
+        profileType: 'artist',
+        slug: 'unrelated-ineligible-slug',
+        canOpenPublicDetail: false,
+        publicDetailPath: '/perfil/raw-ineligible-nao-usar',
+      );
+      final secondProfile = _buildLinkedAccountProfile(
+        id: 'artist-3',
+        displayName: 'Segundo perfil',
+        profileType: 'artist',
+        slug: 'unrelated-second-slug',
+        publicDetailPath: '/perfil/caminho-exato-segundo',
+      );
 
-    await tester.pumpWidget(
-      StackRouterScope(
-        controller: router,
-        stateHash: 0,
-        child: MaterialApp(
-          home: _routeScopedHome(
-            routeData: routeData,
-            child: ImmersiveEventDetailScreen(
-              event: _buildEvent(
-                programmingItems: [
-                  _buildProgrammingItem(
-                    time: '17:00',
-                    linkedProfiles: [profile],
-                  ),
-                ],
+      await tester.pumpWidget(
+        StackRouterScope(
+          controller: router,
+          stateHash: 0,
+          child: MaterialApp(
+            home: _routeScopedHome(
+              routeData: routeData,
+              child: ImmersiveEventDetailScreen(
+                event: _buildEvent(
+                  programmingItems: [
+                    _buildProgrammingItem(
+                      time: '17:00',
+                      linkedProfiles: [
+                        profile,
+                        secondProfile,
+                        ineligibleProfile,
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
         ),
-      ),
-    );
+      );
 
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 100));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
 
-    expect(find.text('Programação'), findsWidgets);
-    await tester.tap(find.byKey(const Key('immersiveTabLabel_1')));
-    await tester.pumpAndSettle();
+      expect(find.text('Programação'), findsWidgets);
+      await tester.tap(find.byKey(const Key('immersiveTabLabel_1')));
+      await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('eventProgrammingItem_0')), findsOneWidget);
-    expect(find.text('17:00'), findsOneWidget);
-    expect(find.text('Coral XYZ'), findsWidgets);
-    expect(
-      find.byKey(const Key('eventProgrammingProfile_artist-1')),
-      findsOneWidget,
-    );
-    expect(
-      find.descendant(
-        of: find.byKey(const Key('eventProgrammingProfile_artist-1')),
-        matching: find.byType(BellugaNetworkImage),
-      ),
-      findsOneWidget,
-    );
+      expect(find.byKey(const Key('eventProgrammingItem_0')), findsOneWidget);
+      expect(find.text('17:00'), findsOneWidget);
+      expect(find.text('Coral XYZ'), findsWidgets);
+      expect(
+        find.byKey(const Key('eventProgrammingProfile_artist-1')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('eventProgrammingProfile_artist-1')),
+          matching: find.byType(BellugaNetworkImage),
+        ),
+        findsOneWidget,
+      );
 
-    expect(
-      find.descendant(
-        of: find.byKey(const Key('eventProgrammingProfile_artist-1')),
-        matching: find.byType(GestureDetector),
-      ),
-      findsNothing,
-    );
-    expect(router.lastPushedPath, isNull);
-  });
+      final eligibleChip = find.byKey(
+        const Key('eventProgrammingProfile_artist-1'),
+      );
+      final ineligibleChip = find.byKey(
+        const Key('eventProgrammingProfile_artist-2'),
+      );
+      final secondEligibleChip = find.byKey(
+        const Key('eventProgrammingProfile_artist-3'),
+      );
+      expect(
+        find.ancestor(of: eligibleChip, matching: find.byType(InkWell)),
+        findsOneWidget,
+      );
+      expect(
+        find.ancestor(of: ineligibleChip, matching: find.byType(InkWell)),
+        findsNothing,
+      );
+
+      await tester.tap(eligibleChip);
+      await tester.pump();
+      expect(router.lastPushedPath, '/perfil/caminho-exato-coral');
+
+      await tester.tap(secondEligibleChip);
+      await tester.pump();
+      expect(router.lastPushedPath, '/perfil/caminho-exato-segundo');
+
+      await tester.tap(ineligibleChip, warnIfMissed: false);
+      await tester.pump();
+      expect(router.lastPushedPath, '/perfil/caminho-exato-segundo');
+    },
+  );
 
   testWidgets(
     'event detail programming centers the selected occurrence when there is room',
@@ -4689,6 +4793,7 @@ void main() {
                       selectedOccurrenceId = occurrence.occurrenceId;
                     });
                   },
+                  onProfileTap: (_) {},
                   onLocationTap: (_) {},
                   profileTypeRegistry: null,
                 ),
@@ -4756,6 +4861,7 @@ void main() {
                       });
                     });
                   },
+                  onProfileTap: (_) {},
                   onLocationTap: (_) {},
                   profileTypeRegistry: null,
                   debugOnOccurrenceCenterAnimationStart: () {
@@ -4827,6 +4933,7 @@ void main() {
                         });
                       });
                     },
+                    onProfileTap: (_) {},
                     onLocationTap: (_) {},
                     profileTypeRegistry: null,
                     debugOnOccurrenceCenterAnimationStart: () {
@@ -4943,7 +5050,7 @@ void main() {
         pendingChildren: const [],
         type: const RouteType.material(),
       );
-      final profiles = List<EventLinkedAccountProfile>.generate(
+      final profiles = List<AccountProfileSummary>.generate(
         5,
         (index) => _buildLinkedAccountProfile(
           id: 'artist-$index',
@@ -5013,14 +5120,14 @@ void main() {
         );
         await tester.tap(target, warnIfMissed: false);
         await tester.pump();
-        expect(router.lastPushedPath, isNull);
+        expect(router.lastPushedPath, profile.publicDetailUrl);
       }
       expect(
         find.byKey(const Key('eventProgrammingProfiles_0')),
         findsOneWidget,
       );
       expect(find.textContaining('e mais'), findsNothing);
-      expect(router.lastPushedPath, isNull);
+      expect(router.lastPushedPath, profiles.last.publicDetailUrl);
     },
   );
 
@@ -6240,6 +6347,13 @@ void main() {
 
     expect(find.text('Outros endereços relacionados'), findsOneWidget);
     expect(
+      find.widgetWithText(
+        ImmersiveSectionSubtitle,
+        'Outros endereços relacionados',
+      ),
+      findsOneWidget,
+    );
+    expect(
       find.descendant(
         of: find.byKey(const Key('eventLocalRelatedHeading')),
         matching: find.byIcon(Icons.near_me_outlined),
@@ -7160,7 +7274,7 @@ AppData _buildAppData() {
   );
 }
 
-PartnerResume _buildVenueResume({
+AccountProfileSummary _buildVenueResume({
   String name = 'Carvoeiro',
   String? avatarUrl = 'https://example.com/carvoeiro-logo.png',
   String? coverUrl,
@@ -7169,24 +7283,21 @@ PartnerResume _buildVenueResume({
   List<AccountProfileGalleryGroup> galleryGroups =
       const <AccountProfileGalleryGroup>[],
   bool supportsPublicNavigation = true,
+  bool canOpenPublicDetail = false,
+  String? publicDetailPath,
   String profileType = 'venue',
 }) {
-  return PartnerResume(
-    idValue: MongoIDValue()..parse('507f1f77bcf86cd799439099'),
-    nameValue: InvitePartnerNameValue()..parse(name),
+  return AccountProfileSummary(
+    idValue: AccountProfileTextValue('507f1f77bcf86cd799439099'),
+    nameValue: AccountProfileNameValue()..parse(name),
     slugValue: SlugValue()..parse('carvoeiro'),
-    type: InviteAccountProfileType.mercadoProducer,
     profileTypeValue: AccountProfileTypeValue(profileType),
-    logoImageValue: avatarUrl == null
-        ? null
-        : (InvitePartnerLogoImageValue()..parse(avatarUrl)),
-    heroImageValue: coverUrl == null
-        ? null
-        : (InvitePartnerHeroImageValue()..parse(coverUrl)),
+    avatarValue: _thumbUriValueOrNull(avatarUrl),
+    coverValue: _thumbUriValueOrNull(coverUrl),
     bioValue: bio == null
         ? null
         : (DescriptionValue(defaultValue: '', minLenght: 0)..parse(bio)),
-    taxonomyLabelValues: taxonomyLabels
+    tagValues: taxonomyLabels
         .map(AccountProfileTagValue.new)
         .toList(growable: false),
     galleryGroupValues: galleryGroups,
@@ -7194,6 +7305,13 @@ PartnerResume _buildVenueResume({
       defaultValue: true,
       isRequired: false,
     )..parse(supportsPublicNavigation.toString()),
+    canOpenPublicDetailValue: DomainBooleanValue(
+      defaultValue: false,
+      isRequired: false,
+    )..parse(canOpenPublicDetail.toString()),
+    publicDetailPathValue: publicDetailPath == null
+        ? null
+        : AccountProfilePublicDetailPathValue(publicDetailPath),
   );
 }
 
@@ -7223,16 +7341,14 @@ AccountProfileGalleryItem _buildGalleryItem({
 }) {
   return AccountProfileGalleryItem(
     itemIdValue: AccountProfileNestedGroupIdValue(itemId),
-    descriptionValue: AccountProfileNestedGroupMemberTextValue(description),
+    descriptionValue: AccountProfileTextValue(description),
     orderValue: AccountProfileNestedGroupOrderValue(0),
     imageUrlValue: _buildOptionalThumbUriValue(imageUrl),
     thumbUrlValue: _buildOptionalThumbUriValue(thumbUrl),
     cardUrlValue: _buildOptionalThumbUriValue(cardUrl),
     modalUrlValue: _buildOptionalThumbUriValue(modalUrl),
     type: type,
-    youtubeVideoIdValue: AccountProfileNestedGroupMemberTextValue(
-      youtubeVideoId ?? '',
-    ),
+    youtubeVideoIdValue: AccountProfileTextValue(youtubeVideoId ?? ''),
     playerAspectRatioValue: AccountProfileGalleryPlayerAspectRatioValue(
       playerAspectRatio,
     ),
@@ -7247,22 +7363,21 @@ ThumbUriValue _buildOptionalThumbUriValue(String? url) {
   return value;
 }
 
-EventLinkedAccountProfile _buildLinkedAccountProfile({
+AccountProfileSummary _buildLinkedAccountProfile({
   required String id,
   required String displayName,
   required String profileType,
   required String slug,
   String? avatarUrl,
   String? coverUrl,
-  String? partyType,
   String? locationAddress,
   double? locationLat,
   double? locationLng,
   bool canOpenPublicDetail = true,
   String? publicDetailPath,
-  List<EventLinkedAccountProfileTaxonomyTerm> taxonomyTerms = const [],
+  List<AccountProfileTaxonomyTerm> taxonomyTerms = const [],
 }) {
-  final taxonomyTermsGroup = EventLinkedAccountProfileTaxonomyTerms();
+  final taxonomyTermsGroup = AccountProfileTaxonomyTerms();
   for (final term in taxonomyTerms) {
     taxonomyTermsGroup.addTerm(
       typeValue: term.typeValue,
@@ -7271,19 +7386,16 @@ EventLinkedAccountProfile _buildLinkedAccountProfile({
     );
   }
 
-  return EventLinkedAccountProfile(
-    idValue: EventLinkedAccountProfileTextValue(id),
-    displayNameValue: EventLinkedAccountProfileTextValue(displayName),
+  return AccountProfileSummary(
+    idValue: AccountProfileTextValue(id),
+    nameValue: AccountProfileNameValue()..parse(displayName),
     profileTypeValue: AccountProfileTypeValue(profileType),
     slugValue: SlugValue()..parse(slug),
-    avatarUrlValue: _thumbUriValueOrNull(avatarUrl),
-    coverUrlValue: _thumbUriValueOrNull(coverUrl),
-    partyTypeValue: partyType == null
-        ? null
-        : EventLinkedAccountProfileTextValue(partyType),
+    avatarValue: _thumbUriValueOrNull(avatarUrl),
+    coverValue: _thumbUriValueOrNull(coverUrl),
     locationAddressValue: locationAddress == null
         ? null
-        : EventLinkedAccountProfileTextValue(locationAddress),
+        : (AccountProfileLocationAddressValue()..parse(locationAddress)),
     locationLatitudeValue: locationLat == null
         ? null
         : (LatitudeValue()..parse('$locationLat')),
@@ -7294,7 +7406,7 @@ EventLinkedAccountProfile _buildLinkedAccountProfile({
       defaultValue: false,
       isRequired: false,
     )..parse(canOpenPublicDetail.toString()),
-    publicDetailPathValue: EventLinkedAccountProfileTextValue(
+    publicDetailPathValue: AccountProfilePublicDetailPathValue(
       publicDetailPath ?? '/parceiro/$slug',
     ),
     taxonomyTerms: taxonomyTermsGroup,
@@ -7332,19 +7444,19 @@ ProximityPreference _referencePointPreference({
   );
 }
 
-EventLinkedAccountProfileTaxonomyTerm _buildLinkedAccountProfileTaxonomyTerm({
+AccountProfileTaxonomyTerm _buildLinkedAccountProfileTaxonomyTerm({
   required String type,
   required String value,
   String name = '',
 }) {
-  return EventLinkedAccountProfileTaxonomyTerm(
+  return AccountProfileTaxonomyTerm(
     typeValue: AccountProfileTagValue(type),
     valueValue: AccountProfileTagValue(value),
     nameValue: AccountProfileTagValue(name),
   );
 }
 
-AccountProfileNestedGroupMember _buildNestedGroupMember({
+AccountProfileSummary _buildNestedGroupMember({
   required String id,
   required String name,
   required String profileType,
@@ -7356,8 +7468,16 @@ AccountProfileNestedGroupMember _buildNestedGroupMember({
   List<String> tags = const <String>[],
 }) {
   final resolvedId = _nestedGroupMemberId(id);
-  return AccountProfileNestedGroupMember(
-    idValue: MongoIDValue()..parse(resolvedId),
+  final taxonomyTerms = AccountProfileTaxonomyTerms();
+  for (final tag in tags) {
+    taxonomyTerms.addTerm(
+      typeValue: AccountProfileTagValue(''),
+      valueValue: AccountProfileTagValue(''),
+      nameValue: AccountProfileTagValue(tag),
+    );
+  }
+  return AccountProfileSummary(
+    idValue: AccountProfileTextValue(resolvedId),
     nameValue: AccountProfileNameValue()..parse(name),
     slugValue: slug == null ? null : (SlugValue()..parse(slug)),
     profileTypeValue: AccountProfileTypeValue(profileType),
@@ -7369,8 +7489,9 @@ AccountProfileNestedGroupMember _buildNestedGroupMember({
     )..parse(canOpenPublicDetail.toString()),
     publicDetailPathValue: publicDetailPath == null
         ? null
-        : AccountProfileNestedGroupMemberTextValue(publicDetailPath),
+        : AccountProfilePublicDetailPathValue(publicDetailPath),
     tagValues: tags.map(AccountProfileTagValue.new).toList(growable: false),
+    taxonomyTerms: taxonomyTerms,
   );
 }
 
@@ -7467,9 +7588,9 @@ EventModel _buildOccurrenceMediaRegressionEvent({
 }
 
 EventModel _buildEvent({
-  PartnerResume? venue,
-  List<EventLinkedAccountProfile> linkedProfiles = const [],
-  List<EventLinkedAccountProfile> counterpartPreviewProfiles = const [],
+  AccountProfileSummary? venue,
+  List<AccountProfileSummary> linkedProfiles = const [],
+  List<AccountProfileSummary> counterpartPreviewProfiles = const [],
   int? counterpartCount,
   List<EventProfileGroup> profileGroups = const [],
   List<EventOccurrenceOption> occurrences = const [],
@@ -7585,8 +7706,8 @@ EventOccurrenceOption _buildOccurrence({
 }) {
   final endValue = DomainOptionalDateTimeValue()..parse(end?.toIso8601String());
   return EventOccurrenceOption(
-    occurrenceIdValue: EventLinkedAccountProfileTextValue(id),
-    occurrenceSlugValue: EventLinkedAccountProfileTextValue('$id-slug'),
+    occurrenceIdValue: AccountProfileTextValue(id),
+    occurrenceSlugValue: AccountProfileTextValue('$id-slug'),
     dateTimeStartValue: DateTimeValue(isRequired: true)
       ..parse(start.toIso8601String()),
     dateTimeEndValue: endValue,
@@ -7604,20 +7725,20 @@ EventProfileGroup _buildProfileGroup({
   required String id,
   required String label,
   int order = 0,
-  List<EventLinkedAccountProfile> profiles = const [],
+  List<AccountProfileSummary> profiles = const [],
   List<String> accountProfileIds = const [],
   String? membersPath,
   int? memberCount,
 }) {
   return EventProfileGroup(
-    idValue: EventLinkedAccountProfileTextValue(id),
-    labelValue: EventLinkedAccountProfileTextValue(label),
+    idValue: AccountProfileTextValue(id),
+    labelValue: AccountProfileTextValue(label),
     orderValue: EventProfileGroupOrderValue(order),
     membersPathValue: EventProfileGroupMembersPathValue(membersPath ?? ''),
     memberCountValue: EventProfileGroupMemberCountValue(memberCount),
     profiles: profiles,
     accountProfileIdValues: accountProfileIds
-        .map(EventLinkedAccountProfileTextValue.new)
+        .map(AccountProfileTextValue.new)
         .toList(),
   );
 }
@@ -7625,14 +7746,12 @@ EventProfileGroup _buildProfileGroup({
 EventProgrammingItem _buildProgrammingItem({
   required String time,
   String? title,
-  List<EventLinkedAccountProfile> linkedProfiles = const [],
-  EventLinkedAccountProfile? locationProfile,
+  List<AccountProfileSummary> linkedProfiles = const [],
+  AccountProfileSummary? locationProfile,
 }) {
   return EventProgrammingItem(
     timeValue: EventProgrammingTimeValue(time),
-    titleValue: title == null
-        ? null
-        : EventLinkedAccountProfileTextValue(title),
+    titleValue: title == null ? null : AccountProfileTextValue(title),
     linkedAccountProfiles: linkedProfiles,
     locationProfile: locationProfile,
   );
@@ -7688,14 +7807,14 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
   String? lastNestedGroupMembersPath;
   final List<String> requestedNestedGroupMembersPaths = <String>[];
   final List<String> requestedNestedGroupMemberPageKeys = <String>[];
-  Future<AccountProfileNestedGroupMemberPage> Function(
+  Future<AccountProfileSummaryPage> Function(
     String membersPath,
     String cursor,
     String search,
   )?
   fetchNestedGroupMembersPageHandler;
-  final Map<String, List<AccountProfileNestedGroupMember>>
-  nestedGroupMembersByPath = <String, List<AccountProfileNestedGroupMember>>{};
+  final Map<String, List<AccountProfileSummary>> nestedGroupMembersByPath =
+      <String, List<AccountProfileSummary>>{};
 
   @override
   Future<void> init() async {
@@ -7712,20 +7831,20 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
     List<dynamic>? taxonomyFilters,
   }) async {
     return pagedAccountProfilesResultFromRaw(
-      profiles: const <AccountProfileModel>[],
+      profiles: const <AccountProfileComplete>[],
       hasMore: false,
     );
   }
 
   @override
-  Future<AccountProfileModel?> getAccountProfileBySlug(
+  Future<AccountProfileComplete?> getAccountProfileBySlug(
     AccountProfilesRepositoryContractPrimString slug,
   ) async {
     return null;
   }
 
   @override
-  Future<AccountProfileNestedGroupMemberPage> fetchNestedGroupMembersPageByPath(
+  Future<AccountProfileSummaryPage> fetchNestedGroupMembersPageByPath(
     AccountProfilesRepositoryContractPrimString membersPath, {
     AccountProfilesRepositoryContractPrimString? cursor,
     AccountProfilesRepositoryContractPrimString? search,
@@ -7749,7 +7868,7 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
         normalizedSearch.isEmpty) {
       lastNestedGroupMembersPath = membersPath.value;
       requestedNestedGroupMembersPaths.add(membersPath.value);
-      return AccountProfileNestedGroupMemberPage(
+      return AccountProfileSummaryPage(
         items: fixtureMembers,
         nextCursorValue: null,
       );
@@ -7763,12 +7882,12 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
   }
 
   @override
-  Future<List<AccountProfileModel>> fetchNearbyAccountProfiles({
+  Future<List<AccountProfileComplete>> fetchNearbyAccountProfiles({
     AccountProfilesRepositoryContractPrimInt? pageSize,
     List<AccountProfilesRepositoryContractPrimString>? typeFilters,
     List<dynamic>? taxonomyFilters,
   }) async {
-    return const <AccountProfileModel>[];
+    return const <AccountProfileComplete>[];
   }
 
   @override
@@ -7804,8 +7923,8 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
   }
 
   @override
-  List<AccountProfileModel> getFavoriteAccountProfiles() {
-    return const <AccountProfileModel>[];
+  List<AccountProfileComplete> getFavoriteAccountProfiles() {
+    return const <AccountProfileComplete>[];
   }
 }
 

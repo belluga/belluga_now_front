@@ -18,16 +18,18 @@ class TenantAdminDiscoveryFiltersController implements Disposable {
   TenantAdminDiscoveryFiltersController({
     TenantAdminSettingsRepositoryContract? settingsRepository,
     TenantAdminDiscoveryFilterRuleCatalogRepositoryContract?
-        ruleCatalogRepository,
-  })  : _settingsRepository = settingsRepository ??
-            GetIt.I.get<TenantAdminSettingsRepositoryContract>(),
-        _ruleCatalogRepository = ruleCatalogRepository ??
-            GetIt.I
-                .get<TenantAdminDiscoveryFilterRuleCatalogRepositoryContract>();
+    ruleCatalogRepository,
+  }) : _settingsRepository =
+           settingsRepository ??
+           GetIt.I.get<TenantAdminSettingsRepositoryContract>(),
+       _ruleCatalogRepository =
+           ruleCatalogRepository ??
+           GetIt.I
+               .get<TenantAdminDiscoveryFilterRuleCatalogRepositoryContract>();
 
   final TenantAdminSettingsRepositoryContract _settingsRepository;
   final TenantAdminDiscoveryFilterRuleCatalogRepositoryContract
-      _ruleCatalogRepository;
+  _ruleCatalogRepository;
 
   bool _isDisposed = false;
   TenantAdminDiscoveryFiltersSettings _settings =
@@ -35,22 +37,27 @@ class TenantAdminDiscoveryFiltersController implements Disposable {
 
   final StreamValue<TenantAdminDiscoveryFiltersSettings> settingsStreamValue =
       StreamValue<TenantAdminDiscoveryFiltersSettings>(
-    defaultValue: TenantAdminDiscoveryFiltersSettings.empty(),
+        defaultValue: TenantAdminDiscoveryFiltersSettings.empty(),
+      );
+  final StreamValue<bool> isLoadingStreamValue = StreamValue<bool>(
+    defaultValue: false,
   );
-  final StreamValue<bool> isLoadingStreamValue =
-      StreamValue<bool>(defaultValue: false);
-  final StreamValue<bool> isSubmittingStreamValue =
-      StreamValue<bool>(defaultValue: false);
-  final StreamValue<String> remoteErrorStreamValue =
-      StreamValue<String>(defaultValue: '');
-  final StreamValue<String> remoteSuccessStreamValue =
-      StreamValue<String>(defaultValue: '');
+  final StreamValue<bool> isSubmittingStreamValue = StreamValue<bool>(
+    defaultValue: false,
+  );
+  final StreamValue<String> remoteErrorStreamValue = StreamValue<String>(
+    defaultValue: '',
+  );
+  final StreamValue<String> remoteSuccessStreamValue = StreamValue<String>(
+    defaultValue: '',
+  );
   final StreamValue<TenantAdminMapFilterRuleCatalog> ruleCatalogStreamValue =
       StreamValue<TenantAdminMapFilterRuleCatalog>(
-    defaultValue: const TenantAdminMapFilterRuleCatalog.empty(),
+        defaultValue: const TenantAdminMapFilterRuleCatalog.empty(),
+      );
+  final StreamValue<bool> ruleCatalogLoadingStreamValue = StreamValue<bool>(
+    defaultValue: false,
   );
-  final StreamValue<bool> ruleCatalogLoadingStreamValue =
-      StreamValue<bool>(defaultValue: false);
 
   Future<void> init() {
     if (_settings.rawDiscoveryFilters.value.isNotEmpty) {
@@ -65,8 +72,8 @@ class TenantAdminDiscoveryFiltersController implements Disposable {
     }
     _emitIsLoading(true);
     try {
-      final settingsValue =
-          await _settingsRepository.fetchDiscoveryFiltersSettings();
+      final settingsValue = await _settingsRepository
+          .fetchDiscoveryFiltersSettings();
       _applySettings(
         TenantAdminDiscoveryFiltersSettings(
           rawDiscoveryFiltersValue: settingsValue.rawDiscoveryFilters,
@@ -84,6 +91,16 @@ class TenantAdminDiscoveryFiltersController implements Disposable {
   ) async {
     if (_isDisposed) {
       return;
+    }
+    if (filtersForSurface(
+      surface,
+    ).any((filter) => filterRuleError(surface, filter) != null)) {
+      if (surface.key == TenantAdminDiscoveryFilterSurfaceDefinition.map.key) {
+        _emitRemoteError(
+          'Cada filtro do mapa deve selecionar exatamente uma entidade.',
+        );
+        return;
+      }
     }
     _emitIsSubmitting(true);
     try {
@@ -113,6 +130,30 @@ class TenantAdminDiscoveryFiltersController implements Disposable {
     return _settings.filtersForSurface(surface.key);
   }
 
+  String? filterRuleError(
+    TenantAdminDiscoveryFilterSurfaceDefinition surface,
+    TenantAdminDiscoveryFilterCatalogItem filter,
+  ) {
+    if (surface.key != TenantAdminDiscoveryFilterSurfaceDefinition.map.key) {
+      return null;
+    }
+    final entities = filter.query.entities;
+    if (entities.length != 1) {
+      return 'selecione exatamente uma entidade';
+    }
+    final allowedEntities = surface.allowedSources
+        .map((source) => source.apiValue)
+        .toSet();
+    final entity = entities.single;
+    if (!allowedEntities.contains(entity)) {
+      return 'entidade não reconhecida';
+    }
+    if (filter.query.typeValuesByEntity.keys.any((key) => key != entity)) {
+      return 'tipos vinculados a outra entidade';
+    }
+    return null;
+  }
+
   void addFilterItem(TenantAdminDiscoveryFilterSurfaceDefinition surface) {
     final current = filtersForSurface(surface).toList();
     final nextIndex = current.length + 1;
@@ -121,9 +162,12 @@ class TenantAdminDiscoveryFiltersController implements Disposable {
         keyValue: _tokenValue(_buildDefaultKey(nextIndex, current)),
         labelValue: _requiredTextValue('Filtro ${nextIndex.toString()}'),
         query: TenantAdminDiscoveryFilterQuery(
-          entityValues: surface.allowedSources.map(
-            (source) => _tokenValue(source.apiValue),
-          ),
+          entityValues:
+              surface.key == TenantAdminDiscoveryFilterSurfaceDefinition.map.key
+              ? const <TenantAdminLowercaseTokenValue>[]
+              : surface.allowedSources.map(
+                  (source) => _tokenValue(source.apiValue),
+                ),
         ),
       ),
     );
@@ -219,8 +263,14 @@ class TenantAdminDiscoveryFiltersController implements Disposable {
     if (index < 0 || index >= current.length) {
       return;
     }
-    final allowedEntities =
-        surface.allowedSources.map((source) => source.apiValue).toSet();
+    final validationError = filterRuleError(surface, nextItem);
+    if (validationError != null) {
+      _emitRemoteError('Regra de filtro inválida: $validationError.');
+      return;
+    }
+    final allowedEntities = surface.allowedSources
+        .map((source) => source.apiValue)
+        .toSet();
     final entities = nextItem.query.entities
         .where((entity) => allowedEntities.contains(entity))
         .map(_tokenValue)
@@ -231,19 +281,29 @@ class TenantAdminDiscoveryFiltersController implements Disposable {
       );
       return;
     }
+    final previousEntities = current[index].query.entities.toSet();
+    final nextEntities = entities.map((entry) => entry.value).toSet();
+    final entityChanged =
+        surface.key == TenantAdminDiscoveryFilterSurfaceDefinition.map.key &&
+        (previousEntities.length != nextEntities.length ||
+            previousEntities.any((entity) => !nextEntities.contains(entity)));
     final entityKeys = entities.map((entry) => entry.value).toSet();
     final typesByEntity = <String, List<TenantAdminLowercaseTokenValue>>{};
     for (final entry in nextItem.query.typeValuesByEntity.entries) {
       if (!entityKeys.contains(entry.key)) {
         continue;
       }
-      typesByEntity[entry.key] =
-          entry.value.map((token) => _tokenValue(token.value)).toList();
+      typesByEntity[entry.key] = entry.value
+          .map((token) => _tokenValue(token.value))
+          .toList();
     }
     final taxonomyByGroup = <String, List<TenantAdminLowercaseTokenValue>>{};
-    for (final entry in nextItem.query.taxonomyValuesByGroup.entries) {
-      taxonomyByGroup[entry.key] =
-          entry.value.map((token) => _tokenValue(token.value)).toList();
+    if (!entityChanged) {
+      for (final entry in nextItem.query.taxonomyValuesByGroup.entries) {
+        taxonomyByGroup[entry.key] = entry.value
+            .map((token) => _tokenValue(token.value))
+            .toList();
+      }
     }
 
     current[index] = current[index].copyWith(
@@ -268,23 +328,24 @@ class TenantAdminDiscoveryFiltersController implements Disposable {
     }
     final imageUri = _sanitizeImageUri(nextItem.imageUri);
     if (nextItem.imageUri?.trim().isNotEmpty == true && imageUri == null) {
-      _emitRemoteError(
-        'URL de imagem inválida. Use formato http/https.',
-      );
+      _emitRemoteError('URL de imagem inválida. Use formato http/https.');
       return;
     }
-    final markerOverride =
-        surface.supportsMarkerOverride ? nextItem.markerOverride : null;
+    final markerOverride = surface.supportsMarkerOverride
+        ? nextItem.markerOverride
+        : null;
     current[index] = current[index].copyWith(
       imageUriValue: imageUri == null
           ? null
           : (TenantAdminOptionalUrlValue()..parse(imageUri)),
       clearImageUriValue: TenantAdminFlagValue(imageUri == null),
       overrideMarkerValue: TenantAdminFlagValue(
-          surface.supportsMarkerOverride && nextItem.overrideMarker),
+        surface.supportsMarkerOverride && nextItem.overrideMarker,
+      ),
       markerOverride: markerOverride,
       clearMarkerOverrideValue: TenantAdminFlagValue(
-          !surface.supportsMarkerOverride || markerOverride == null),
+        !surface.supportsMarkerOverride || markerOverride == null,
+      ),
     );
     _replaceFilters(surface, current);
     _emitRemoteError('');

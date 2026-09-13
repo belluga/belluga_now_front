@@ -6,7 +6,7 @@ import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/app_data/discovery_filter_selection_snapshot.dart';
 import 'package:belluga_now/domain/app_data/location_origin_resolution.dart';
 import 'package:belluga_now/domain/app_data/value_object/app_data_discovery_filter_token_value.dart';
-import 'package:belluga_now/domain/partners/account_profile_model.dart';
+import 'package:belluga_now/domain/partners/account_profile_complete.dart';
 import 'package:belluga_now/domain/partners/profile_type_registry.dart';
 import 'package:belluga_now/domain/partners/value_objects/profile_type_key_value.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
@@ -137,9 +137,9 @@ class DiscoveryScreenController extends Object
   StreamValue<List<EventModel>?> get liveNowEventsStreamValue =>
       _resolveScheduleRepository()?.discoveryLiveNowEventsStreamValue ??
       _emptyDiscoveryLiveNowEventsStreamValue;
-  StreamValue<List<AccountProfileModel>> get filteredPartnersStreamValue =>
+  StreamValue<List<AccountProfileComplete>> get filteredPartnersStreamValue =>
       _accountProfilesRepository.discoveryFilteredAccountProfilesStreamValue;
-  StreamValue<List<AccountProfileModel>> get nearbyStreamValue =>
+  StreamValue<List<AccountProfileComplete>> get nearbyStreamValue =>
       _accountProfilesRepository.discoveryNearbyAccountProfilesStreamValue;
 
   @override
@@ -839,7 +839,9 @@ class DiscoveryScreenController extends Object
       typeFilters: repairedTypeFilters,
       taxonomyFilters: repairedTaxonomyFilters,
     )) {
-      unawaited(_accountProfilesRepository.syncDiscoveryNearbyAccountProfiles());
+      unawaited(
+        _accountProfilesRepository.syncDiscoveryNearbyAccountProfiles(),
+      );
     }
     return false;
   }
@@ -902,7 +904,7 @@ class DiscoveryScreenController extends Object
     availableTypesStreamValue.addValue(allowed);
   }
 
-  bool isFavoritable(AccountProfileModel accountProfile) {
+  bool isFavoritable(AccountProfileComplete accountProfile) {
     final registry = _resolveRegistry();
     if (registry == null || registry.isEmpty) return false;
     return registry.isFavoritableFor(ProfileTypeKeyValue(accountProfile.type));
@@ -917,7 +919,7 @@ class DiscoveryScreenController extends Object
   }
 
   ResolvedAccountProfileVisual resolvedVisualForAccountProfile(
-    AccountProfileModel accountProfile,
+    AccountProfileComplete accountProfile,
   ) {
     return AccountProfileVisualResolver.resolve(
       accountProfile: accountProfile,

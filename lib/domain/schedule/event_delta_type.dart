@@ -1,6 +1,1 @@
-enum EventDeltaType {
-  created,
-  updated,
-  deleted,
-  unknown,
-}
+enum EventDeltaType { created, updated, deleted, unknown }

@@ -2,34 +2,27 @@ import 'package:belluga_now/domain/partners/value_objects/profile_type_visual_he
 import 'package:belluga_now/domain/partners/value_objects/profile_type_visual_icon_value.dart';
 import 'package:belluga_now/domain/partners/value_objects/profile_type_visual_image_url_value.dart';
 
-enum ProfileTypeVisualMode {
-  icon,
-  image,
-}
+enum ProfileTypeVisualMode { icon, image }
 
-enum ProfileTypeVisualImageSource {
-  avatar,
-  cover,
-  typeAsset,
-}
+enum ProfileTypeVisualImageSource { avatar, cover, typeAsset }
 
 class ProfileTypeVisual {
   ProfileTypeVisual.icon({
     required this.iconValue,
     required this.colorValue,
     ProfileTypeVisualHexColorValue? iconColorValue,
-  })  : mode = ProfileTypeVisualMode.icon,
-        iconColorValue = iconColorValue ?? _defaultIconColorValue(),
-        imageSource = null,
-        imageUrlValue = null;
+  }) : mode = ProfileTypeVisualMode.icon,
+       iconColorValue = iconColorValue ?? _defaultIconColorValue(),
+       imageSource = null,
+       imageUrlValue = null;
 
   ProfileTypeVisual.image({
     required this.imageSource,
     this.imageUrlValue,
     this.colorValue,
-  })  : mode = ProfileTypeVisualMode.image,
-        iconValue = null,
-        iconColorValue = null;
+  }) : mode = ProfileTypeVisualMode.image,
+       iconValue = null,
+       iconColorValue = null;
 
   final ProfileTypeVisualMode mode;
   final ProfileTypeVisualIconValue? iconValue;

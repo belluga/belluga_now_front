@@ -381,7 +381,6 @@ class _FakeAccountsRepository extends TenantAdminAccountsRepositoryContract {
     TenantAdminTaxonomyTerms taxonomyTerms =
         const TenantAdminTaxonomyTerms.empty(),
     TenantAdminAccountsRepositoryContractPrimString? bio,
-    TenantAdminAccountsRepositoryContractPrimString? content,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
     List<TenantAdminNestedProfileGroup> nestedProfileGroups =
@@ -449,7 +448,6 @@ class _FakeAccountProfilesRepository
     TenantAdminTaxonomyTerms taxonomyTerms =
         const TenantAdminTaxonomyTerms.empty(),
     TenantAdminAccountProfilesRepoString? bio,
-    TenantAdminAccountProfilesRepoString? content,
     TenantAdminAccountProfilesRepoString? avatarUrl,
     TenantAdminAccountProfilesRepoString? coverUrl,
     TenantAdminMediaUpload? avatarUpload,
@@ -476,7 +474,6 @@ class _FakeAccountProfilesRepository
     TenantAdminLocation? location,
     TenantAdminTaxonomyTerms? taxonomyTerms,
     TenantAdminAccountProfilesRepoString? bio,
-    TenantAdminAccountProfilesRepoString? content,
     TenantAdminAccountProfilesRepoString? avatarUrl,
     TenantAdminAccountProfilesRepoString? coverUrl,
     TenantAdminAccountProfilesRepoBool? removeAvatar,
@@ -525,7 +522,6 @@ class _FakeAccountProfilesRepository
           isFavoritable: TenantAdminFlagValue(true),
           isPoiEnabled: TenantAdminFlagValue(false),
           hasBio: TenantAdminFlagValue(false),
-          hasContent: TenantAdminFlagValue(false),
           hasTaxonomies: TenantAdminFlagValue(false),
           hasAvatar: TenantAdminFlagValue(true),
           hasCover: TenantAdminFlagValue(true),

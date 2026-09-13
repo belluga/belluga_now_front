@@ -10,19 +10,18 @@ import 'package:belluga_now/domain/invites/invite_next_step.dart';
 import 'package:belluga_now/domain/invites/invite_runtime_settings.dart';
 import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_type_value.dart';
-import 'package:belluga_now/domain/partners/account_profile_model.dart';
-import 'package:belluga_now/domain/partners/account_profile_nested_group_member.dart';
+import 'package:belluga_now/domain/partners/account_profile_complete.dart';
 import 'package:belluga_now/domain/partners/account_profile_nested_group_member_page.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_tag_value.dart';
-import 'package:belluga_now/domain/partners/value_objects/account_profile_nested_group_member_text_value.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_name_value.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_public_detail_path_value.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
-import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
+import 'package:belluga_now/domain/partners/account_profile_summary.dart';
 import 'package:belluga_now/domain/schedule/event_occurrence_option.dart';
 import 'package:belluga_now/domain/schedule/event_programming_item.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
@@ -31,7 +30,7 @@ import 'package:belluga_now/domain/schedule/event_type_model.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_summary.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_counterpart_count_value.dart';
-import 'package:belluga_now/domain/schedule/value_objects/event_linked_account_profile_text_value.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_text_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_profile_group_order_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_is_confirmed_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_occurrence_values.dart';
@@ -120,28 +119,33 @@ void main() {
   });
 
   test(
-    'loads canonical event group members from members_path and maps them to event linked profiles',
+    'loads canonical event group member summaries without an Event adapter',
     () async {
       final membersPath =
           '/api/v1/events/evento-de-teste/related_profile_tabs/atracoes/members';
       final accountProfilesRepository = _FakeAccountProfilesRepository()
-        ..nestedGroupMembersByPath[membersPath] =
-            <AccountProfileNestedGroupMember>[
-              AccountProfileNestedGroupMember(
-                idValue: MongoIDValue()..parse('507f1f77bcf86cd799439099'),
-                nameValue: AccountProfileNameValue()..parse('Banda Azul'),
-                slugValue: SlugValue()..parse('banda-azul'),
-                profileTypeValue: AccountProfileTypeValue('band'),
-                canOpenPublicDetailValue: DomainBooleanValue(
-                  defaultValue: false,
-                  isRequired: false,
-                )..parse('true'),
-                publicDetailPathValue: AccountProfileNestedGroupMemberTextValue(
-                  '/parceiro/banda-azul',
-                ),
-                tagValues: [AccountProfileTagValue('Rock')],
+        ..nestedGroupMembersByPath[membersPath] = <AccountProfileSummary>[
+          AccountProfileSummary(
+            idValue: AccountProfileTextValue('507f1f77bcf86cd799439099'),
+            nameValue: AccountProfileNameValue()..parse('Banda Azul'),
+            slugValue: SlugValue()..parse('banda-azul'),
+            profileTypeValue: AccountProfileTypeValue('band'),
+            canOpenPublicDetailValue: DomainBooleanValue(
+              defaultValue: false,
+              isRequired: false,
+            )..parse('true'),
+            publicDetailPathValue: AccountProfilePublicDetailPathValue(
+              '/parceiro/banda-azul',
+            ),
+            tagValues: [AccountProfileTagValue('Rock')],
+            taxonomyTerms: AccountProfileTaxonomyTerms()
+              ..addTerm(
+                typeValue: AccountProfileTagValue('genre'),
+                valueValue: AccountProfileTagValue('rock'),
+                nameValue: AccountProfileTagValue('Rock'),
               ),
-            ];
+          ),
+        ];
       final controller = ImmersiveEventDetailController(
         userEventsRepository: _FakeUserEventsRepository(),
         invitesRepository: _FakeInvitesRepository(),
@@ -160,9 +164,7 @@ void main() {
 
       final profiles = controller
           .relatedProfileGroupMembersStreamValue(group)
-          .value
-          .map(controller.mapNestedGroupMemberToEventLinkedProfile)
-          .toList(growable: false);
+          .value;
 
       expect(accountProfilesRepository.lastNestedGroupMembersPath, membersPath);
       expect(profiles, hasLength(1));
@@ -351,6 +353,52 @@ void main() {
           (group) => group.id,
         ),
         ['palco-sabado'],
+      );
+    },
+  );
+
+  test(
+    'event detail init refreshes a same-target party-type-only profile change',
+    () {
+      final staleEvent = _buildEvent(
+        linkedAccountProfiles: [
+          _buildLinkedProfile(
+            id: 'profile-venue',
+            displayName: 'Casa de Testes',
+            profileType: 'venue',
+            partyType: 'organization',
+            slug: 'casa-de-testes',
+          ),
+        ],
+      );
+      final freshEvent = _buildEvent(
+        linkedAccountProfiles: [
+          _buildLinkedProfile(
+            id: 'profile-venue',
+            displayName: 'Casa de Testes',
+            profileType: 'venue',
+            partyType: 'collective',
+            slug: 'casa-de-testes',
+          ),
+        ],
+      );
+      final invitesRepository = _FakeInvitesRepository()
+        ..setImmersiveSelectedEvent(staleEvent);
+      final controller = ImmersiveEventDetailController(
+        userEventsRepository: _FakeUserEventsRepository(),
+        invitesRepository: invitesRepository,
+      );
+
+      controller.init(freshEvent);
+
+      expect(
+        controller
+            .eventStreamValue
+            .value
+            ?.linkedAccountProfiles
+            .single
+            .partyType,
+        'collective',
       );
     },
   );
@@ -938,6 +986,116 @@ void main() {
       ]);
     },
   );
+
+  test(
+    'selected occurrence projection keeps public detail URL atomic across summaries',
+    () {
+      final aggregate = _buildLinkedProfile(
+        id: 'profile-venue',
+        displayName: 'Casa Agregada',
+        profileType: 'venue',
+        slug: 'casa-agregada',
+        canOpenPublicDetail: true,
+        publicDetailPath: '/parceiro/casa-agregada',
+      );
+      final occurrence = _buildLinkedProfile(
+        id: 'profile-venue',
+        displayName: 'Casa da Ocorrência',
+        profileType: 'venue',
+        slug: 'casa-ocorrencia',
+        canOpenPublicDetail: false,
+        publicDetailPath: '/parceiro/casa-ocorrencia',
+      );
+      final event = _buildEvent(
+        linkedAccountProfiles: [aggregate],
+        occurrences: [
+          _buildOccurrence(
+            id: 'occurrence-first',
+            start: DateTime(2026, 3, 15, 18),
+            isSelected: true,
+            linkedAccountProfiles: [occurrence],
+          ),
+        ],
+      );
+
+      final aligned = EventSelectedOccurrenceProjection.align(event);
+
+      expect(
+        aligned.linkedAccountProfiles.single.publicDetailUrl,
+        '/parceiro/casa-agregada',
+      );
+    },
+  );
+
+  test('selected occurrence public detail URL wins over aggregate URL', () {
+    final aggregate = _buildLinkedProfile(
+      id: 'profile-venue',
+      displayName: 'Casa Agregada',
+      profileType: 'venue',
+      slug: 'casa-agregada',
+      canOpenPublicDetail: true,
+      publicDetailPath: '/parceiro/casa-agregada',
+    );
+    final occurrence = _buildLinkedProfile(
+      id: 'profile-venue',
+      displayName: 'Casa da Ocorrência',
+      profileType: 'venue',
+      slug: 'casa-ocorrencia',
+      canOpenPublicDetail: true,
+      publicDetailPath: '/parceiro/casa-ocorrencia',
+    );
+    final event = _buildEvent(
+      linkedAccountProfiles: [aggregate],
+      occurrences: [
+        _buildOccurrence(
+          id: 'occurrence-first',
+          start: DateTime(2026, 3, 15, 18),
+          isSelected: true,
+          linkedAccountProfiles: [occurrence],
+        ),
+      ],
+    );
+
+    final aligned = EventSelectedOccurrenceProjection.align(event);
+
+    expect(
+      aligned.linkedAccountProfiles.single.publicDetailUrl,
+      '/parceiro/casa-ocorrencia',
+    );
+  });
+
+  test('selected occurrence projection applies a party-type-only change', () {
+    final aggregate = _buildLinkedProfile(
+      id: 'profile-venue',
+      displayName: 'Casa de Testes',
+      profileType: 'venue',
+      partyType: 'organization',
+      slug: 'casa-de-testes',
+    );
+    final selectedOccurrence = _buildLinkedProfile(
+      id: 'profile-venue',
+      displayName: 'Casa de Testes',
+      profileType: 'venue',
+      partyType: 'collective',
+      slug: 'casa-de-testes',
+    );
+    final event = _buildEvent(
+      linkedAccountProfiles: [aggregate],
+      occurrences: [
+        _buildOccurrence(
+          id: 'occurrence-first',
+          start: DateTime(2026, 3, 15, 18),
+          isSelected: true,
+          linkedAccountProfiles: [selectedOccurrence],
+        ),
+      ],
+    );
+
+    final aligned = EventSelectedOccurrenceProjection.align(event);
+
+    expect(aligned, isNot(same(event)));
+    expect(aligned.linkedAccountProfiles.single.partyType, 'collective');
+  });
 }
 
 class _FakeUserEventsRepository implements UserEventsRepositoryContract {
@@ -1277,8 +1435,8 @@ class _FakeAuthRepository extends AuthRepositoryContract {
 class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
   int toggleFavoriteCalls = 0;
   String? lastNestedGroupMembersPath;
-  final Map<String, List<AccountProfileNestedGroupMember>>
-  nestedGroupMembersByPath = <String, List<AccountProfileNestedGroupMember>>{};
+  final Map<String, List<AccountProfileSummary>> nestedGroupMembersByPath =
+      <String, List<AccountProfileSummary>>{};
 
   @override
   Future<void> init() async {}
@@ -1293,37 +1451,37 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
     List<dynamic>? taxonomyFilters,
   }) async {
     return pagedAccountProfilesResultFromRaw(
-      profiles: const <AccountProfileModel>[],
+      profiles: const <AccountProfileComplete>[],
       hasMore: false,
     );
   }
 
   @override
-  Future<AccountProfileModel?> getAccountProfileBySlug(
+  Future<AccountProfileComplete?> getAccountProfileBySlug(
     AccountProfilesRepositoryContractPrimString slug,
   ) async => null;
 
   @override
-  Future<AccountProfileNestedGroupMemberPage> fetchNestedGroupMembersPageByPath(
+  Future<AccountProfileSummaryPage> fetchNestedGroupMembersPageByPath(
     AccountProfilesRepositoryContractPrimString membersPath, {
     AccountProfilesRepositoryContractPrimString? cursor,
     AccountProfilesRepositoryContractPrimString? search,
   }) async {
     lastNestedGroupMembersPath = membersPath.value;
-    return AccountProfileNestedGroupMemberPage(
+    return AccountProfileSummaryPage(
       items:
           nestedGroupMembersByPath[membersPath.value] ??
-          const <AccountProfileNestedGroupMember>[],
+          const <AccountProfileSummary>[],
       nextCursorValue: null,
     );
   }
 
   @override
-  Future<List<AccountProfileModel>> fetchNearbyAccountProfiles({
+  Future<List<AccountProfileComplete>> fetchNearbyAccountProfiles({
     AccountProfilesRepositoryContractPrimInt? pageSize,
     List<AccountProfilesRepositoryContractPrimString>? typeFilters,
     List<dynamic>? taxonomyFilters,
-  }) async => const <AccountProfileModel>[];
+  }) async => const <AccountProfileComplete>[];
 
   @override
   Future<void> toggleFavorite(
@@ -1343,17 +1501,17 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
   }
 
   @override
-  List<AccountProfileModel> getFavoriteAccountProfiles() =>
-      const <AccountProfileModel>[];
+  List<AccountProfileComplete> getFavoriteAccountProfiles() =>
+      const <AccountProfileComplete>[];
 }
 
 EventModel _buildEvent({
   List<EventOccurrenceOption> occurrences = const [],
   List<EventProfileGroup> profileGroups = const [],
-  List<EventLinkedAccountProfile> linkedAccountProfiles =
-      const <EventLinkedAccountProfile>[],
-  List<EventLinkedAccountProfile> counterpartPreviewProfiles =
-      const <EventLinkedAccountProfile>[],
+  List<AccountProfileSummary> linkedAccountProfiles =
+      const <AccountProfileSummary>[],
+  List<AccountProfileSummary> counterpartPreviewProfiles =
+      const <AccountProfileSummary>[],
   int? counterpartCount,
   List<EventProgrammingItem> programmingItems = const <EventProgrammingItem>[],
   List<String> tags = const <String>['show'],
@@ -1416,36 +1574,48 @@ EventProfileGroup _buildProfileGroup({
   required String id,
   required String label,
   required int order,
-  List<EventLinkedAccountProfile> profiles =
-      const <EventLinkedAccountProfile>[],
+  List<AccountProfileSummary> profiles = const <AccountProfileSummary>[],
   List<String> accountProfileIds = const <String>[],
   String? membersPath,
   int? memberCount,
 }) {
   return EventProfileGroup(
-    idValue: EventLinkedAccountProfileTextValue(id),
-    labelValue: EventLinkedAccountProfileTextValue(label),
+    idValue: AccountProfileTextValue(id),
+    labelValue: AccountProfileTextValue(label),
     orderValue: EventProfileGroupOrderValue(order),
     membersPathValue: EventProfileGroupMembersPathValue(membersPath ?? ''),
     memberCountValue: EventProfileGroupMemberCountValue(memberCount),
     profiles: profiles,
     accountProfileIdValues: accountProfileIds
-        .map(EventLinkedAccountProfileTextValue.new)
+        .map(AccountProfileTextValue.new)
         .toList(),
   );
 }
 
-EventLinkedAccountProfile _buildLinkedProfile({
+AccountProfileSummary _buildLinkedProfile({
   required String id,
   required String displayName,
   required String profileType,
+  String? partyType,
   required String slug,
+  bool canOpenPublicDetail = false,
+  String? publicDetailPath,
 }) {
-  return EventLinkedAccountProfile(
-    idValue: EventLinkedAccountProfileTextValue(id),
-    displayNameValue: EventLinkedAccountProfileTextValue(displayName),
+  return AccountProfileSummary(
+    idValue: AccountProfileTextValue(id),
+    nameValue: AccountProfileNameValue()..parse(displayName),
     profileTypeValue: AccountProfileTypeValue(profileType),
+    partyTypeValue: partyType == null
+        ? null
+        : AccountProfileTextValue(partyType),
     slugValue: SlugValue()..parse(slug),
+    canOpenPublicDetailValue: DomainBooleanValue(
+      defaultValue: false,
+      isRequired: false,
+    )..parse(canOpenPublicDetail.toString()),
+    publicDetailPathValue: publicDetailPath == null
+        ? null
+        : AccountProfilePublicDetailPathValue(publicDetailPath),
   );
 }
 
@@ -1456,13 +1626,15 @@ EventOccurrenceOption _buildOccurrence({
   bool isSelected = false,
   List<EventProgrammingItem> programmingItems = const <EventProgrammingItem>[],
   List<EventProfileGroup> profileGroups = const <EventProfileGroup>[],
+  List<AccountProfileSummary> linkedAccountProfiles =
+      const <AccountProfileSummary>[],
   List<String> tags = const <String>[],
 }) {
   final endValue = DomainOptionalDateTimeValue()..parse(end?.toIso8601String());
 
   return EventOccurrenceOption(
-    occurrenceIdValue: EventLinkedAccountProfileTextValue(id),
-    occurrenceSlugValue: EventLinkedAccountProfileTextValue('$id-slug'),
+    occurrenceIdValue: AccountProfileTextValue(id),
+    occurrenceSlugValue: AccountProfileTextValue('$id-slug'),
     dateTimeStartValue: DateTimeValue(isRequired: true)
       ..parse(start.toIso8601String()),
     dateTimeEndValue: endValue,
@@ -1472,6 +1644,7 @@ EventOccurrenceOption _buildOccurrence({
       ..parse(programmingItems.length.toString()),
     programmingItems: programmingItems,
     profileGroups: profileGroups,
+    linkedAccountProfiles: linkedAccountProfiles,
     tags: tags.map(EventTagValue.new).toList(growable: false),
   );
 }
@@ -1482,9 +1655,7 @@ EventProgrammingItem _buildProgrammingItem({
 }) {
   return EventProgrammingItem(
     timeValue: EventProgrammingTimeValue()..parse(time),
-    titleValue: title == null
-        ? null
-        : EventLinkedAccountProfileTextValue(title),
+    titleValue: title == null ? null : AccountProfileTextValue(title),
   );
 }
 

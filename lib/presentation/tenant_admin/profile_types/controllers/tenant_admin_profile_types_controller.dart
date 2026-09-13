@@ -76,7 +76,6 @@ class TenantAdminProfileTypesController implements Disposable {
         isFavoritable: TenantAdminFlagValue(false),
         isPoiEnabled: TenantAdminFlagValue(false),
         hasBio: TenantAdminFlagValue(false),
-        hasContent: TenantAdminFlagValue(false),
         hasTaxonomies: TenantAdminFlagValue(true),
         hasAvatar: TenantAdminFlagValue(false),
         hasCover: TenantAdminFlagValue(false),
@@ -232,7 +231,6 @@ class TenantAdminProfileTypesController implements Disposable {
           capabilities.isReferenceLocationEnabled,
         ),
         hasBio: TenantAdminFlagValue(capabilities.hasBio),
-        hasContent: TenantAdminFlagValue(capabilities.hasContent),
         hasTaxonomies: TenantAdminFlagValue(true),
         hasAvatar: TenantAdminFlagValue(capabilities.hasAvatar),
         hasCover: TenantAdminFlagValue(capabilities.hasCover),
@@ -443,7 +441,6 @@ class TenantAdminProfileTypesController implements Disposable {
     bool? isPoiEnabled,
     bool? isReferenceLocationEnabled,
     bool? hasBio,
-    bool? hasContent,
     bool? hasTaxonomies,
     bool? hasAvatar,
     bool? hasCover,
@@ -489,10 +486,6 @@ class TenantAdminProfileTypesController implements Disposable {
     }
     if (hasBio != null) {
       next[TenantAdminProfileTypeCapabilityKey.hasBio.apiValue] = hasBio;
-    }
-    if (hasContent != null) {
-      next[TenantAdminProfileTypeCapabilityKey.hasContent.apiValue] =
-          hasContent;
     }
     if (hasTaxonomies != null) {
       next[TenantAdminProfileTypeCapabilityKey.hasTaxonomies.apiValue] =
@@ -554,9 +547,6 @@ class TenantAdminProfileTypesController implements Disposable {
         ),
         hasBio: normalized.flagValue(
           TenantAdminProfileTypeCapabilityKey.hasBio,
-        ),
-        hasContent: normalized.flagValue(
-          TenantAdminProfileTypeCapabilityKey.hasContent,
         ),
         hasTaxonomies: normalized.flagValue(
           TenantAdminProfileTypeCapabilityKey.hasTaxonomies,

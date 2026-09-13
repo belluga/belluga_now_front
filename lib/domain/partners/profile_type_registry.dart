@@ -7,9 +7,8 @@ import 'package:belluga_now/domain/partners/value_objects/profile_type_key_value
 typedef ProfileTypeRegistryTypeKey = ProfileTypeKeyValue;
 
 class ProfileTypeRegistry {
-  ProfileTypeRegistry({
-    required ProfileTypeDefinitions types,
-  }) : _types = List<ProfileTypeDefinition>.unmodifiable(types.value);
+  ProfileTypeRegistry({required ProfileTypeDefinitions types})
+    : _types = List<ProfileTypeDefinition>.unmodifiable(types.value);
 
   final List<ProfileTypeDefinition> _types;
 

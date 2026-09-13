@@ -6,6 +6,32 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
+BellugaMapInteractionOrigin mapInteractionOriginForSource(
+  MapEventSource source,
+) => switch (source) {
+  MapEventSource.tap ||
+  MapEventSource.secondaryTap ||
+  MapEventSource.longPress ||
+  MapEventSource.doubleTap ||
+  MapEventSource.doubleTapHold ||
+  MapEventSource.dragStart ||
+  MapEventSource.onDrag ||
+  MapEventSource.dragEnd ||
+  MapEventSource.multiFingerGestureStart ||
+  MapEventSource.onMultiFinger ||
+  MapEventSource.multiFingerEnd ||
+  MapEventSource.flingAnimationController ||
+  MapEventSource.doubleTapZoomAnimationController ||
+  MapEventSource.scrollWheel ||
+  MapEventSource.cursorKeyboardRotation ||
+  MapEventSource.keyboard => BellugaMapInteractionOrigin.user,
+  MapEventSource.mapController ||
+  MapEventSource.fitCamera => BellugaMapInteractionOrigin.programmatic,
+  MapEventSource.interactiveFlagsChanged ||
+  MapEventSource.custom ||
+  MapEventSource.nonRotatedSizeChange => BellugaMapInteractionOrigin.system,
+};
+
 class BellugaMapSurface extends StatefulWidget {
   const BellugaMapSurface({
     super.key,
@@ -31,8 +57,8 @@ class BellugaMapSurface extends StatefulWidget {
 }
 
 class _BellugaMapSurfaceState extends State<BellugaMapSurface> {
-  CityCoordinate? _lastCenter;
-  double? _lastZoom;
+  CityCoordinate? _lastPublishedCenter;
+  double? _lastPublishedZoom;
 
   application_map_surface.BellugaMapHandle get _handle =>
       widget.handle as application_map_surface.BellugaMapHandle;
@@ -52,59 +78,59 @@ class _BellugaMapSurfaceState extends State<BellugaMapSurface> {
             initialZoom: widget.initialZoom,
             minZoom: widget.minZoom,
             maxZoom: widget.maxZoom,
-            onMapReady: widget.handle.markReady,
+            onMapReady: () {
+              final camera = _handle.rawController.camera;
+              _lastPublishedCenter = CityCoordinate.fromLatLng(camera.center);
+              _lastPublishedZoom = camera.zoom;
+              widget.handle.markReady();
+            },
             onTap: (_, _) {
               widget.handle.emitInteraction(
                 BellugaMapInteractionEvent(
                   type: BellugaMapInteractionType.emptyTap,
                   zoom: widget.handle.currentZoom,
-                  userGesture: true,
+                  origin: BellugaMapInteractionOrigin.user,
                 ),
               );
               widget.onEmptyTap?.call();
             },
-            onPositionChanged: (camera, hasGesture) {
-              final currentCenter = CityCoordinate.fromLatLng(camera.center);
-              final previousCenter = _lastCenter;
-              final previousZoom = _lastZoom;
-              _lastCenter = currentCenter;
-              _lastZoom = camera.zoom;
-
-              if (!hasGesture) {
+            onMapEvent: (event) {
+              if (!_publishesViewportChange(event)) {
                 return;
               }
-
-              final zoomChanged = previousZoom != null &&
+              final camera = event.camera;
+              final currentCenter = CityCoordinate.fromLatLng(camera.center);
+              final previousCenter = _lastPublishedCenter;
+              final previousZoom = _lastPublishedZoom;
+              _lastPublishedCenter = currentCenter;
+              _lastPublishedZoom = camera.zoom;
+              final zoomChanged =
+                  previousZoom != null &&
                   (previousZoom - camera.zoom).abs() >= 0.01;
-              final centerChanged = previousCenter != null &&
+              final centerChanged =
+                  previousCenter != null &&
                   ((previousCenter.latitude - currentCenter.latitude).abs() >
                           0.000001 ||
-                      (previousCenter.longitude - currentCenter.longitude).abs() >
+                      (previousCenter.longitude - currentCenter.longitude)
+                              .abs() >
                           0.000001);
-
-              if (zoomChanged) {
-                widget.handle.emitInteraction(
-                  BellugaMapInteractionEvent(
-                    type: BellugaMapInteractionType.zoom,
-                    zoom: camera.zoom,
-                    userGesture: true,
-                  ),
-                );
+              if (!zoomChanged && !centerChanged) {
                 return;
               }
-
-              if (centerChanged) {
-                widget.handle.emitInteraction(
-                  BellugaMapInteractionEvent(
-                    type: BellugaMapInteractionType.pan,
-                    zoom: camera.zoom,
-                    userGesture: true,
-                  ),
-                );
-              }
+              widget.handle.emitInteraction(
+                BellugaMapInteractionEvent(
+                  type: zoomChanged
+                      ? BellugaMapInteractionType.zoom
+                      : BellugaMapInteractionType.pan,
+                  zoom: camera.zoom,
+                  viewport: widget.handle.currentViewport,
+                  origin: mapInteractionOriginForSource(event.source),
+                ),
+              );
             },
             interactionOptions: InteractionOptions(
-              flags: InteractiveFlag.drag |
+              flags:
+                  InteractiveFlag.drag |
                   InteractiveFlag.pinchZoom |
                   InteractiveFlag.doubleTapZoom |
                   InteractiveFlag.scrollWheelZoom,
@@ -147,17 +173,16 @@ class _BellugaMapSurfaceState extends State<BellugaMapSurface> {
           bottom: 12,
           child: DecoratedBox(
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.9),
+              color: Theme.of(
+                context,
+              ).colorScheme.surface.withValues(alpha: 0.9),
               borderRadius: BorderRadius.circular(999),
             ),
             child: const Padding(
               padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               child: Text(
                 '© OpenStreetMap',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
               ),
             ),
           ),
@@ -165,4 +190,10 @@ class _BellugaMapSurfaceState extends State<BellugaMapSurface> {
       ],
     );
   }
+
+  bool _publishesViewportChange(MapEvent event) =>
+      event is MapEventMoveEnd ||
+      event is MapEventFlingAnimationEnd ||
+      event is MapEventDoubleTapZoomEnd ||
+      event is MapEventScrollWheelZoom;
 }

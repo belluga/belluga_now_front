@@ -34,7 +34,6 @@ class TenantAdminAccountsRequestEncoder {
     TenantAdminTaxonomyTerms taxonomyTerms =
         const TenantAdminTaxonomyTerms.empty(),
     String? bio,
-    String? content,
     List<TenantAdminNestedProfileGroup> nestedProfileGroups =
         const <TenantAdminNestedProfileGroup>[],
   }) {
@@ -49,7 +48,6 @@ class TenantAdminAccountsRequestEncoder {
             .map((term) => {'type': term.type, 'value': term.value})
             .toList(growable: false),
       'bio': ?bio,
-      'content': ?content,
       if (nestedProfileGroups.isNotEmpty)
         'nested_profile_groups': encodeTenantAdminNestedProfileGroups(
           nestedProfileGroups,
