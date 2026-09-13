@@ -3490,14 +3490,16 @@ class MapScreenController implements Disposable {
         dismissSoftLocationNotice();
       }
       if (event.isViewportChange) {
-        clearSelectedPoi(preserveMarkerMemory: false);
+        if (event.initiatedByUser) {
+          clearSelectedPoi(preserveMarkerMemory: false);
+        }
         if (event.viewport != null) {
           _queueViewportScene(event.viewport!);
         }
       } else if (event.type == BellugaMapInteractionType.emptyTap) {
         clearClusterPicker();
       }
-      if (event.userGesture &&
+      if (event.initiatedByUser &&
           mapTrayModeStreamValue.value != MapTrayMode.discovery &&
           (event.type == BellugaMapInteractionType.emptyTap ||
               event.isViewportChange)) {

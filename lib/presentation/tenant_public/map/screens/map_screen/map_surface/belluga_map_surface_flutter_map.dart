@@ -6,6 +6,32 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
+BellugaMapInteractionOrigin mapInteractionOriginForSource(
+  MapEventSource source,
+) => switch (source) {
+  MapEventSource.tap ||
+  MapEventSource.secondaryTap ||
+  MapEventSource.longPress ||
+  MapEventSource.doubleTap ||
+  MapEventSource.doubleTapHold ||
+  MapEventSource.dragStart ||
+  MapEventSource.onDrag ||
+  MapEventSource.dragEnd ||
+  MapEventSource.multiFingerGestureStart ||
+  MapEventSource.onMultiFinger ||
+  MapEventSource.multiFingerEnd ||
+  MapEventSource.flingAnimationController ||
+  MapEventSource.doubleTapZoomAnimationController ||
+  MapEventSource.scrollWheel ||
+  MapEventSource.cursorKeyboardRotation ||
+  MapEventSource.keyboard => BellugaMapInteractionOrigin.user,
+  MapEventSource.mapController ||
+  MapEventSource.fitCamera => BellugaMapInteractionOrigin.programmatic,
+  MapEventSource.interactiveFlagsChanged ||
+  MapEventSource.custom ||
+  MapEventSource.nonRotatedSizeChange => BellugaMapInteractionOrigin.system,
+};
+
 class BellugaMapSurface extends StatefulWidget {
   const BellugaMapSurface({
     super.key,
@@ -33,7 +59,6 @@ class BellugaMapSurface extends StatefulWidget {
 class _BellugaMapSurfaceState extends State<BellugaMapSurface> {
   CityCoordinate? _lastPublishedCenter;
   double? _lastPublishedZoom;
-  bool _moveHadUserGesture = false;
 
   application_map_surface.BellugaMapHandle get _handle =>
       widget.handle as application_map_surface.BellugaMapHandle;
@@ -64,15 +89,10 @@ class _BellugaMapSurfaceState extends State<BellugaMapSurface> {
                 BellugaMapInteractionEvent(
                   type: BellugaMapInteractionType.emptyTap,
                   zoom: widget.handle.currentZoom,
-                  userGesture: true,
+                  origin: BellugaMapInteractionOrigin.user,
                 ),
               );
               widget.onEmptyTap?.call();
-            },
-            onPositionChanged: (camera, hasGesture) {
-              if (hasGesture) {
-                _moveHadUserGesture = true;
-              }
             },
             onMapEvent: (event) {
               if (!_publishesViewportChange(event)) {
@@ -82,11 +102,6 @@ class _BellugaMapSurfaceState extends State<BellugaMapSurface> {
               final currentCenter = CityCoordinate.fromLatLng(camera.center);
               final previousCenter = _lastPublishedCenter;
               final previousZoom = _lastPublishedZoom;
-              final userGesture =
-                  _moveHadUserGesture ||
-                  event is MapEventScrollWheelZoom ||
-                  event is MapEventDoubleTapZoomEnd;
-              _moveHadUserGesture = false;
               _lastPublishedCenter = currentCenter;
               _lastPublishedZoom = camera.zoom;
               final zoomChanged =
@@ -109,7 +124,7 @@ class _BellugaMapSurfaceState extends State<BellugaMapSurface> {
                       : BellugaMapInteractionType.pan,
                   zoom: camera.zoom,
                   viewport: widget.handle.currentViewport,
-                  userGesture: userGesture,
+                  origin: mapInteractionOriginForSource(event.source),
                 ),
               );
             },

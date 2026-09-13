@@ -1479,7 +1479,7 @@ void main() {
         const BellugaMapInteractionEvent(
           type: BellugaMapInteractionType.pan,
           zoom: 16,
-          userGesture: true,
+          origin: BellugaMapInteractionOrigin.user,
         ),
       );
       await _flushMicrotasks();
@@ -1508,7 +1508,7 @@ void main() {
       fakeMapHandle.emitInteraction(
         const BellugaMapInteractionEvent(
           type: BellugaMapInteractionType.emptyTap,
-          userGesture: true,
+          origin: BellugaMapInteractionOrigin.user,
         ),
       );
       await _flushMicrotasks();
@@ -1542,7 +1542,7 @@ void main() {
           const BellugaMapInteractionEvent(
             type: BellugaMapInteractionType.pan,
             zoom: 16,
-            userGesture: true,
+            origin: BellugaMapInteractionOrigin.user,
           ),
         );
         await _flushMicrotasks();
@@ -3050,7 +3050,7 @@ void main() {
       fakeMapHandle.emitInteraction(
         const BellugaMapInteractionEvent(
           type: BellugaMapInteractionType.emptyTap,
-          userGesture: true,
+          origin: BellugaMapInteractionOrigin.user,
         ),
       );
       await _flushMicrotasks();
@@ -3355,7 +3355,7 @@ void main() {
             type: BellugaMapInteractionType.pan,
             zoom: 15,
             viewport: _buildViewport(seed: 2),
-            userGesture: true,
+            origin: BellugaMapInteractionOrigin.user,
           ),
         );
         await tester.pump(const Duration(milliseconds: 300));
@@ -3368,7 +3368,7 @@ void main() {
               northEast: _buildCoordinate('-19', '-39'),
               southWest: _buildCoordinate('-21', '-41'),
             ),
-            userGesture: true,
+            origin: BellugaMapInteractionOrigin.user,
           ),
         );
         await tester.pump(const Duration(milliseconds: 300));
@@ -3431,7 +3431,7 @@ void main() {
           type: BellugaMapInteractionType.pan,
           zoom: 15,
           viewport: viewport,
-          userGesture: false,
+          origin: BellugaMapInteractionOrigin.programmatic,
         ),
       );
       await tester.pump(const Duration(milliseconds: 300));
@@ -3443,7 +3443,8 @@ void main() {
     });
 
     testWidgets(
-      'hydrates the canonical scene after a settled programmatic camera move',
+      'hydrates the canonical scene and preserves selection after a settled '
+      'programmatic camera move',
       (tester) async {
         final mapHandle = _FakeMapHandle(isReady: false);
         final localController = _buildMapController(
@@ -3469,13 +3470,19 @@ void main() {
         await tester.pump();
         final callsBeforeMove = mapRepository.fetchPointsCallCount;
         final nextViewport = _buildViewport(seed: 20);
+        final selectedPoi = _buildPoi(id: 'programmatic-focus');
+        await localController.handleMarkerTap(selectedPoi);
+        expect(
+          localController.selectedPoiStreamValue.value?.id,
+          selectedPoi.id,
+        );
 
         mapHandle.emitInteraction(
           BellugaMapInteractionEvent(
             type: BellugaMapInteractionType.pan,
             zoom: 15,
             viewport: nextViewport,
-            userGesture: false,
+            origin: BellugaMapInteractionOrigin.programmatic,
           ),
         );
         await tester.pump(const Duration(milliseconds: 300));
@@ -3484,6 +3491,10 @@ void main() {
         expect(mapRepository.fetchPointsCallCount, callsBeforeMove + 1);
         expect(mapRepository.lastQuery?.northEast, nextViewport.northEast);
         expect(mapRepository.lastQuery?.southWest, nextViewport.southWest);
+        expect(
+          localController.selectedPoiStreamValue.value?.id,
+          selectedPoi.id,
+        );
         await tester.pump(const Duration(seconds: 10));
       },
     );
@@ -3526,7 +3537,7 @@ void main() {
                   type: BellugaMapInteractionType.pan,
                   zoom: 15,
                   viewport: finalViewport,
-                  userGesture: true,
+                  origin: BellugaMapInteractionOrigin.user,
                 ),
               );
             }
@@ -3547,7 +3558,7 @@ void main() {
                 type: BellugaMapInteractionType.zoom,
                 zoom: 15,
                 viewport: finalViewport,
-                userGesture: true,
+                origin: BellugaMapInteractionOrigin.user,
               ),
             );
             await tester.pump(const Duration(milliseconds: 301));
@@ -3659,7 +3670,7 @@ void main() {
             type: BellugaMapInteractionType.pan,
             zoom: 15,
             viewport: _buildViewport(seed: 80),
-            userGesture: true,
+            origin: BellugaMapInteractionOrigin.user,
           ),
         );
         await tester.pump(const Duration(milliseconds: 300));

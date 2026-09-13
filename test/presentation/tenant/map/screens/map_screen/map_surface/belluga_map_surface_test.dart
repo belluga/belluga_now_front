@@ -54,8 +54,31 @@ void main() {
         ),
         isNotEmpty,
       );
-      expect(interactions.last.userGesture, isTrue);
+      expect(interactions.last.origin, BellugaMapInteractionOrigin.user);
       expect(interactions.last.viewport, isNotNull);
     },
   );
+
+  test('classifies flutter_map sources at the adapter boundary', () {
+    expect(
+      mapInteractionOriginForSource(MapEventSource.dragEnd),
+      BellugaMapInteractionOrigin.user,
+    );
+    expect(
+      mapInteractionOriginForSource(MapEventSource.scrollWheel),
+      BellugaMapInteractionOrigin.user,
+    );
+    expect(
+      mapInteractionOriginForSource(MapEventSource.mapController),
+      BellugaMapInteractionOrigin.programmatic,
+    );
+    expect(
+      mapInteractionOriginForSource(MapEventSource.fitCamera),
+      BellugaMapInteractionOrigin.programmatic,
+    );
+    expect(
+      mapInteractionOriginForSource(MapEventSource.nonRotatedSizeChange),
+      BellugaMapInteractionOrigin.system,
+    );
+  });
 }
