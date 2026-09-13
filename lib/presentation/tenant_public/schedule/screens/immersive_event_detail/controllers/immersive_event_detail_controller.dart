@@ -96,6 +96,10 @@ class ImmersiveEventDetailController implements Disposable {
       StreamValue<AccountProfilesRepositoryContractPrimString?>(
         defaultValue: null,
       );
+  final _emptyFavoriteAccountProfileIdsStreamValue =
+      StreamValue<Set<AccountProfilesRepositoryContractPrimString>>(
+        defaultValue: const <AccountProfilesRepositoryContractPrimString>{},
+      );
   static final Uri _localEventPlaceholderUri = Uri.parse(
     'asset://event-placeholder',
   );
@@ -106,16 +110,15 @@ class ImmersiveEventDetailController implements Disposable {
   _shareSessionContextSubscription;
   StreamSubscription<Set<UserEventsRepositoryContractPrimString>>?
   _confirmedOccurrenceIdsSubscription;
-  StreamSubscription<Set<AccountProfilesRepositoryContractPrimString>>?
-  _favoriteProfileIdsSubscription;
   String? _pendingWarmOccurrenceRouteId;
   StreamValue<EventModel?> get eventStreamValue =>
       _invitesRepository.immersiveSelectedEventStreamValue;
   StreamValue<List<InviteModel>> get receivedInvitesStreamValue =>
       _invitesRepository.immersiveReceivedInvitesStreamValue;
-  final favoriteAccountProfileIdsStreamValue = StreamValue<Set<String>>(
-    defaultValue: const <String>{},
-  );
+  StreamValue<Set<AccountProfilesRepositoryContractPrimString>>
+  get favoriteAccountProfileIdsStreamValue =>
+      _accountProfilesRepository?.favoriteAccountProfileIdsStreamValue ??
+      _emptyFavoriteAccountProfileIdsStreamValue;
 
   void _releaseRetainedNestedGroupMembersPaths() {
     final repository = _accountProfilesRepository;
@@ -159,7 +162,10 @@ class ImmersiveEventDetailController implements Disposable {
     _hydrateState(
       hasSameProjection && currentEvent != null ? currentEvent : resolvedEvent,
     );
-    _bindFavoriteAccountProfileState();
+    final accountProfilesRepository = _accountProfilesRepository;
+    if (accountProfilesRepository != null) {
+      unawaited(accountProfilesRepository.init());
+    }
   }
 
   void selectOccurrence(EventModel event, EventOccurrenceOption occurrence) {
@@ -263,7 +269,9 @@ class ImmersiveEventDetailController implements Disposable {
     if (normalized.isEmpty) {
       return false;
     }
-    return favoriteAccountProfileIdsStreamValue.value.contains(normalized);
+    return favoriteAccountProfileIdsStreamValue.value.any(
+      (profileId) => profileId.value == normalized,
+    );
   }
 
   LinkedProfileFavoriteToggleOutcome toggleLinkedProfileFavorite(
@@ -847,31 +855,6 @@ class ImmersiveEventDetailController implements Disposable {
     );
   }
 
-  void _bindFavoriteAccountProfileState() {
-    final repository = _accountProfilesRepository;
-    if (repository == null) {
-      favoriteAccountProfileIdsStreamValue.addValue(const <String>{});
-      return;
-    }
-
-    favoriteAccountProfileIdsStreamValue.addValue(
-      repository.favoriteAccountProfileIdsStreamValue.value
-          .map((entry) => entry.value)
-          .toSet(),
-    );
-
-    _favoriteProfileIdsSubscription ??= repository
-        .favoriteAccountProfileIdsStreamValue
-        .stream
-        .listen((ids) {
-          favoriteAccountProfileIdsStreamValue.addValue(
-            ids.map((entry) => entry.value).toSet(),
-          );
-        });
-
-    unawaited(repository.init());
-  }
-
   /// Confirm attendance at this event
   Future<AttendanceConfirmationResult> confirmAttendance() async {
     if (_confirmAttendanceInFlight) {
@@ -968,18 +951,17 @@ class ImmersiveEventDetailController implements Disposable {
     _pendingInvitesSubscription?.cancel();
     _shareSessionContextSubscription?.cancel();
     _confirmedOccurrenceIdsSubscription?.cancel();
-    _favoriteProfileIdsSubscription?.cancel();
     _releaseRetainedNestedGroupMembersPaths();
     _invitesRepository.clearImmersiveDetailState();
     _emptyRelatedProfileGroupMembersStreamValue.dispose();
     _emptyHasMoreRelatedProfileGroupMembersStreamValue.dispose();
     _emptyIsRelatedProfileGroupMembersPageLoadingStreamValue.dispose();
     _emptyRelatedProfileGroupMembersErrorStreamValue.dispose();
+    _emptyFavoriteAccountProfileIdsStreamValue.dispose();
     isConfirmedStreamValue.dispose();
     isConfirmationStateLoadingStreamValue.dispose();
     isLoadingStreamValue.dispose();
     isShareActionLoadingStreamValue.dispose();
-    favoriteAccountProfileIdsStreamValue.dispose();
     scrollController.dispose();
   }
 }

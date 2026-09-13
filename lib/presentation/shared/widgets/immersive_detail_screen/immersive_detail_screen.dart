@@ -6,7 +6,6 @@ import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/
 import 'package:belluga_now/presentation/shared/widgets/route_back_scope.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
 typedef ImmersiveHeroContentBuilder =
