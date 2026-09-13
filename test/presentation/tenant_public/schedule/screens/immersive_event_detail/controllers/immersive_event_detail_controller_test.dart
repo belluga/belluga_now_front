@@ -119,6 +119,39 @@ void main() {
   });
 
   test(
+    'uses the repository-owned favorite stream without a disposable mirror',
+    () {
+      final accountProfilesRepository = _FakeAccountProfilesRepository();
+      accountProfilesRepository.favoriteAccountProfileIdsStreamValue.addValue(
+        <AccountProfilesRepositoryContractPrimString>{
+          AccountProfilesRepositoryContractPrimString.fromRaw('artist-1'),
+        },
+      );
+      final controller = ImmersiveEventDetailController(
+        userEventsRepository: _FakeUserEventsRepository(),
+        invitesRepository: _FakeInvitesRepository(),
+        accountProfilesRepository: accountProfilesRepository,
+      );
+
+      controller.init(_buildEvent());
+
+      expect(
+        controller.favoriteAccountProfileIdsStreamValue,
+        same(accountProfilesRepository.favoriteAccountProfileIdsStreamValue),
+      );
+
+      controller.onDispose();
+      accountProfilesRepository.favoriteAccountProfileIdsStreamValue.addValue(
+        <AccountProfilesRepositoryContractPrimString>{
+          AccountProfilesRepositoryContractPrimString.fromRaw('artist-2'),
+        },
+      );
+
+      expect(controller.isLinkedProfileFavorite('artist-2'), isTrue);
+    },
+  );
+
+  test(
     'loads canonical event group member summaries without an Event adapter',
     () async {
       final membersPath =

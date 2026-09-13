@@ -17,7 +17,6 @@ import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_
 import 'package:belluga_now/presentation/tenant_public/widgets/section_header.dart';
 import 'package:belluga_now/domain/upcoming_ocurrence/projections/upcoming_ocurrence_resume.dart';
 import 'package:belluga_now/domain/favorite/projections/favorite_resume.dart';
-import 'package:belluga_now/domain/favorite/value_objects/favorite_resume_values.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';

@@ -131,9 +131,15 @@ class _ImmersiveEventDetailScreenState
             return StreamValueBuilder<bool>(
               streamValue: _controller.isConfirmationStateLoadingStreamValue,
               builder: (context, isConfirmationStateLoading) {
-                return StreamValueBuilder<Set<String>>(
+                return StreamValueBuilder<
+                  Set<AccountProfilesRepositoryContractPrimString>
+                >(
                   streamValue: _controller.favoriteAccountProfileIdsStreamValue,
-                  builder: (context, favoriteAccountProfileIds) {
+                  builder: (context, favoriteAccountProfileIdValues) {
+                    final favoriteAccountProfileIds =
+                        favoriteAccountProfileIdValues
+                            .map((profileId) => profileId.value)
+                            .toSet();
                     final colorScheme =
                         widget.colorScheme ?? Theme.of(context).colorScheme;
                     return StreamValueBuilder<List<InviteModel>>(
