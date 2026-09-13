@@ -1,4 +1,4 @@
-import 'package:belluga_now/domain/partners/account_profile_model.dart';
+import 'package:belluga_now/domain/partners/account_profile_complete.dart';
 import 'package:belluga_now/presentation/shared/visuals/resolved_account_profile_visual.dart';
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
 import 'package:flutter/material.dart';
@@ -11,10 +11,10 @@ class DiscoveryNearbyRow extends StatelessWidget {
     required this.resolvedVisualForItem,
   });
 
-  final List<AccountProfileModel> items;
-  final ValueChanged<AccountProfileModel> onTap;
-  final ResolvedAccountProfileVisual Function(AccountProfileModel)
-      resolvedVisualForItem;
+  final List<AccountProfileComplete> items;
+  final ValueChanged<AccountProfileComplete> onTap;
+  final ResolvedAccountProfileVisual Function(AccountProfileComplete)
+  resolvedVisualForItem;
 
   @override
   Widget build(BuildContext context) {
@@ -30,9 +30,9 @@ class DiscoveryNearbyRow extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
           child: Text(
             'Perto de você',
-            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w700),
           ),
         ),
         SizedBox(
@@ -46,12 +46,11 @@ class DiscoveryNearbyRow extends StatelessWidget {
               final item = items[index];
               final resolvedVisual = resolvedVisualForItem(item);
               final distanceLabel = _distanceLabel(item.distanceMeters);
-              final canOpenPublicDetail = item.canOpenPublicDetail;
+              final canOpenPublicDetail = item.publicDetailUrl != null;
               final semanticLabel = canOpenPublicDetail
                   ? 'Abrir perfil ${item.name}'
                   : 'Perfil ${item.name}';
-              final onItemTap =
-                  canOpenPublicDetail ? () => onTap(item) : null;
+              final onItemTap = canOpenPublicDetail ? () => onTap(item) : null;
               return SizedBox(
                 width: 108,
                 child: Semantics(
@@ -120,10 +119,8 @@ class DiscoveryNearbyRow extends StatelessWidget {
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           textAlign: TextAlign.center,
-                          style:
-                              Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                    fontWeight: FontWeight.w600,
-                                  ),
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(fontWeight: FontWeight.w600),
                         ),
                       ],
                     ),
@@ -149,12 +146,9 @@ String? _distanceLabel(double? distanceMeters) {
 }
 
 class _NearbyAvatar extends StatelessWidget {
-  const _NearbyAvatar({
-    required this.item,
-    required this.resolvedVisual,
-  });
+  const _NearbyAvatar({required this.item, required this.resolvedVisual});
 
-  final AccountProfileModel item;
+  final AccountProfileComplete item;
   final ResolvedAccountProfileVisual resolvedVisual;
 
   @override
@@ -176,10 +170,7 @@ class _NearbyAvatar extends StatelessWidget {
       return Container(
         color: colorScheme.surfaceContainerHighest,
         alignment: Alignment.center,
-        child: Icon(
-          Icons.storefront,
-          color: colorScheme.onSurfaceVariant,
-        ),
+        child: Icon(Icons.storefront, color: colorScheme.onSurfaceVariant),
       );
     }
     return BellugaNetworkImage(
@@ -188,10 +179,7 @@ class _NearbyAvatar extends StatelessWidget {
       errorWidget: Container(
         color: colorScheme.surfaceContainerHighest,
         alignment: Alignment.center,
-        child: Icon(
-          Icons.storefront,
-          color: colorScheme.onSurfaceVariant,
-        ),
+        child: Icon(Icons.storefront, color: colorScheme.onSurfaceVariant),
       ),
     );
   }

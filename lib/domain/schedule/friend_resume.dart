@@ -12,7 +12,7 @@ class EventFriendResume {
     required this.avatarUrlValue,
     InviteAccountProfileIdValue? accountProfileIdValue,
   }) : accountProfileIdValue =
-            accountProfileIdValue ?? InviteAccountProfileIdValue();
+           accountProfileIdValue ?? InviteAccountProfileIdValue();
 
   final UserIdValue idValue;
   final InviteAccountProfileIdValue accountProfileIdValue;

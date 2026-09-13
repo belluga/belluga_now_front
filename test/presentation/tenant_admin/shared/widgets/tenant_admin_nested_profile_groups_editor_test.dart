@@ -161,7 +161,6 @@ TenantAdminProfileTypeDefinition _profileType(String type, String label) {
       isFavoritable: TenantAdminFlagValue(true),
       isPoiEnabled: TenantAdminFlagValue(false),
       hasBio: TenantAdminFlagValue(false),
-      hasContent: TenantAdminFlagValue(false),
       hasTaxonomies: TenantAdminFlagValue(false),
       hasAvatar: TenantAdminFlagValue(false),
       hasCover: TenantAdminFlagValue(false),

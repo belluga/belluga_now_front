@@ -54,6 +54,7 @@ class _ExternalLinkButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final backgroundColor = colorScheme.primaryContainer;
     return Semantics(
       button: true,
       label: 'Abrir ${link.label}',
@@ -62,8 +63,8 @@ class _ExternalLinkButton extends StatelessWidget {
         tooltip: link.label,
         constraints: const BoxConstraints.tightFor(width: 48, height: 48),
         style: IconButton.styleFrom(
-          foregroundColor: colorScheme.onSecondaryContainer,
-          backgroundColor: colorScheme.secondaryContainer,
+          foregroundColor: colorScheme.onPrimaryContainer,
+          backgroundColor: backgroundColor,
         ),
         onPressed: onPressed,
         icon: Icon(

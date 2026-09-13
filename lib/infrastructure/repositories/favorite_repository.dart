@@ -36,9 +36,9 @@ class FavoriteRepository extends FavoriteRepositoryContract
 
     return PagedFavoriteResumesResult(
       items: pageDto.items.map((dto) => dto.toResume()).toList(growable: false),
-      hasMoreValue:
-          (DomainBooleanValue(defaultValue: false, isRequired: false)
-            ..parse(pageDto.hasMore.toString())),
+      pinned: pageDto.pinned?.toResume(),
+      hasMoreValue: (DomainBooleanValue(defaultValue: false, isRequired: false)
+        ..parse(pageDto.hasMore.toString())),
     );
   }
 

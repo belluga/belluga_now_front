@@ -175,14 +175,16 @@ class _DirectionProviderButton extends StatelessWidget {
           );
 
     final theme = Theme.of(context);
+    final unbrandedBackgroundColor = theme.colorScheme.primaryContainer;
     final ButtonStyle buttonStyle;
     if (compact) {
       buttonStyle =
           (brand == null
                   ? FilledButton.styleFrom(
-                      backgroundColor:
-                          theme.colorScheme.surfaceContainerHighest,
-                      foregroundColor: theme.colorScheme.onSurface,
+                      backgroundColor: unbrandedBackgroundColor,
+                      foregroundColor: enabled
+                          ? theme.colorScheme.onPrimaryContainer
+                          : null,
                     )
                   : FilledButton.styleFrom(
                       backgroundColor: brand!.backgroundColor,
@@ -205,6 +207,8 @@ class _DirectionProviderButton extends StatelessWidget {
               );
     } else if (brand == null) {
       buttonStyle = FilledButton.styleFrom(
+        backgroundColor: unbrandedBackgroundColor,
+        foregroundColor: enabled ? theme.colorScheme.onPrimaryContainer : null,
         minimumSize: Size(0, height),
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         padding: EdgeInsets.symmetric(horizontal: label.isEmpty ? 8 : 10),

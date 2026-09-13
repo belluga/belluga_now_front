@@ -146,11 +146,19 @@ class _TestTenantHomeAgendaController extends MockTenantHomeAgendaController {
 
 class _TestFavoritesSectionController extends MockFavoritesSectionController {
   _TestFavoritesSectionController()
-    : _hasMoreFavoritesStreamValue = StreamValue<bool>(defaultValue: false),
+    : _pinnedFavoriteStreamValue = StreamValue<FavoriteResume?>(
+        defaultValue: null,
+      ),
+      _hasMoreFavoritesStreamValue = StreamValue<bool>(defaultValue: false),
       _isPageLoadingStreamValue = StreamValue<bool>(defaultValue: false);
 
+  final StreamValue<FavoriteResume?> _pinnedFavoriteStreamValue;
   final StreamValue<bool> _hasMoreFavoritesStreamValue;
   final StreamValue<bool> _isPageLoadingStreamValue;
+
+  @override
+  StreamValue<FavoriteResume?> get pinnedFavoriteStreamValue =>
+      _pinnedFavoriteStreamValue;
 
   @override
   StreamValue<bool> get hasMoreFavoritesStreamValue =>
@@ -158,6 +166,10 @@ class _TestFavoritesSectionController extends MockFavoritesSectionController {
 
   @override
   StreamValue<bool> get isPageLoadingStreamValue => _isPageLoadingStreamValue;
+
+  @override
+  FavoriteChipHaloState haloStateFor(FavoriteResume favorite) =>
+      favorite.haloState;
 
   @override
   Future<void> loadNextPage() async {}

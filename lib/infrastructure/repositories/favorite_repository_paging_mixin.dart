@@ -44,9 +44,10 @@ mixin FavoriteRepositoryPagingMixin on FavoriteRepositoryContract {
 
     return PagedFavoriteResumesResult(
       items: items,
-      hasMoreValue:
-          (DomainBooleanValue(defaultValue: false, isRequired: false)
-            ..parse(((startIndex + resolvedPageSize) < favorites.length).toString())),
+      hasMoreValue: (DomainBooleanValue(defaultValue: false, isRequired: false)
+        ..parse(
+          ((startIndex + resolvedPageSize) < favorites.length).toString(),
+        )),
     );
   }
 
@@ -63,6 +64,7 @@ mixin FavoriteRepositoryPagingMixin on FavoriteRepositoryContract {
   Future<void> refreshFavoriteResumes() async {
     final snapshot = _FavoriteResumesPagingSnapshot(
       items: favoriteResumesStreamValue.value,
+      pinned: pinnedFavoriteResumeStreamValue.value,
       currentPage: _currentFavoriteResumesPage,
       hasMore: _hasMoreFavoriteResumes,
     );
@@ -152,6 +154,7 @@ mixin FavoriteRepositoryPagingMixin on FavoriteRepositoryContract {
         }
 
         if (page == 1) {
+          pinnedFavoriteResumeStreamValue.addValue(result.pinned);
           mergedItems
             ..clear()
             ..addAll(result.items);
@@ -220,6 +223,9 @@ mixin FavoriteRepositoryPagingMixin on FavoriteRepositoryContract {
           ? result.items
           : <FavoriteResume>[...currentItems, ...result.items];
 
+      if (page == 1) {
+        pinnedFavoriteResumeStreamValue.addValue(result.pinned);
+      }
       favoriteResumesStreamValue.addValue(mergedItems);
       _hasMoreFavoriteResumes = result.hasMore;
       hasMoreFavoriteResumesStreamValue.addValue(result.hasMore);
@@ -249,6 +255,7 @@ mixin FavoriteRepositoryPagingMixin on FavoriteRepositoryContract {
     _FavoriteResumesPagingSnapshot snapshot,
   ) {
     favoriteResumesStreamValue.addValue(snapshot.items);
+    pinnedFavoriteResumeStreamValue.addValue(snapshot.pinned);
     _hasMoreFavoriteResumes = snapshot.hasMore;
     _currentFavoriteResumesPage = snapshot.currentPage;
     hasMoreFavoriteResumesStreamValue.addValue(snapshot.hasMore);
@@ -268,11 +275,13 @@ mixin FavoriteRepositoryPagingMixin on FavoriteRepositoryContract {
 class _FavoriteResumesPagingSnapshot {
   const _FavoriteResumesPagingSnapshot({
     required this.items,
+    required this.pinned,
     required this.currentPage,
     required this.hasMore,
   });
 
   final List<FavoriteResume>? items;
+  final FavoriteResume? pinned;
   final int currentPage;
   final bool hasMore;
 }

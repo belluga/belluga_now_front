@@ -3,12 +3,13 @@ import 'dart:async';
 import 'package:belluga_now/domain/partners/profile_type_registry.dart';
 import 'package:belluga_now/application/rich_text/safe_rich_html.dart';
 import 'package:belluga_now/domain/schedule/event_programming_item.dart';
-import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
+import 'package:belluga_now/domain/partners/account_profile_summary.dart';
 import 'package:belluga_now/domain/schedule/event_occurrence_option.dart';
 import 'package:belluga_now/presentation/shared/visuals/account_profile_visual_resolver.dart';
 import 'package:belluga_now/presentation/shared/visuals/resolved_account_profile_visual.dart';
 import 'package:belluga_now/presentation/shared/widgets/account_profile_type_avatar.dart';
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
+import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/tabs/immersive_section_title.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/widgets/event_programming_timeline_rail_painter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart';
@@ -22,6 +23,7 @@ class EventProgrammingSection extends StatefulWidget {
     required this.items,
     required this.occurrences,
     required this.onOccurrenceTap,
+    required this.onProfileTap,
     required this.onLocationTap,
     required this.profileTypeRegistry,
     this.debugOnOccurrenceCenterAnimationStart,
@@ -31,7 +33,8 @@ class EventProgrammingSection extends StatefulWidget {
   final List<EventProgrammingItem> items;
   final List<EventOccurrenceOption> occurrences;
   final ValueChanged<EventOccurrenceOption> onOccurrenceTap;
-  final ValueChanged<EventLinkedAccountProfile> onLocationTap;
+  final ValueChanged<AccountProfileSummary> onProfileTap;
+  final ValueChanged<AccountProfileSummary> onLocationTap;
   final ProfileTypeRegistry? profileTypeRegistry;
   @visibleForTesting
   final VoidCallback? debugOnOccurrenceCenterAnimationStart;
@@ -77,12 +80,7 @@ class _EventProgrammingSectionState extends State<EventProgrammingSection> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Programação',
-            style: theme.textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.w800,
-            ),
-          ),
+          ImmersiveSectionTitle(text: 'Programação'),
           if (widget.occurrences.length > 1) ...[
             const SizedBox(height: 14),
             _ProgrammingDateSelector(
@@ -115,6 +113,7 @@ class _EventProgrammingSectionState extends State<EventProgrammingSection> {
                       item: entry.value,
                       itemIndex: entry.key,
                       markerKey: _timelineMarkerKeyFor(entry.key),
+                      onProfileTap: widget.onProfileTap,
                       onLocationTap: widget.onLocationTap,
                       profileTypeRegistry: widget.profileTypeRegistry,
                     ),
@@ -500,6 +499,7 @@ class _ProgrammingTimelineEntry extends StatelessWidget {
     required this.item,
     required this.itemIndex,
     required this.markerKey,
+    required this.onProfileTap,
     required this.onLocationTap,
     required this.profileTypeRegistry,
   });
@@ -510,7 +510,8 @@ class _ProgrammingTimelineEntry extends StatelessWidget {
   final EventProgrammingItem item;
   final int itemIndex;
   final GlobalKey markerKey;
-  final ValueChanged<EventLinkedAccountProfile> onLocationTap;
+  final ValueChanged<AccountProfileSummary> onProfileTap;
+  final ValueChanged<AccountProfileSummary> onLocationTap;
   final ProfileTypeRegistry? profileTypeRegistry;
 
   @override
@@ -549,6 +550,7 @@ class _ProgrammingTimelineEntry extends StatelessWidget {
               child: _ProgrammingCard(
                 item: item,
                 itemIndex: itemIndex,
+                onProfileTap: onProfileTap,
                 onLocationTap: onLocationTap,
                 profileTypeRegistry: profileTypeRegistry,
               ),
@@ -564,13 +566,15 @@ class _ProgrammingCard extends StatelessWidget {
   const _ProgrammingCard({
     required this.item,
     required this.itemIndex,
+    required this.onProfileTap,
     required this.onLocationTap,
     required this.profileTypeRegistry,
   });
 
   final EventProgrammingItem item;
   final int itemIndex;
-  final ValueChanged<EventLinkedAccountProfile> onLocationTap;
+  final ValueChanged<AccountProfileSummary> onProfileTap;
+  final ValueChanged<AccountProfileSummary> onLocationTap;
   final ProfileTypeRegistry? profileTypeRegistry;
 
   @override
@@ -645,6 +649,7 @@ class _ProgrammingCard extends StatelessWidget {
                   for (final profile in item.linkedAccountProfiles)
                     _ProgrammingProfileChip(
                       profile: profile,
+                      onProfileTap: onProfileTap,
                       profileTypeRegistry: profileTypeRegistry,
                     ),
                 ],
@@ -668,7 +673,7 @@ class _ProgrammingCard extends StatelessWidget {
 class _ProgrammingLocationLine extends StatelessWidget {
   const _ProgrammingLocationLine({required this.profile, required this.onTap});
 
-  final EventLinkedAccountProfile profile;
+  final AccountProfileSummary profile;
   final VoidCallback onTap;
 
   @override
@@ -716,10 +721,12 @@ class _ProgrammingLocationLine extends StatelessWidget {
 class _ProgrammingProfileChip extends StatelessWidget {
   const _ProgrammingProfileChip({
     required this.profile,
+    required this.onProfileTap,
     required this.profileTypeRegistry,
   });
 
-  final EventLinkedAccountProfile profile;
+  final AccountProfileSummary profile;
+  final ValueChanged<AccountProfileSummary> onProfileTap;
   final ProfileTypeRegistry? profileTypeRegistry;
 
   @override
@@ -731,7 +738,10 @@ class _ProgrammingProfileChip extends StatelessWidget {
       avatarUrl: profile.avatarUrl,
       coverUrl: profile.coverUrl,
     );
-    return Container(
+    final onTap = profile.publicDetailUrl == null
+        ? null
+        : () => onProfileTap(profile);
+    final chip = Container(
       key: Key('eventProgrammingProfile_${profile.id}'),
       constraints: BoxConstraints(
         maxWidth: (MediaQuery.sizeOf(context).width - 32)
@@ -765,6 +775,18 @@ class _ProgrammingProfileChip extends StatelessWidget {
         ],
       ),
     );
+    if (onTap == null) {
+      return chip;
+    }
+    return Semantics(
+      button: true,
+      label: 'Abrir perfil de ${profile.displayName}',
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(999),
+        child: ExcludeSemantics(child: chip),
+      ),
+    );
   }
 }
 
@@ -774,7 +796,7 @@ class _ProgrammingProfileVisual extends StatelessWidget {
     required this.resolvedVisual,
   });
 
-  final EventLinkedAccountProfile profile;
+  final AccountProfileSummary profile;
   final ResolvedAccountProfileVisual resolvedVisual;
 
   @override

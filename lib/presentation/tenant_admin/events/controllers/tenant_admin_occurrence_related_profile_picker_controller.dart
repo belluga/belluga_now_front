@@ -82,9 +82,12 @@ final class TenantAdminOccurrenceRelatedProfilePickerController {
     _debounceTimer?.cancel();
     _search = search;
     if (search.isNotEmpty && search.characters.length < 2) {
+      _queuedReset = false;
       _itemsById.clear();
       itemsStreamValue.addValue(const []);
       hasMoreStreamValue.addValue(false);
+      isLoadingStreamValue.addValue(false);
+      isPageLoadingStreamValue.addValue(false);
       return;
     }
     final expectedGeneration = _generation;

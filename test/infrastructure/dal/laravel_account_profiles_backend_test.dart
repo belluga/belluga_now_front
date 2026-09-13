@@ -329,6 +329,9 @@ void main() {
       expect(page.items.single.profileType, 'band');
       expect(page.items.single.publicDetailPath, '/parceiro/banda-azul');
       expect(page.items.single.tags.single.value, 'Rock');
+      expect(page.items.single.taxonomyTerms.single.typeValue.value, 'genre');
+      expect(page.items.single.taxonomyTerms.single.valueValue.value, 'rock');
+      expect(page.items.single.taxonomyTerms.single.labelValue.value, 'Rock');
     },
   );
 
@@ -1064,6 +1067,11 @@ void main() {
                     'profile_type': 'artist',
                     'party_type': 'artist',
                   },
+                  {
+                    'display_name': 'Identidade ausente',
+                    'profile_type': 'artist',
+                    'party_type': 'artist',
+                  },
                 ],
               },
             ],
@@ -1096,7 +1104,7 @@ void main() {
         '507f1f77bcf86cd799439099',
       );
       expect(
-        profile?.agendaEvents.first.primaryCounterpart?.title,
+        profile?.agendaEvents.first.primaryCounterpart?.name,
         'Marco Aurélio',
       );
       expect(profile?.agendaEvents.first.counterpartCount, 5);
@@ -1104,10 +1112,7 @@ void main() {
         profile?.agendaEvents.first.primaryCounterpart?.profileType,
         'artist',
       );
-      expect(
-        profile?.agendaEvents.first.primaryCounterpart?.partyType,
-        'artist',
-      );
+      expect(profile?.agendaEvents.last.linkedAccountProfiles, hasLength(1));
       expect(profile?.agendaEvents.first.venueId, '507f1f77bcf86cd799439011');
       expect(profile?.agendaEvents.first.venueTitle, 'Casa Marracini');
       expect(profile?.agendaEvents.first.eventTypeLabel, 'Show');
@@ -1750,7 +1755,7 @@ void _registerAppData({double? defaultOriginLat, double? defaultOriginLng}) {
 }
 
 String _generateMongoId() {
-  // 24-char hex string to satisfy MongoIDValue validation in AccountProfileModel.
+  // 24-char hex string to satisfy MongoIDValue validation in AccountProfileComplete.
   return DateTime.now().microsecondsSinceEpoch
       .toRadixString(16)
       .padLeft(24, '0')

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:belluga_now/application/map_surface/belluga_map_interaction.dart';
+import 'package:belluga_now/application/map_surface/belluga_map_viewport.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:flutter/widgets.dart';
 
@@ -13,10 +14,9 @@ abstract class BellugaMapHandleContract {
 
   CityCoordinate? get currentCenter;
 
-  bool moveTo(
-    CityCoordinate coordinate, {
-    required double zoom,
-  });
+  BellugaMapViewport? get currentViewport;
+
+  bool moveTo(CityCoordinate coordinate, {required double zoom});
 
   bool moveToAnchored(
     CityCoordinate coordinate, {

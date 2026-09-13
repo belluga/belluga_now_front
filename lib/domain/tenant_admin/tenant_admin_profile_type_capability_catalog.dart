@@ -34,9 +34,6 @@ class TenantAdminProfileTypeCapabilityCatalog {
       keyValue: TenantAdminProfileTypeCapabilityKey.hasBio,
     ),
     _TenantAdminProfileTypeCapabilityDefinition(
-      keyValue: TenantAdminProfileTypeCapabilityKey.hasContent,
-    ),
-    _TenantAdminProfileTypeCapabilityDefinition(
       keyValue: TenantAdminProfileTypeCapabilityKey.hasTaxonomies,
     ),
     _TenantAdminProfileTypeCapabilityDefinition(

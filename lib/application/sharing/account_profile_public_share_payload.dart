@@ -1,5 +1,5 @@
 import 'package:belluga_now/application/invites/invite_from_event_factory.dart';
-import 'package:belluga_now/domain/partners/account_profile_model.dart';
+import 'package:belluga_now/domain/partners/account_profile_complete.dart';
 
 final class AccountProfilePublicSharePayloadBuilder {
   AccountProfilePublicSharePayloadBuilder._();
@@ -7,7 +7,7 @@ final class AccountProfilePublicSharePayloadBuilder {
   static ({String subject, String message}) build({
     required Uri publicUri,
     required String fallbackName,
-    AccountProfileModel? profile,
+    AccountProfileComplete? profile,
     String? actorDisplayName,
     String? fallbackDescription,
   }) {
@@ -35,7 +35,7 @@ final class AccountProfilePublicSharePayloadBuilder {
   }
 
   static String? resolveDescription({
-    AccountProfileModel? profile,
+    AccountProfileComplete? profile,
     String? fallbackDescription,
   }) {
     return _resolveDescription(
@@ -45,7 +45,7 @@ final class AccountProfilePublicSharePayloadBuilder {
   }
 
   static String _resolveSubject({
-    required AccountProfileModel? profile,
+    required AccountProfileComplete? profile,
     required String fallbackName,
   }) {
     final profileName = profile?.name.trim();
@@ -67,17 +67,9 @@ final class AccountProfilePublicSharePayloadBuilder {
   }
 
   static String? _resolveDescription({
-    required AccountProfileModel? profile,
+    required AccountProfileComplete? profile,
     required String? fallbackDescription,
   }) {
-    final profileContent = profile?.content?.trim();
-    if (profileContent != null && profileContent.isNotEmpty) {
-      final excerpt = InviteFromEventFactory.stripHtml(profileContent);
-      if (excerpt.isNotEmpty) {
-        return excerpt;
-      }
-    }
-
     final profileBio = profile?.bio?.trim();
     if (profileBio != null && profileBio.isNotEmpty) {
       final excerpt = InviteFromEventFactory.stripHtml(profileBio);

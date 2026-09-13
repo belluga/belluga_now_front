@@ -66,6 +66,91 @@ void main() {
     expect(controller.itemsStreamValue.value, isEmpty);
     controller.dispose();
   });
+
+  test(
+    'a one-grapheme query clears visible loading and a later valid query recovers after a stale search',
+    () async {
+      final repository = _EventsRepository();
+      final firstGate = Completer<TenantAdminNestedGroupMemberPage>();
+      final secondGate = Completer<TenantAdminNestedGroupMemberPage>();
+      repository.responses.addAll([
+        Future.value(_page(['browse'])),
+        firstGate.future,
+        secondGate.future,
+      ]);
+      final controller = _controller(repository);
+
+      await controller.initialize();
+      controller.updateSearch('first');
+      await Future<void>.delayed(Duration.zero);
+
+      expect(repository.searches, [null, 'first']);
+      expect(controller.isLoadingStreamValue.value, isTrue);
+
+      controller.updateSearch('x');
+
+      expect(controller.itemsStreamValue.value, isEmpty);
+      expect(controller.hasMoreStreamValue.value, isFalse);
+      expect(controller.isLoadingStreamValue.value, isFalse);
+      expect(controller.isPageLoadingStreamValue.value, isFalse);
+
+      controller.updateSearch('second');
+      await Future<void>.delayed(Duration.zero);
+
+      expect(repository.searches, [null, 'first']);
+
+      firstGate.complete(_page(['stale']));
+      await Future<void>.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(repository.searches, [null, 'first', 'second']);
+      expect(controller.itemsStreamValue.value, isEmpty);
+
+      secondGate.complete(_page(['second']));
+      await Future<void>.delayed(Duration.zero);
+
+      expect(controller.itemsStreamValue.value.map((item) => item.id), [
+        'second',
+      ]);
+      expect(controller.isLoadingStreamValue.value, isFalse);
+      expect(controller.isPageLoadingStreamValue.value, isFalse);
+      controller.dispose();
+    },
+  );
+
+  test(
+    'a one-grapheme query clears a queued search while pagination is pending',
+    () async {
+      final repository = _EventsRepository();
+      final paginationGate = Completer<TenantAdminNestedGroupMemberPage>();
+      repository.responses.addAll([
+        Future.value(_page(['browse'], cursor: 'next')),
+        paginationGate.future,
+      ]);
+      final controller = _controller(repository);
+
+      await controller.initialize();
+      final pagination = controller.loadNextPage();
+
+      expect(controller.isPageLoadingStreamValue.value, isTrue);
+
+      controller.updateSearch('valid');
+      await Future<void>.delayed(Duration.zero);
+      controller.updateSearch('x');
+
+      expect(controller.itemsStreamValue.value, isEmpty);
+      expect(controller.isPageLoadingStreamValue.value, isFalse);
+
+      paginationGate.complete(_page(['stale']));
+      await pagination;
+
+      expect(repository.searches, [null, null]);
+      expect(controller.itemsStreamValue.value, isEmpty);
+      expect(controller.isLoadingStreamValue.value, isFalse);
+      expect(controller.isPageLoadingStreamValue.value, isFalse);
+      controller.dispose();
+    },
+  );
 }
 
 TenantAdminOccurrenceRelatedProfilePickerController _controller(

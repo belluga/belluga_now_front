@@ -1,4 +1,4 @@
-import 'package:belluga_now/domain/partners/account_profile_model.dart';
+import 'package:belluga_now/domain/partners/account_profile_complete.dart';
 import 'package:belluga_now/domain/partners/account_profile_nested_group_member_page.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/infrastructure/dal/dao/account_profiles_backend_contract.dart';
@@ -28,7 +28,7 @@ class MockAccountProfilesBackend implements AccountProfilesBackendContract {
     final startIndex = (page - 1) * pageSize;
     if (startIndex >= filtered.length || startIndex < 0) {
       return pagedAccountProfilesResultFromRaw(
-        profiles: <AccountProfileModel>[],
+        profiles: <AccountProfileComplete>[],
         hasMore: false,
       );
     }
@@ -42,13 +42,13 @@ class MockAccountProfilesBackend implements AccountProfilesBackendContract {
   }
 
   @override
-  Future<AccountProfileModel?> fetchAccountProfileBySlug(String slug) async {
+  Future<AccountProfileComplete?> fetchAccountProfileBySlug(String slug) async {
     await Future.delayed(const Duration(milliseconds: 50));
     return _database.getAccountProfileBySlug(slug);
   }
 
   @override
-  Future<AccountProfileNestedGroupMemberPage> fetchNestedGroupMembersPageByPath(
+  Future<AccountProfileSummaryPage> fetchNestedGroupMembersPageByPath(
     String membersPath, {
     String? cursor,
     String? search,
@@ -57,15 +57,15 @@ class MockAccountProfilesBackend implements AccountProfilesBackendContract {
     final normalizedSearch = search?.trim();
     if ((normalizedCursor != null && normalizedCursor.isNotEmpty) ||
         (normalizedSearch != null && normalizedSearch.isNotEmpty)) {
-      return const AccountProfileNestedGroupMemberPage.empty();
+      return const AccountProfileSummaryPage.empty();
     }
 
     await Future.delayed(const Duration(milliseconds: 50));
-    return const AccountProfileNestedGroupMemberPage.empty();
+    return const AccountProfileSummaryPage.empty();
   }
 
   @override
-  Future<List<AccountProfileModel>> fetchNearbyAccountProfiles({
+  Future<List<AccountProfileComplete>> fetchNearbyAccountProfiles({
     int pageSize = 10,
     List<String>? typeFilters,
     List<dynamic>? taxonomyFilters,
@@ -73,7 +73,7 @@ class MockAccountProfilesBackend implements AccountProfilesBackendContract {
     await Future.delayed(const Duration(milliseconds: 50));
     final all = _database.allAccountProfiles;
     if (all.isEmpty) {
-      return const <AccountProfileModel>[];
+      return const <AccountProfileComplete>[];
     }
     return all.take(pageSize).toList(growable: false);
   }

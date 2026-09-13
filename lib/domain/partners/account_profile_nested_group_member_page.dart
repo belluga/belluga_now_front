@@ -1,18 +1,18 @@
-import 'package:belluga_now/domain/partners/account_profile_nested_group_member.dart';
-import 'package:belluga_now/domain/partners/value_objects/account_profile_nested_group_member_text_value.dart';
+import 'package:belluga_now/domain/partners/account_profile_summary.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_text_value.dart';
 
-class AccountProfileNestedGroupMemberPage {
-  const AccountProfileNestedGroupMemberPage.empty()
-    : items = const <AccountProfileNestedGroupMember>[],
+class AccountProfileSummaryPage {
+  const AccountProfileSummaryPage.empty()
+    : items = const <AccountProfileSummary>[],
       nextCursorValue = null;
 
-  AccountProfileNestedGroupMemberPage({
-    required List<AccountProfileNestedGroupMember> items,
+  AccountProfileSummaryPage({
+    required List<AccountProfileSummary> items,
     required this.nextCursorValue,
-  }) : items = List<AccountProfileNestedGroupMember>.unmodifiable(items);
+  }) : items = List<AccountProfileSummary>.unmodifiable(items);
 
-  final List<AccountProfileNestedGroupMember> items;
-  final AccountProfileNestedGroupMemberTextValue? nextCursorValue;
+  final List<AccountProfileSummary> items;
+  final AccountProfileTextValue? nextCursorValue;
 
   bool get hasMore => (nextCursorValue?.value.trim() ?? '').isNotEmpty;
 }

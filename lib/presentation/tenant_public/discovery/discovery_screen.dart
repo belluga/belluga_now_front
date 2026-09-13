@@ -6,7 +6,7 @@ import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/support/canonical_route_governance.dart';
 import 'package:belluga_now/application/router/support/route_redirect_path.dart';
 import 'package:belluga_now/application/telemetry/auth_wall_telemetry.dart';
-import 'package:belluga_now/domain/partners/account_profile_model.dart';
+import 'package:belluga_now/domain/partners/account_profile_complete.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/presentation/shared/favorites/account_profile_favorite_auth_gate.dart';
 import 'package:belluga_now/presentation/shared/discovery_filters/public_discovery_filter_empty_state_message.dart';
@@ -131,7 +131,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                 return StreamValueBuilder<Set<String>>(
                   streamValue: _controller.favoriteIdsStream,
                   builder: (context, favorites) {
-                    return StreamValueBuilder<List<AccountProfileModel>>(
+                    return StreamValueBuilder<List<AccountProfileComplete>>(
                       streamValue: _controller.filteredPartnersStreamValue,
                       builder: (context, partners) {
                         return StreamValueBuilder<bool>(
@@ -213,7 +213,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                                           SliverToBoxAdapter(
                                             child:
                                                 StreamValueBuilder<
-                                                  List<AccountProfileModel>
+                                                  List<AccountProfileComplete>
                                                 >(
                                                   streamValue: _controller
                                                       .nearbyStreamValue,
@@ -221,8 +221,9 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                                                     return DiscoveryNearbyRow(
                                                       items: nearby,
                                                       onTap: (partner) {
-                                                        if (!partner
-                                                            .canOpenPublicDetail) {
+                                                        if (partner
+                                                                .publicDetailUrl ==
+                                                            null) {
                                                           return;
                                                         }
                                                         _openPartnerDetail(
@@ -350,7 +351,8 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                                                 }
                                               },
                                               onPartnerTap: (partner) =>
-                                                  partner.canOpenPublicDetail
+                                                  partner.publicDetailUrl !=
+                                                      null
                                                   ? _openPartnerDetail(
                                                       context,
                                                       partner,
@@ -425,7 +427,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
     }
   }
 
-  void _handleFavoriteTap(AccountProfileModel partner) {
+  void _handleFavoriteTap(AccountProfileComplete partner) {
     final redirectPath = _partnerDetailRedirectPath(partner);
     final outcome = _controller.toggleFavorite(partner.id);
     if (outcome != FavoriteToggleOutcome.requiresAuthentication) {
@@ -443,24 +445,18 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
 
   Future<void> _openPartnerDetail(
     BuildContext context,
-    AccountProfileModel partner,
+    AccountProfileComplete partner,
   ) async {
-    if (!partner.canOpenPublicDetail) {
-      return;
-    }
-    final publicDetailPath = partner.publicDetailPath?.trim();
-    if (publicDetailPath != null && publicDetailPath.isNotEmpty) {
-      await context.router.pushPath(publicDetailPath);
+    final publicDetailUrl = partner.publicDetailUrl;
+    if (publicDetailUrl != null) {
+      await context.router.pushPath(publicDetailUrl);
     }
   }
 
-  String _partnerDetailRedirectPath(AccountProfileModel partner) {
-    if (!partner.canOpenPublicDetail) {
-      return buildRedirectPathFromRouteMatch(context.routeData.route);
-    }
-    final publicDetailPath = partner.publicDetailPath?.trim();
-    if (publicDetailPath != null && publicDetailPath.isNotEmpty) {
-      return publicDetailPath;
+  String _partnerDetailRedirectPath(AccountProfileComplete partner) {
+    final publicDetailUrl = partner.publicDetailUrl;
+    if (publicDetailUrl != null) {
+      return publicDetailUrl;
     }
     return buildRedirectPathFromRouteMatch(context.routeData.route);
   }

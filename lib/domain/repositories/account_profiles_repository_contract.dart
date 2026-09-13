@@ -1,6 +1,6 @@
 import 'package:belluga_discovery_filters/belluga_discovery_filters.dart';
-import 'package:belluga_now/domain/partners/account_profile_model.dart';
-import 'package:belluga_now/domain/partners/account_profile_nested_group_member.dart';
+import 'package:belluga_now/domain/partners/account_profile_complete.dart';
+import 'package:belluga_now/domain/partners/account_profile_summary.dart';
 import 'package:belluga_now/domain/partners/account_profile_nested_group_member_page.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/domain/repositories/value_objects/account_profiles_repository_contract_values.dart';
@@ -27,16 +27,14 @@ abstract class AccountProfilesRepositoryContract {
           _NestedGroupMembersPaginationRegistry();
 
   /// Stream of all account profiles
-  final allAccountProfilesStreamValue = StreamValue<List<AccountProfileModel>>(
-    defaultValue: const [],
-  );
-  final selectedAccountProfileStreamValue = StreamValue<AccountProfileModel?>(
-    defaultValue: null,
-  );
+  final allAccountProfilesStreamValue =
+      StreamValue<List<AccountProfileComplete>>(defaultValue: const []);
+  final selectedAccountProfileStreamValue =
+      StreamValue<AccountProfileComplete?>(defaultValue: null);
   final discoveryFilteredAccountProfilesStreamValue =
-      StreamValue<List<AccountProfileModel>>(defaultValue: const []);
+      StreamValue<List<AccountProfileComplete>>(defaultValue: const []);
   final discoveryNearbyAccountProfilesStreamValue =
-      StreamValue<List<AccountProfileModel>>(defaultValue: const []);
+      StreamValue<List<AccountProfileComplete>>(defaultValue: const []);
   final publicDiscoveryFilterFacetsStreamValue =
       StreamValue<DiscoveryFilterRuntimeFacets?>(defaultValue: null);
   final publicDiscoveryFilterCatalogStreamValue =
@@ -152,18 +150,17 @@ abstract class AccountProfilesRepositoryContract {
   }
 
   /// Get account profile by slug
-  Future<AccountProfileModel?> getAccountProfileBySlug(
+  Future<AccountProfileComplete?> getAccountProfileBySlug(
     AccountProfilesRepositoryContractPrimString slug,
   );
 
-  Future<AccountProfileNestedGroupMemberPage> fetchNestedGroupMembersPageByPath(
+  Future<AccountProfileSummaryPage> fetchNestedGroupMembersPageByPath(
     AccountProfilesRepositoryContractPrimString membersPath, {
     AccountProfilesRepositoryContractPrimString? cursor,
     AccountProfilesRepositoryContractPrimString? search,
-  }) async => const AccountProfileNestedGroupMemberPage.empty();
+  }) async => const AccountProfileSummaryPage.empty();
 
-  StreamValue<List<AccountProfileNestedGroupMember>>
-  nestedGroupMembersStreamValue(
+  StreamValue<List<AccountProfileSummary>> nestedGroupMembersStreamValue(
     AccountProfilesRepositoryContractPrimString membersPath,
   ) => _nestedGroupMembersState(membersPath).itemsStreamValue;
 
@@ -229,7 +226,7 @@ abstract class AccountProfilesRepositoryContract {
             isRequired: true,
           );
     _resetNestedGroupMembersState(state);
-    state.itemsStreamValue.addValue(const <AccountProfileNestedGroupMember>[]);
+    state.itemsStreamValue.addValue(const <AccountProfileSummary>[]);
     state.errorStreamValue.addValue(null);
     await _fetchNestedGroupMembersPage(
       membersPath: membersPath,
@@ -265,12 +262,12 @@ abstract class AccountProfilesRepositoryContract {
       false,
       defaultValue: false,
     );
-    state.itemsStreamValue.addValue(const <AccountProfileNestedGroupMember>[]);
+    state.itemsStreamValue.addValue(const <AccountProfileSummary>[]);
     state.isSearchAvailableStreamValue.addValue(state.isSearchAvailable);
     state.errorStreamValue.addValue(null);
   }
 
-  Future<List<AccountProfileModel>> fetchNearbyAccountProfiles({
+  Future<List<AccountProfileComplete>> fetchNearbyAccountProfiles({
     AccountProfilesRepositoryContractPrimInt? pageSize,
     List<AccountProfilesRepositoryContractPrimString>? typeFilters,
     List<AccountProfilesRepositoryTaxonomyFilter>? taxonomyFilters,
@@ -301,7 +298,7 @@ abstract class AccountProfilesRepositoryContract {
     selectedAccountProfileStreamValue.addValue(profile);
   }
 
-  void setSelectedAccountProfile(AccountProfileModel? profile) {
+  void setSelectedAccountProfile(AccountProfileComplete? profile) {
     selectedAccountProfileStreamValue.addValue(profile);
   }
 
@@ -320,7 +317,7 @@ abstract class AccountProfilesRepositoryContract {
   );
 
   /// Get all favorite account profiles
-  List<AccountProfileModel> getFavoriteAccountProfiles();
+  List<AccountProfileComplete> getFavoriteAccountProfiles();
 
   Future<void> _fetchPagedAccountProfiles({
     required AccountProfilesRepositoryContractPrimInt generation,
@@ -432,8 +429,8 @@ abstract class AccountProfilesRepositoryContract {
     required PagedAccountProfilesResult result,
   }) {
     final accumulatedProfiles = page.value <= 1
-        ? List<AccountProfileModel>.from(result.profiles)
-        : <AccountProfileModel>[
+        ? List<AccountProfileComplete>.from(result.profiles)
+        : <AccountProfileComplete>[
             ...?_paginationState
                 .pagedAccountProfilesStreamValue
                 .value
@@ -480,11 +477,11 @@ abstract class AccountProfilesRepositoryContract {
       publicDiscoveryFilterFacetsStreamValue.addValue(null);
       publicDiscoveryFilterCatalogStreamValue.addValue(null);
       discoveryFilteredAccountProfilesStreamValue.addValue(
-        const <AccountProfileModel>[],
+        const <AccountProfileComplete>[],
       );
       pagedAccountProfilesStreamValue.addValue(
         pagedAccountProfilesResultFromRaw(
-          profiles: <AccountProfileModel>[],
+          profiles: <AccountProfileComplete>[],
           hasMore: false,
           discoveryFilterFacets: null,
           discoveryFilterCatalog: null,
@@ -495,7 +492,7 @@ abstract class AccountProfilesRepositoryContract {
 
     final currentProfiles =
         _paginationState.pagedAccountProfilesStreamValue.value?.profiles ??
-        const <AccountProfileModel>[];
+        const <AccountProfileComplete>[];
     pagedAccountProfilesStreamValue.addValue(
       pagedAccountProfilesResultFromRaw(
         profiles: currentProfiles,
@@ -575,8 +572,8 @@ abstract class AccountProfilesRepositoryContract {
       }
       final accumulatedItems =
           normalizedCursor == null || normalizedCursor.isEmpty
-          ? List<AccountProfileNestedGroupMember>.from(result.items)
-          : <AccountProfileNestedGroupMember>[
+          ? List<AccountProfileSummary>.from(result.items)
+          : <AccountProfileSummary>[
               ...(state.itemsStreamValue.value),
               ...result.items,
             ];
@@ -623,9 +620,7 @@ abstract class AccountProfilesRepositoryContract {
         );
         state.nextCursor = null;
         state.hasMoreStreamValue.addValue(state.hasMore);
-        state.itemsStreamValue.addValue(
-          const <AccountProfileNestedGroupMember>[],
-        );
+        state.itemsStreamValue.addValue(const <AccountProfileSummary>[]);
       } else {
         // Later-page failures must preserve the existing continuation state so
         // the same cursor can be retried without recreating repository state.
@@ -793,9 +788,9 @@ class _NestedGroupMembersPaginationState {
   _NestedGroupMembersPaginationState({required this.membersPath});
 
   final AccountProfilesRepositoryContractPrimString membersPath;
-  final StreamValue<List<AccountProfileNestedGroupMember>> itemsStreamValue =
-      StreamValue<List<AccountProfileNestedGroupMember>>(
-        defaultValue: const <AccountProfileNestedGroupMember>[],
+  final StreamValue<List<AccountProfileSummary>> itemsStreamValue =
+      StreamValue<List<AccountProfileSummary>>(
+        defaultValue: const <AccountProfileSummary>[],
       );
   final StreamValue<AccountProfilesRepositoryContractPrimBool>
   hasMoreStreamValue = StreamValue<AccountProfilesRepositoryContractPrimBool>(

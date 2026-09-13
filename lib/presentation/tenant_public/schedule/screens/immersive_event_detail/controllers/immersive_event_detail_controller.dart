@@ -10,7 +10,7 @@ import 'package:belluga_now/domain/invites/value_objects/invite_decline_status_v
 import 'package:belluga_now/domain/invites/value_objects/invite_declined_at_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_has_other_pending_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_id_value.dart';
-import 'package:belluga_now/domain/partners/account_profile_nested_group_member.dart';
+import 'package:belluga_now/domain/partners/account_profile_summary.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
@@ -18,21 +18,16 @@ import 'package:belluga_now/domain/repositories/invites_repository_contract.dart
 import 'package:belluga_now/domain/repositories/proximity_preferences_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
-import 'package:belluga_now/domain/partners/value_objects/account_profile_tag_value.dart';
 import 'package:belluga_now/domain/partners/profile_type_registry.dart';
 import 'package:belluga_now/domain/partners/value_objects/profile_type_key_value.dart';
 import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
 import 'package:belluga_now/domain/proximity_preferences/proximity_preference.dart';
-import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/event_occurrence_option.dart';
 import 'package:belluga_now/domain/schedule/event_programming_item.dart';
 import 'package:belluga_now/domain/schedule/event_profile_group.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_summary.dart';
-import 'package:belluga_now/domain/schedule/value_objects/event_linked_account_profile_text_value.dart';
-import 'package:belluga_now/domain/value_objects/slug_value.dart';
-import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_tag_value.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -80,8 +75,8 @@ class ImmersiveEventDetailController implements Disposable {
   final Set<String> _retainedNestedGroupMembersPaths = <String>{};
   final ProximityPreferencesRepositoryContract? _proximityPreferencesRepository;
   final _emptyRelatedProfileGroupMembersStreamValue =
-      StreamValue<List<AccountProfileNestedGroupMember>>(
-        defaultValue: const <AccountProfileNestedGroupMember>[],
+      StreamValue<List<AccountProfileSummary>>(
+        defaultValue: const <AccountProfileSummary>[],
       );
   final _emptyHasMoreRelatedProfileGroupMembersStreamValue =
       StreamValue<AccountProfilesRepositoryContractPrimBool>(
@@ -101,6 +96,10 @@ class ImmersiveEventDetailController implements Disposable {
       StreamValue<AccountProfilesRepositoryContractPrimString?>(
         defaultValue: null,
       );
+  final _emptyFavoriteAccountProfileIdsStreamValue =
+      StreamValue<Set<AccountProfilesRepositoryContractPrimString>>(
+        defaultValue: const <AccountProfilesRepositoryContractPrimString>{},
+      );
   static final Uri _localEventPlaceholderUri = Uri.parse(
     'asset://event-placeholder',
   );
@@ -111,16 +110,15 @@ class ImmersiveEventDetailController implements Disposable {
   _shareSessionContextSubscription;
   StreamSubscription<Set<UserEventsRepositoryContractPrimString>>?
   _confirmedOccurrenceIdsSubscription;
-  StreamSubscription<Set<AccountProfilesRepositoryContractPrimString>>?
-  _favoriteProfileIdsSubscription;
   String? _pendingWarmOccurrenceRouteId;
   StreamValue<EventModel?> get eventStreamValue =>
       _invitesRepository.immersiveSelectedEventStreamValue;
   StreamValue<List<InviteModel>> get receivedInvitesStreamValue =>
       _invitesRepository.immersiveReceivedInvitesStreamValue;
-  final favoriteAccountProfileIdsStreamValue = StreamValue<Set<String>>(
-    defaultValue: const <String>{},
-  );
+  StreamValue<Set<AccountProfilesRepositoryContractPrimString>>
+  get favoriteAccountProfileIdsStreamValue =>
+      _accountProfilesRepository?.favoriteAccountProfileIdsStreamValue ??
+      _emptyFavoriteAccountProfileIdsStreamValue;
 
   void _releaseRetainedNestedGroupMembersPaths() {
     final repository = _accountProfilesRepository;
@@ -164,7 +162,10 @@ class ImmersiveEventDetailController implements Disposable {
     _hydrateState(
       hasSameProjection && currentEvent != null ? currentEvent : resolvedEvent,
     );
-    _bindFavoriteAccountProfileState();
+    final accountProfilesRepository = _accountProfilesRepository;
+    if (accountProfilesRepository != null) {
+      unawaited(accountProfilesRepository.init());
+    }
   }
 
   void selectOccurrence(EventModel event, EventOccurrenceOption occurrence) {
@@ -268,7 +269,9 @@ class ImmersiveEventDetailController implements Disposable {
     if (normalized.isEmpty) {
       return false;
     }
-    return favoriteAccountProfileIdsStreamValue.value.contains(normalized);
+    return favoriteAccountProfileIdsStreamValue.value.any(
+      (profileId) => profileId.value == normalized,
+    );
   }
 
   LinkedProfileFavoriteToggleOutcome toggleLinkedProfileFavorite(
@@ -326,7 +329,7 @@ class ImmersiveEventDetailController implements Disposable {
     );
   }
 
-  StreamValue<List<AccountProfileNestedGroupMember>>
+  StreamValue<List<AccountProfileSummary>>
   relatedProfileGroupMembersStreamValue(EventProfileGroup group) {
     final repository = _accountProfilesRepository;
     if (repository == null) {
@@ -434,12 +437,6 @@ class ImmersiveEventDetailController implements Disposable {
         isRequired: true,
       ),
     );
-  }
-
-  EventLinkedAccountProfile mapNestedGroupMemberToEventLinkedProfile(
-    AccountProfileNestedGroupMember member,
-  ) {
-    return _mapNestedGroupMemberToEventLinkedProfile(member)!;
   }
 
   void _hydrateState(EventModel event) {
@@ -595,9 +592,7 @@ class ImmersiveEventDetailController implements Disposable {
         .join('|');
   }
 
-  String _linkedAccountProfileSignature(
-    List<EventLinkedAccountProfile> profiles,
-  ) {
+  String _linkedAccountProfileSignature(List<AccountProfileSummary> profiles) {
     return profiles
         .map((profile) {
           final taxonomySignature = profile.taxonomyTerms
@@ -615,15 +610,14 @@ class ImmersiveEventDetailController implements Disposable {
             profile.id.trim(),
             profile.displayName.trim(),
             profile.profileType.trim(),
+            profile.partyType?.trim() ?? '',
             profile.slug.trim(),
             profile.avatarUrl?.trim() ?? '',
             profile.coverUrl?.trim() ?? '',
-            profile.partyType?.trim() ?? '',
             profile.locationAddress?.trim() ?? '',
             profile.locationLat?.toString() ?? '',
             profile.locationLng?.toString() ?? '',
-            profile.canOpenPublicDetail.toString(),
-            profile.publicDetailPath?.trim() ?? '',
+            profile.publicDetailUrl ?? '',
             taxonomySignature,
           ].join(':');
         })
@@ -660,66 +654,6 @@ class ImmersiveEventDetailController implements Disposable {
         )
         .where((tag) => tag.isNotEmpty)
         .join('|');
-  }
-
-  EventLinkedAccountProfile? _mapNestedGroupMemberToEventLinkedProfile(
-    AccountProfileNestedGroupMember member,
-  ) {
-    final profileId = member.id.trim();
-    final displayName = member.name.trim();
-    final profileType = member.profileType.trim();
-    if (profileId.isEmpty || displayName.isEmpty || profileType.isEmpty) {
-      return null;
-    }
-
-    SlugValue? slugValue;
-    final slug = member.slug.trim();
-    if (slug.isNotEmpty) {
-      slugValue = SlugValue()..parse(slug);
-    }
-
-    final taxonomyTerms = EventLinkedAccountProfileTaxonomyTerms();
-    for (final tag in member.tags) {
-      final label = tag.value.trim();
-      if (label.isEmpty) {
-        continue;
-      }
-      taxonomyTerms.addTerm(
-        typeValue: AccountProfileTagValue(''),
-        valueValue: AccountProfileTagValue(''),
-        nameValue: AccountProfileTagValue(''),
-        labelValue: AccountProfileTagValue(label),
-      );
-    }
-
-    return EventLinkedAccountProfile(
-      idValue: EventLinkedAccountProfileTextValue(profileId),
-      displayNameValue: EventLinkedAccountProfileTextValue(displayName),
-      profileTypeValue: member.profileTypeValue,
-      slugValue: slugValue,
-      avatarUrlValue: _thumbUriValueOrNull(member.avatarUrl),
-      coverUrlValue: _thumbUriValueOrNull(member.coverUrl),
-      canOpenPublicDetailValue: member.canOpenPublicDetailValue,
-      publicDetailPathValue: member.publicDetailPath == null
-          ? null
-          : EventLinkedAccountProfileTextValue(member.publicDetailPath!),
-      taxonomyTerms: taxonomyTerms.isEmpty ? null : taxonomyTerms,
-    );
-  }
-
-  ThumbUriValue? _thumbUriValueOrNull(String? rawUrl) {
-    final normalized = rawUrl?.trim();
-    if (normalized == null || normalized.isEmpty) {
-      return null;
-    }
-
-    final parsed = Uri.tryParse(normalized);
-    if (parsed == null) {
-      return null;
-    }
-
-    return ThumbUriValue(defaultValue: parsed, isRequired: true)
-      ..parse(normalized);
   }
 
   void _applyConfirmationState(String occurrenceId) {
@@ -921,31 +855,6 @@ class ImmersiveEventDetailController implements Disposable {
     );
   }
 
-  void _bindFavoriteAccountProfileState() {
-    final repository = _accountProfilesRepository;
-    if (repository == null) {
-      favoriteAccountProfileIdsStreamValue.addValue(const <String>{});
-      return;
-    }
-
-    favoriteAccountProfileIdsStreamValue.addValue(
-      repository.favoriteAccountProfileIdsStreamValue.value
-          .map((entry) => entry.value)
-          .toSet(),
-    );
-
-    _favoriteProfileIdsSubscription ??= repository
-        .favoriteAccountProfileIdsStreamValue
-        .stream
-        .listen((ids) {
-          favoriteAccountProfileIdsStreamValue.addValue(
-            ids.map((entry) => entry.value).toSet(),
-          );
-        });
-
-    unawaited(repository.init());
-  }
-
   /// Confirm attendance at this event
   Future<AttendanceConfirmationResult> confirmAttendance() async {
     if (_confirmAttendanceInFlight) {
@@ -1042,18 +951,17 @@ class ImmersiveEventDetailController implements Disposable {
     _pendingInvitesSubscription?.cancel();
     _shareSessionContextSubscription?.cancel();
     _confirmedOccurrenceIdsSubscription?.cancel();
-    _favoriteProfileIdsSubscription?.cancel();
     _releaseRetainedNestedGroupMembersPaths();
     _invitesRepository.clearImmersiveDetailState();
     _emptyRelatedProfileGroupMembersStreamValue.dispose();
     _emptyHasMoreRelatedProfileGroupMembersStreamValue.dispose();
     _emptyIsRelatedProfileGroupMembersPageLoadingStreamValue.dispose();
     _emptyRelatedProfileGroupMembersErrorStreamValue.dispose();
+    _emptyFavoriteAccountProfileIdsStreamValue.dispose();
     isConfirmedStreamValue.dispose();
     isConfirmationStateLoadingStreamValue.dispose();
     isLoadingStreamValue.dispose();
     isShareActionLoadingStreamValue.dispose();
-    favoriteAccountProfileIdsStreamValue.dispose();
     scrollController.dispose();
   }
 }

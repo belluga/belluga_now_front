@@ -39,6 +39,10 @@ class _TenantAdminSettingsScreenState extends State<TenantAdminSettingsScreen> {
     context.router.push(const TenantAdminSettingsDomainsRoute());
   }
 
+  void _openHomeFavoritesPinnedProfile() {
+    context.router.push(const TenantAdminHomeFavoritesPinnedProfileRoute());
+  }
+
   void _openDiscoveryFilters() {
     context.router.push(const TenantAdminDiscoveryFiltersRoute());
   }
@@ -411,6 +415,24 @@ class _TenantAdminSettingsScreenState extends State<TenantAdminSettingsScreen> {
               Expanded(
                 child: Text(
                   'Hostname: ${appData.hostname}\nPush: ${pushSettings?.enabled == true ? 'habilitado' : 'desabilitado'}',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 14),
+        TenantAdminHubCardShell(
+          key: TenantAdminSettingsKeys.hubCardHomeFavoritesPinnedProfile,
+          onTap: _openHomeFavoritesPinnedProfile,
+          title: 'Perfil em destaque',
+          child: Row(
+            children: [
+              const Icon(Icons.push_pin_outlined),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Escolha o perfil exibido no primeiro item dos favoritos da Home',
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
               ),

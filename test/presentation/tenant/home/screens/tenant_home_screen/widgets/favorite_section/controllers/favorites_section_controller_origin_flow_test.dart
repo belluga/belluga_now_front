@@ -403,6 +403,12 @@ void main() {
           1: _pagedFavoriteResumesResultFromRaw(
             items: [_favoriteResume(title: 'Primeiro', slug: 'primeiro')],
             hasMore: true,
+            pinned: _favoriteResume(
+              title: 'Pin coerente',
+              slug: 'pin-coerente',
+              targetId: 'pin-coerente',
+              targetType: 'account_profile',
+            ),
           ),
           2: _pagedFavoriteResumesResultFromRaw(
             items: [_favoriteResume(title: 'Segundo', slug: 'segundo')],
@@ -432,6 +438,7 @@ void main() {
         ['Primeiro', 'Segundo'],
       );
       expect(controller.hasMoreFavoritesStreamValue.value, isTrue);
+      expect(controller.pinnedFavoriteStreamValue.value?.title, 'Pin coerente');
 
       await controller.loadNextPage();
 
@@ -830,9 +837,11 @@ void main() {
 PagedFavoriteResumesResult _pagedFavoriteResumesResultFromRaw({
   required List<FavoriteResume> items,
   required Object? hasMore,
+  FavoriteResume? pinned,
 }) {
   return PagedFavoriteResumesResult(
     items: items,
+    pinned: pinned,
     hasMoreValue:
         (DomainBooleanValue(defaultValue: false, isRequired: false)
           ..parse(hasMore?.toString())),
@@ -842,8 +851,9 @@ PagedFavoriteResumesResult _pagedFavoriteResumesResultFromRaw({
 FavoriteResume _favoriteResume({
   required String title,
   required String? slug,
+  String targetId = 'favorite-target-id',
   String? targetType,
-  String? profileType,
+  String profileType = 'artist',
   String? coverUrl,
   bool canOpenPublicDetail = false,
   String? publicDetailPath,
@@ -864,6 +874,7 @@ FavoriteResume _favoriteResume({
     assetPathValue: AssetPathValue()
       ..parse('assets/images/placeholder_avatar.png'),
     targetType: targetType,
+    targetId: targetId,
     profileType: profileType,
     coverImageUriValue: coverImageUriValue,
     canOpenPublicDetail: canOpenPublicDetail,
@@ -971,7 +982,6 @@ class _FakeAppData extends Fake implements AppData {
             isFavoritableValue: _flag(true),
             isPoiEnabledValue: _flag(false),
             hasBioValue: _flag(true),
-            hasContentValue: _flag(false),
             hasTaxonomiesValue: _flag(true),
             hasAvatarValue: _flag(true),
             hasCoverValue: _flag(true),

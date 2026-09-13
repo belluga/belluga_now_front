@@ -15,6 +15,7 @@ import 'package:belluga_now/domain/app_data/value_object/environment_name_value.
 import 'package:belluga_now/domain/app_data/value_object/environment_type_value.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
+import 'package:belluga_now/domain/map/filters/poi_filter_options.dart';
 import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
 import 'package:belluga_now/domain/partners/profile_type_registry.dart';
 import 'package:belluga_now/domain/tenant/value_objects/icon_url_value.dart';
@@ -51,6 +52,7 @@ class AppData {
   final DistanceInMetersValue mapRadiusDefaultMetersValue;
   final DistanceInMetersValue mapRadiusMaxMetersValue;
   final AppDataMapFilterCatalogKeysValue mapFilterCatalogKeysValue;
+  final PoiFilterOptions mapFilterOptions;
 
   final IconUrlValue mainIconLightUrl;
   final IconUrlValue mainIconDarkUrl;
@@ -83,15 +85,18 @@ class AppData {
     required this.mapRadiusDefaultMetersValue,
     required this.mapRadiusMaxMetersValue,
     required this.mapFilterCatalogKeysValue,
+    PoiFilterOptions? mapFilterOptions,
     required this.mainIconLightUrl,
     required this.mainIconDarkUrl,
     required this.mainColor,
     required this.mainLogoLightUrl,
     required this.mainLogoDarkUrl,
-  })  : phoneOtpSmsFallbackEnabledValue =
-            phoneOtpSmsFallbackEnabledValue ?? _defaultFalseBooleanValue(),
-        publicationSettings =
-            publicationSettings ?? AppPublicationSettings.empty();
+  }) : mapFilterOptions =
+           mapFilterOptions ?? PoiFilterOptions(categories: const []),
+       phoneOtpSmsFallbackEnabledValue =
+           phoneOtpSmsFallbackEnabledValue ?? _defaultFalseBooleanValue(),
+       publicationSettings =
+           publicationSettings ?? AppPublicationSettings.empty();
 
   AppType get appType =>
       platformType.value ?? platformType.defaultValue ?? AppType.mobile;

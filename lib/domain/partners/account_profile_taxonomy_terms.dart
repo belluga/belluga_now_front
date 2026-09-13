@@ -1,17 +1,16 @@
 import 'dart:collection';
 
 import 'package:belluga_now/domain/partners/value_objects/account_profile_tag_value.dart';
-import 'package:belluga_now/domain/schedule/event_linked_account_profile_taxonomy_term.dart';
+import 'package:belluga_now/domain/partners/account_profile_taxonomy_term.dart';
 
-class EventLinkedAccountProfileTaxonomyTerms
-    extends IterableBase<EventLinkedAccountProfileTaxonomyTerm> {
-  const EventLinkedAccountProfileTaxonomyTerms.empty()
-      : _items = const <EventLinkedAccountProfileTaxonomyTerm>[];
+class AccountProfileTaxonomyTerms
+    extends IterableBase<AccountProfileTaxonomyTerm> {
+  const AccountProfileTaxonomyTerms.empty()
+    : _items = const <AccountProfileTaxonomyTerm>[];
 
-  EventLinkedAccountProfileTaxonomyTerms()
-      : _items = <EventLinkedAccountProfileTaxonomyTerm>[];
+  AccountProfileTaxonomyTerms() : _items = <AccountProfileTaxonomyTerm>[];
 
-  final List<EventLinkedAccountProfileTaxonomyTerm> _items;
+  final List<AccountProfileTaxonomyTerm> _items;
 
   void addTerm({
     required AccountProfileTagValue typeValue,
@@ -21,7 +20,7 @@ class EventLinkedAccountProfileTaxonomyTerms
     AccountProfileTagValue? labelValue,
   }) {
     _items.add(
-      EventLinkedAccountProfileTaxonomyTerm(
+      AccountProfileTaxonomyTerm(
         typeValue: typeValue,
         valueValue: valueValue,
         nameValue: nameValue,
@@ -31,8 +30,8 @@ class EventLinkedAccountProfileTaxonomyTerms
     );
   }
 
-  List<EventLinkedAccountProfileTaxonomyTerm> get items =>
-      List<EventLinkedAccountProfileTaxonomyTerm>.unmodifiable(_items);
+  List<AccountProfileTaxonomyTerm> get items =>
+      List<AccountProfileTaxonomyTerm>.unmodifiable(_items);
 
   @override
   bool get isEmpty => _items.isEmpty;
@@ -44,6 +43,5 @@ class EventLinkedAccountProfileTaxonomyTerms
   int get length => _items.length;
 
   @override
-  Iterator<EventLinkedAccountProfileTaxonomyTerm> get iterator =>
-      _items.iterator;
+  Iterator<AccountProfileTaxonomyTerm> get iterator => _items.iterator;
 }

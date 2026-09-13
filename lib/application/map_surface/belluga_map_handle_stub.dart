@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:belluga_now/application/map_surface/belluga_map_handle_contract.dart';
 import 'package:belluga_now/application/map_surface/belluga_map_interaction.dart';
+import 'package:belluga_now/application/map_surface/belluga_map_viewport.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:flutter/widgets.dart';
 
@@ -13,6 +14,7 @@ class BellugaMapHandle implements BellugaMapHandleContract {
   bool _isReady = false;
   double? _currentZoom;
   CityCoordinate? _currentCenter;
+  BellugaMapViewport? _currentViewport;
 
   @override
   Stream<BellugaMapInteractionEvent> get interactionStream =>
@@ -28,15 +30,16 @@ class BellugaMapHandle implements BellugaMapHandleContract {
   CityCoordinate? get currentCenter => _currentCenter;
 
   @override
+  BellugaMapViewport? get currentViewport => _currentViewport;
+
+  @override
   void markReady() {
     if (_isDisposed || _isReady) {
       return;
     }
     _isReady = true;
     _interactionController.add(
-      const BellugaMapInteractionEvent(
-        type: BellugaMapInteractionType.ready,
-      ),
+      const BellugaMapInteractionEvent(type: BellugaMapInteractionType.ready),
     );
   }
 
@@ -46,14 +49,12 @@ class BellugaMapHandle implements BellugaMapHandleContract {
       return;
     }
     _currentZoom = event.zoom ?? _currentZoom;
+    _currentViewport = event.viewport ?? _currentViewport;
     _interactionController.add(event);
   }
 
   @override
-  bool moveTo(
-    CityCoordinate coordinate, {
-    required double zoom,
-  }) {
+  bool moveTo(CityCoordinate coordinate, {required double zoom}) {
     _currentZoom = zoom;
     _currentCenter = coordinate;
     return false;

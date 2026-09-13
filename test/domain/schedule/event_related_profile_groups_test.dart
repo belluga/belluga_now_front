@@ -1,8 +1,8 @@
-import 'package:belluga_now/domain/partners/value_objects/account_profile_type_value.dart';
-import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_fields.dart';
+import 'package:belluga_now/domain/partners/account_profile_summary.dart';
 import 'package:belluga_now/domain/schedule/event_profile_group.dart';
 import 'package:belluga_now/application/schedule/event_related_profile_groups.dart';
-import 'package:belluga_now/domain/schedule/value_objects/event_linked_account_profile_text_value.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_text_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_profile_group_order_value.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -38,7 +38,6 @@ void main() {
       id: 'venue-1',
       displayName: 'Sesc Guarapari',
       profileType: 'venue',
-      partyType: 'venue',
     );
     final band = _profile(
       id: 'band-1',
@@ -73,7 +72,6 @@ void main() {
       id: 'venue-1',
       displayName: 'Sesc Guarapari',
       profileType: 'venue',
-      partyType: 'venue',
     );
     final band = _profile(
       id: 'band-1',
@@ -347,36 +345,32 @@ EventProfileGroup _group({
   String? id,
   required String label,
   int order = 0,
-  List<EventLinkedAccountProfile> profiles = const [],
+  List<AccountProfileSummary> profiles = const [],
   List<String> accountProfileIds = const [],
 }) {
   return EventProfileGroup(
-    idValue: EventLinkedAccountProfileTextValue(id ?? 'group-$label'),
-    labelValue: EventLinkedAccountProfileTextValue(label),
+    idValue: AccountProfileTextValue(id ?? 'group-$label'),
+    labelValue: AccountProfileTextValue(label),
     orderValue: EventProfileGroupOrderValue(order),
     memberCountValue: EventProfileGroupMemberCountValue(
       profiles.isNotEmpty ? profiles.length : accountProfileIds.length,
     ),
     profiles: profiles,
     accountProfileIdValues: accountProfileIds
-        .map(EventLinkedAccountProfileTextValue.new)
+        .map(AccountProfileTextValue.new)
         .toList(),
   );
 }
 
-EventLinkedAccountProfile _profile({
+AccountProfileSummary _profile({
   required String id,
   required String displayName,
   required String profileType,
-  String? partyType,
 }) {
-  return EventLinkedAccountProfile(
-    idValue: EventLinkedAccountProfileTextValue(id),
-    displayNameValue: EventLinkedAccountProfileTextValue(displayName),
+  return AccountProfileSummary(
+    idValue: AccountProfileTextValue(id),
+    nameValue: AccountProfileNameValue()..parse(displayName),
     profileTypeValue: AccountProfileTypeValue(profileType),
     slugValue: SlugValue()..parse(id),
-    partyTypeValue: partyType == null
-        ? null
-        : EventLinkedAccountProfileTextValue(partyType),
   );
 }

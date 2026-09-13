@@ -1,9 +1,10 @@
 import 'package:belluga_now/domain/schedule/event_model.dart';
-import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
+import 'package:belluga_now/domain/partners/account_profile_summary.dart';
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_app_chooser_contract.dart';
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_launch_target.dart';
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_provider_actions.dart';
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/tabs/immersive_directions_section.dart';
+import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/tabs/immersive_section_subtitle.dart';
 import 'package:flutter/material.dart';
 
 class LocationSection extends StatelessWidget {
@@ -19,18 +20,18 @@ class LocationSection extends StatelessWidget {
 
   final EventModel event;
   final VoidCallback? onOpenMap;
-  final ValueChanged<EventLinkedAccountProfile>? onOpenDestinationMap;
+  final ValueChanged<AccountProfileSummary>? onOpenDestinationMap;
   final Future<void> Function(
     DirectionsDirectProvider provider,
     DirectionsLaunchTarget target,
-  )? onOpenDirectDirections;
+  )?
+  onOpenDirectDirections;
   final Future<void> Function(DirectionsLaunchTarget target)?
-      onOpenOtherDirections;
+  onOpenOtherDirections;
   final bool canOpenMap;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final address = event.location.value.trim();
     final venueName = event.venue?.displayName.trim();
     final resolvedTitle = venueName != null && venueName.isNotEmpty
@@ -48,7 +49,6 @@ class LocationSection extends StatelessWidget {
 
     return ImmersiveDirectionsSection(
       padding: const EdgeInsets.all(16).copyWith(bottom: 100),
-      titleStyle: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
       mapCanvas: _LocationMapCanvas(event: event),
       destinationSubtitle: mainSubtitle,
       canOpenMap: canOpenMap,
@@ -62,11 +62,9 @@ class LocationSection extends StatelessWidget {
       extraChildren: [
         if (destinations.isNotEmpty) ...[
           const SizedBox(height: 18),
-          Text(
-            'Outros endereços relacionados',
-            style: theme.textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.w800,
-            ),
+          ImmersiveSectionSubtitle(
+            text: 'Outros endereços relacionados',
+            showDivider: true,
           ),
           const SizedBox(height: 10),
           ...destinations.map(
@@ -77,8 +75,8 @@ class LocationSection extends StatelessWidget {
                 onTap: destination.profile == null
                     ? onOpenMap
                     : onOpenDestinationMap == null
-                        ? null
-                        : () => onOpenDestinationMap!(destination.profile!),
+                    ? null
+                    : () => onOpenDestinationMap!(destination.profile!),
                 onOpenDirectDirections: onOpenDirectDirections,
                 onOpenOtherDirections: onOpenOtherDirections,
               ),
@@ -156,7 +154,7 @@ class _LocationDestination {
 
   final String key;
   final String title;
-  final EventLinkedAccountProfile? profile;
+  final AccountProfileSummary? profile;
   DirectionsLaunchTarget? get routeTarget {
     final locationProfile = profile;
     if (locationProfile == null) {
@@ -176,10 +174,7 @@ class _LocationDestination {
     }
 
     if (address != null && address.isNotEmpty) {
-      return DirectionsLaunchTarget(
-        destinationName: title,
-        address: address,
-      );
+      return DirectionsLaunchTarget(destinationName: title, address: address);
     }
 
     return null;
@@ -199,9 +194,10 @@ class _LocationDestinationTile extends StatelessWidget {
   final Future<void> Function(
     DirectionsDirectProvider provider,
     DirectionsLaunchTarget target,
-  )? onOpenDirectDirections;
+  )?
+  onOpenDirectDirections;
   final Future<void> Function(DirectionsLaunchTarget target)?
-      onOpenOtherDirections;
+  onOpenOtherDirections;
 
   @override
   Widget build(BuildContext context) {
@@ -228,9 +224,9 @@ class _LocationDestinationTile extends StatelessWidget {
               ),
               title: Text(
                 destination.title,
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
               ),
               trailing: onTap == null ? null : const Icon(Icons.map_outlined),
             ),
@@ -244,8 +240,9 @@ class _LocationDestinationTile extends StatelessWidget {
                   onOpenOtherDirections: onOpenOtherDirections,
                   wazeButtonKey: const Key('eventSecondaryWazeButton'),
                   uberButtonKey: const Key('eventSecondaryUberButton'),
-                  otherButtonKey:
-                      const Key('eventSecondaryOtherDirectionsButton'),
+                  otherButtonKey: const Key(
+                    'eventSecondaryOtherDirectionsButton',
+                  ),
                 ),
               ),
           ],

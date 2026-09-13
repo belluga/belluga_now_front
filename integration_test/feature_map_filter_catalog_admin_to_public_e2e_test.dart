@@ -29,13 +29,19 @@ import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optio
 import 'package:belluga_now/domain/user/user_belluga.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_context.dart';
 import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/auth_backend/auth_backend.dart';
+import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/app_data_backend/app_data_backend_http_fetcher.dart';
+import 'package:belluga_now/infrastructure/platform/app_data_local_info_source/app_data_local_info_dto.dart';
 import 'package:belluga_now/infrastructure/repositories/city_map_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/landlord_auth_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/landlord_tenants_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/poi_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_selected_tenant_repository.dart';
+import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_account_profiles_repository.dart';
+import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_discovery_filter_rule_catalog_repository.dart';
+import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_events_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_settings_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_static_assets_repository.dart';
+import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_taxonomies_repository.dart';
 import 'package:belluga_now/infrastructure/services/location_origin_service.dart';
 import 'package:belluga_now/infrastructure/services/http/laravel_map_poi_http_service.dart';
 import 'package:belluga_now/presentation/tenant_admin/discovery_filters/controllers/tenant_admin_discovery_filters_controller.dart';
@@ -56,8 +62,6 @@ import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:stream_value/core/stream_value.dart';
-
-import 'package:belluga_now/testing/app_data_test_factory.dart';
 
 import 'support/integration_test_bootstrap.dart';
 
@@ -110,8 +114,10 @@ void main() {
     (tester) async {
       await GetIt.I.reset(dispose: true);
 
-      final adminEmail =
-          requireDefine('LANDLORD_ADMIN_EMAIL', adminEmailDefine);
+      final adminEmail = requireDefine(
+        'LANDLORD_ADMIN_EMAIL',
+        adminEmailDefine,
+      );
       final adminPassword = requireDefine(
         'LANDLORD_ADMIN_PASSWORD',
         adminPasswordDefine,
@@ -131,11 +137,7 @@ void main() {
       final assetDisplayName = 'Praia Automatizada $uniqueSeed';
 
       final adminAuthRepository = LandlordAuthRepository(
-        dio: Dio(
-          BaseOptions(
-            baseUrl: '$landlordOrigin/admin/api',
-          ),
-        ),
+        dio: Dio(BaseOptions(baseUrl: '$landlordOrigin/admin/api')),
       );
       GetIt.I.registerSingleton<LandlordAuthRepositoryContract>(
         adminAuthRepository,
@@ -148,8 +150,24 @@ void main() {
       final staticAssetsRepository = TenantAdminStaticAssetsRepository(
         tenantScope: tenantScopeRepository,
       );
+      final taxonomiesRepository = TenantAdminTaxonomiesRepository(
+        tenantScope: tenantScopeRepository,
+      );
+      final ruleCatalogRepository =
+          TenantAdminDiscoveryFilterRuleCatalogRepository(
+            accountProfilesRepository: TenantAdminAccountProfilesRepository(
+              tenantScope: tenantScopeRepository,
+            ),
+            staticAssetsRepository: staticAssetsRepository,
+            taxonomiesRepository: taxonomiesRepository,
+            batchTermsRepository: taxonomiesRepository,
+            eventsRepository: TenantAdminEventsRepository(
+              tenantScope: tenantScopeRepository,
+            ),
+          );
       final discoveryFiltersController = TenantAdminDiscoveryFiltersController(
         settingsRepository: settingsRepository,
+        ruleCatalogRepository: ruleCatalogRepository,
       );
 
       TenantAdminDiscoveryFiltersSettingsValue? originalDiscoveryFilters;
@@ -177,8 +195,8 @@ void main() {
         tenantScopeRepository.setAvailableTenants(tenants);
         tenantScopeRepository.selectTenant(tenantOption);
 
-        originalDiscoveryFilters =
-            await settingsRepository.fetchDiscoveryFiltersSettings();
+        originalDiscoveryFilters = await settingsRepository
+            .fetchDiscoveryFiltersSettings();
 
         await staticAssetsRepository.createStaticProfileType(
           type: TenantAdminStaticAssetsRepoString.fromRaw(assetType),
@@ -210,23 +228,27 @@ void main() {
 
         const mapSurface = TenantAdminDiscoveryFilterSurfaceDefinition.map;
         await discoveryFiltersController.init();
+        final assetFilterIndex = discoveryFiltersController
+            .filtersForSurface(mapSurface)
+            .length;
+        final eventFilterIndex = assetFilterIndex + 1;
         discoveryFiltersController.addFilterItem(mapSurface);
         discoveryFiltersController.updateFilterKey(
           mapSurface,
-          0,
+          assetFilterIndex,
           assetFilterKey,
         );
         discoveryFiltersController.updateFilterLabel(
           mapSurface,
-          0,
+          assetFilterIndex,
           assetFilterLabel,
         );
         discoveryFiltersController.updateFilterRule(
           mapSurface,
-          0,
+          assetFilterIndex,
           discoveryFiltersController
               .filtersForSurface(mapSurface)
-              .elementAt(0)
+              .elementAt(assetFilterIndex)
               .copyWith(
                 query: TenantAdminDiscoveryFilterQuery(
                   entityValues: [_tokenValue('static_asset')],
@@ -239,20 +261,20 @@ void main() {
         discoveryFiltersController.addFilterItem(mapSurface);
         discoveryFiltersController.updateFilterKey(
           mapSurface,
-          1,
+          eventFilterIndex,
           eventFilterKey,
         );
         discoveryFiltersController.updateFilterLabel(
           mapSurface,
-          1,
+          eventFilterIndex,
           eventFilterLabel,
         );
         discoveryFiltersController.updateFilterRule(
           mapSurface,
-          1,
+          eventFilterIndex,
           discoveryFiltersController
               .filtersForSurface(mapSurface)
-              .elementAt(1)
+              .elementAt(eventFilterIndex)
               .copyWith(
                 query: TenantAdminDiscoveryFilterQuery(
                   entityValues: [_tokenValue('event')],
@@ -282,10 +304,10 @@ void main() {
 
         discoveryFiltersController.updateFilterVisual(
           mapSurface,
-          0,
+          assetFilterIndex,
           discoveryFiltersController
               .filtersForSurface(mapSurface)
-              .elementAt(0)
+              .elementAt(assetFilterIndex)
               .copyWith(imageUriValue: _optionalUrlValue(firstImageUri)),
         );
 
@@ -306,10 +328,10 @@ void main() {
 
         discoveryFiltersController.updateFilterVisual(
           mapSurface,
-          0,
+          assetFilterIndex,
           discoveryFiltersController
               .filtersForSurface(mapSurface)
-              .elementAt(0)
+              .elementAt(assetFilterIndex)
               .copyWith(imageUriValue: _optionalUrlValue(secondImageUri)),
         );
         await discoveryFiltersController.saveFilters(mapSurface);
@@ -317,7 +339,7 @@ void main() {
         expect(
           discoveryFiltersController
               .filtersForSurface(mapSurface)
-              .elementAt(0)
+              .elementAt(assetFilterIndex)
               .imageUri,
           secondImageUri,
         );
@@ -340,7 +362,7 @@ void main() {
           find.byKey(
             TenantAdminDiscoveryFiltersKeys.filterRow(
               'public_map.primary',
-              0,
+              assetFilterIndex,
             ),
           ),
           findsOneWidget,
@@ -349,26 +371,21 @@ void main() {
           find.byKey(
             TenantAdminDiscoveryFiltersKeys.filterRow(
               'public_map.primary',
-              1,
+              eventFilterIndex,
             ),
           ),
           findsOneWidget,
         );
         expect(find.text(assetFilterLabel), findsOneWidget);
         expect(find.text(eventFilterLabel), findsOneWidget);
-        final filterAfterPreviewPump =
-            discoveryFiltersController.filtersForSurface(mapSurface).elementAt(
-                  0,
-                );
+        final filterAfterPreviewPump = discoveryFiltersController
+            .filtersForSurface(mapSurface)
+            .elementAt(assetFilterIndex);
         expect(
           filterAfterPreviewPump.imageUri,
           secondImageUri,
           reason:
-              'admin preview controller filter after pump: ${filterAfterPreviewPump.toJson(
-                    surface: mapSurface.key,
-                    target: mapSurface.target,
-                    primarySelectionMode: mapSurface.primarySelectionMode,
-                  ).value}',
+              'admin preview controller filter after pump: ${filterAfterPreviewPump.toJson(surface: mapSurface.key, target: mapSurface.target, primarySelectionMode: mapSurface.primarySelectionMode).value}',
         );
 
         final persistedSettings = await waitForDiscoveryFiltersSettings(
@@ -387,12 +404,13 @@ void main() {
           expectationLabel: 'persisted discovery filter catalog',
         );
         expect(
-          _readSurfaceFilters(persistedSettings)
-              .firstWhere((item) => item['key'] == assetFilterKey)['image_uri'],
+          _readSurfaceFilters(
+            persistedSettings,
+          ).firstWhere((item) => item['key'] == assetFilterKey)['image_uri'],
           secondImageUri,
         );
 
-        final publicToken = await registerPublicUser(
+        final publicToken = await issueAnonymousPublicToken(
           tenantOrigin: tenantOrigin,
           seed: uniqueSeed,
         );
@@ -415,7 +433,10 @@ void main() {
           latitude: -20.611121,
           longitude: -40.498617,
         );
-        final appData = _buildTenantAppData(tenantOrigin);
+        final appData = await _fetchTenantAppData(
+          bootstrapOrigin: landlordOrigin,
+          tenantOrigin: tenantOrigin,
+        );
         final appDataRepository = _MapIntegrationAppDataRepository(appData);
         mapController = MapScreenController(
           poiRepository: poiRepository,
@@ -436,28 +457,28 @@ void main() {
           southWestLng: -40.508617,
         );
 
-        await waitForCatalogAndPois(
+        await waitForCatalog(
           mapController: mapController,
           query: boundsQuery,
           assetFilterLabel: assetFilterLabel,
           eventFilterLabel: eventFilterLabel,
-          assetDisplayName: assetDisplayName,
         );
         final publicAssetFilter = mapController
-            .filterOptionsStreamValue.value!.sortedCategories
+            .filterOptionsStreamValue
+            .value!
+            .sortedCategories
             .firstWhere((category) => category.label == assetFilterLabel);
         expect(publicAssetFilter.imageUri, secondImageUri);
-        final publicImageBytes =
-            await fetchImageBytes(publicAssetFilter.imageUri!);
+        final publicImageBytes = await fetchImageBytes(
+          publicAssetFilter.imageUri!,
+        );
         expect(publicImageBytes, equals(secondImageBytes));
 
         mapController.showFiltersTray();
         await tester.pumpWidget(
           MaterialApp(
             home: Scaffold(
-              body: Center(
-                child: MapAdaptiveTray(controller: mapController),
-              ),
+              body: Center(child: MapAdaptiveTray(controller: mapController)),
             ),
           ),
         );
@@ -493,9 +514,11 @@ void main() {
         expect(find.text(assetFilterLabel), findsOneWidget);
         expect(mapController.filterModeStreamValue.value, PoiFilterMode.server);
         expect(
-            mapController.activeFilterLabelStreamValue.value, assetFilterLabel);
+          mapController.activeFilterLabelStreamValue.value,
+          assetFilterLabel,
+        );
         expect(
-          (mapController.filteredPoisStreamValue.value ?? <CityPoiModel>[])
+          (mapController.filterResultPoisStreamValue.value ?? <CityPoiModel>[])
               .map((poi) => poi.name)
               .toList(growable: false),
           equals(<String>[assetDisplayName]),
@@ -554,8 +577,9 @@ String requireDefine(String key, String value) {
 
 Uri requireOriginUri(String raw) {
   final trimmed = raw.trim();
-  final uri =
-      Uri.tryParse(trimmed.contains('://') ? trimmed : 'https://$trimmed');
+  final uri = Uri.tryParse(
+    trimmed.contains('://') ? trimmed : 'https://$trimmed',
+  );
   if (uri == null || uri.host.trim().isEmpty) {
     fail('Invalid origin/domain value: "$raw"');
   }
@@ -573,8 +597,9 @@ String deriveLandlordOriginFromTenantHost(String tenantHost) {
   if (labels.length < 2) {
     fail('Invalid tenant host for landlord derivation: "$tenantHost"');
   }
-  final landlordHost =
-      labels.length >= 3 ? labels.sublist(1).join('.') : labels.join('.');
+  final landlordHost = labels.length >= 3
+      ? labels.sublist(1).join('.')
+      : labels.join('.');
   return 'https://$landlordHost';
 }
 
@@ -594,10 +619,10 @@ LandlordTenantOption resolveTenantByDomain(
 }
 
 Future<TenantAdminDiscoveryFiltersSettingsValue>
-    waitForDiscoveryFiltersSettings({
+waitForDiscoveryFiltersSettings({
   required TenantAdminSettingsRepository repository,
   required bool Function(TenantAdminDiscoveryFiltersSettingsValue value)
-      predicate,
+  predicate,
   required String expectationLabel,
   Duration timeout = const Duration(seconds: 40),
   Duration step = const Duration(seconds: 2),
@@ -671,9 +696,7 @@ Future<List<int>> fetchImageBytes(String imageUri) async {
     imageUri,
     options: Options(
       responseType: ResponseType.bytes,
-      headers: {
-        'Accept': 'image/*,*/*;q=0.8',
-      },
+      headers: {'Accept': 'image/*,*/*;q=0.8'},
     ),
   );
 
@@ -695,7 +718,7 @@ Future<List<int>> fetchImageBytes(String imageUri) async {
   return bytes;
 }
 
-Future<String> registerPublicUser({
+Future<String> issueAnonymousPublicToken({
   required Uri tenantOrigin,
   required String seed,
 }) async {
@@ -705,23 +728,12 @@ Future<String> registerPublicUser({
       adminUrl: tenantOrigin.resolve('/admin/api').toString(),
     ),
   );
-  final email = 'map-filter-$seed@belluga.test';
-  const password = 'SecurePass!123';
-
-  final registration = await authBackend.registerWithEmailPassword(
-    name: 'Map Filter Integration',
-    email: email,
-    password: password,
+  final identity = await authBackend.issueAnonymousIdentity(
+    deviceName: 'map-filter-integration',
+    fingerprintHash: seed.padLeft(64, '0'),
+    locale: 'pt-BR',
   );
-  if (registration.token.trim().isNotEmpty) {
-    return registration.token.trim();
-  }
-
-  final loginResult = await authBackend.loginWithEmailPassword(
-    email,
-    password,
-  );
-  return loginResult.$2.trim();
+  return identity.token.trim();
 }
 
 PoiQuery _buildBoundsQuery({
@@ -745,59 +757,30 @@ CityCoordinate _buildCoordinate(double latitude, double longitude) {
   );
 }
 
-AppData _buildTenantAppData(Uri tenantOrigin) {
-  final remoteData = {
-    'name': 'Guarappari',
-    'type': 'tenant',
-    'profile_types': const [],
-    'domains': [tenantOrigin.host],
-    'app_domains': const ['com.guarappari.app'],
-    'theme_data_settings': const {
-      'brightness_default': 'light',
-      'primary_seed_color': '#009688',
-      'secondary_seed_color': '#3F51B5',
-    },
-    'main_color': '#009688',
-    'main_domain': tenantOrigin.toString(),
-    'tenant_id': 'tenant-integration',
-    'telemetry': const {'trackers': []},
-    'telemetry_context': const {'location_freshness_minutes': 5},
-    'settings': const {
-      'map_ui': {
-        'distance_bounds': {
-          'min_meters': 1000,
-          'default_meters': 15000,
-          'max_meters': 50000,
-        },
-        'default_origin': {
-          'lat': -20.611121,
-          'lng': -40.498617,
-          'label': 'Guarappari',
-        },
-      },
-    },
-    'firebase': null,
-    'push': null,
-  };
-  final localInfo = {
-    'platformType': 'mobile',
-    'hostname': tenantOrigin.host,
-    'href': tenantOrigin.toString(),
-    'port': tenantOrigin.hasPort ? tenantOrigin.port.toString() : null,
-    'device': 'integration-test-device',
-  };
-  return buildAppDataFromInitialization(
-    remoteData: remoteData,
-    localInfo: localInfo,
+Future<AppData> _fetchTenantAppData({
+  required String bootstrapOrigin,
+  required Uri tenantOrigin,
+}) async {
+  final dto = await fetchAppDataEnvironment(
+    bootstrapBaseUrl: bootstrapOrigin,
+    appDomain: 'com.guarappari.app',
+  );
+  return dto.toDomain(
+    localInfo: AppDataLocalInfoDTO.fromLegacyMap({
+      'platformType': 'mobile',
+      'hostname': tenantOrigin.host,
+      'href': tenantOrigin.toString(),
+      'port': tenantOrigin.hasPort ? tenantOrigin.port.toString() : null,
+      'device': 'integration-test-device',
+    }),
   );
 }
 
-Future<void> waitForCatalogAndPois({
+Future<void> waitForCatalog({
   required MapScreenController mapController,
   required PoiQuery query,
   required String assetFilterLabel,
   required String eventFilterLabel,
-  required String assetDisplayName,
   Duration timeout = const Duration(seconds: 50),
 }) async {
   final deadline = DateTime.now().add(timeout);
@@ -806,29 +789,24 @@ Future<void> waitForCatalogAndPois({
     await mapController.loadPois(query);
 
     final options = mapController.filterOptionsStreamValue.value;
-    final hasAssetFilter = options?.categories.any(
+    final hasAssetFilter =
+        options?.categories.any(
           (category) => category.label == assetFilterLabel,
         ) ??
         false;
-    final hasEventFilter = options?.categories.any(
+    final hasEventFilter =
+        options?.categories.any(
           (category) => category.label == eventFilterLabel,
         ) ??
         false;
-    final hasAssetPoi =
-        (mapController.filteredPoisStreamValue.value ?? <CityPoiModel>[]).any(
-      (poi) => poi.name == assetDisplayName,
-    );
-
-    if (hasAssetFilter && hasEventFilter && hasAssetPoi) {
+    if (hasAssetFilter && hasEventFilter) {
       return;
     }
 
     await Future<void>.delayed(const Duration(seconds: 2));
   }
 
-  throw TestFailure(
-    'Timed out waiting for public map catalog/poi propagation.',
-  );
+  throw TestFailure('Timed out waiting for public map catalog propagation.');
 }
 
 Future<void> waitForFilterApplication(
@@ -851,7 +829,7 @@ Future<void> waitForFilterApplication(
     }
     final isApplied = mapController.isCategoryFilterActive(assetFilter);
     final pois =
-        mapController.filteredPoisStreamValue.value ?? <CityPoiModel>[];
+        mapController.filterResultPoisStreamValue.value ?? <CityPoiModel>[];
     if (!mapController.filterInteractionLockedStreamValue.value &&
         isApplied &&
         pois.length == 1 &&
@@ -863,18 +841,11 @@ Future<void> waitForFilterApplication(
   throw TestFailure('Timed out waiting for asset filter application.');
 }
 
-XFile _buildImageFile({
-  required String name,
-  required img.ColorRgb8 color,
-}) {
+XFile _buildImageFile({required String name, required img.ColorRgb8 color}) {
   final image = img.Image(width: 256, height: 256);
   img.fill(image, color: color);
   final bytes = img.encodePng(image);
-  return XFile.fromData(
-    bytes,
-    name: name,
-    mimeType: 'image/png',
-  );
+  return XFile.fromData(bytes, name: name, mimeType: 'image/png');
 }
 
 class _StubAuthRepository extends AuthRepositoryContract<UserBelluga> {
@@ -907,11 +878,16 @@ class _StubAuthRepository extends AuthRepositoryContract<UserBelluga> {
   Future<void> init() async {}
 
   @override
+  Future<void> ensureTenantPublicIdentityReady() async {}
+
+  @override
   Future<void> autoLogin() async {}
 
   @override
-  Future<void> loginWithEmailPassword(AuthRepositoryContractParamString email,
-      AuthRepositoryContractParamString password) async {}
+  Future<void> loginWithEmailPassword(
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString password,
+  ) async {}
 
   @override
   Future<void> signUpWithEmailPassword(
@@ -922,8 +898,9 @@ class _StubAuthRepository extends AuthRepositoryContract<UserBelluga> {
 
   @override
   Future<void> sendTokenRecoveryPassword(
-      AuthRepositoryContractParamString email,
-      AuthRepositoryContractParamString codigoEnviado) async {}
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString codigoEnviado,
+  ) async {}
 
   @override
   Future<void> logout() async {}
@@ -936,7 +913,8 @@ class _StubAuthRepository extends AuthRepositoryContract<UserBelluga> {
 
   @override
   Future<void> sendPasswordResetEmail(
-      AuthRepositoryContractParamString email) async {}
+    AuthRepositoryContractParamString email,
+  ) async {}
 
   @override
   Future<void> updateUser(UserCustomData data) async {}
@@ -975,7 +953,7 @@ class _StaticUserLocationRepository implements UserLocationRepositoryContract {
   @override
   @override
   final StreamValue<LocationResolutionPhase>
-      locationResolutionPhaseStreamValue = StreamValue<LocationResolutionPhase>(
+  locationResolutionPhaseStreamValue = StreamValue<LocationResolutionPhase>(
     defaultValue: LocationResolutionPhase.unknown,
   );
 
@@ -983,17 +961,13 @@ class _StaticUserLocationRepository implements UserLocationRepositoryContract {
   Future<void> ensureLoaded() async {}
 
   @override
-  Future<bool> refreshIfPermitted({
-    Object? minInterval,
-  }) async =>
-      false;
+  Future<bool> refreshIfPermitted({Object? minInterval}) async => false;
 
   @override
   Future<String?> resolveUserLocation({
     Object? timeout,
     UserLocationRepositoryContractBoolValue? requestPermissionIfNeededValue,
-  }) async =>
-      null;
+  }) async => null;
 
   @override
   Future<void> setLastKnownAddress(Object? address) async {}
@@ -1001,8 +975,7 @@ class _StaticUserLocationRepository implements UserLocationRepositoryContract {
   @override
   Future<bool> startTracking({
     LocationTrackingMode mode = LocationTrackingMode.mapForeground,
-  }) async =>
-      true;
+  }) async => true;
 
   @override
   Future<void> stopTracking() async {}
@@ -1023,8 +996,9 @@ class _MapIntegrationAppDataRepository extends AppDataRepositoryContract {
   Future<void> init() async {}
 
   @override
-  final StreamValue<ThemeMode?> themeModeStreamValue =
-      StreamValue<ThemeMode?>(defaultValue: ThemeMode.light);
+  final StreamValue<ThemeMode?> themeModeStreamValue = StreamValue<ThemeMode?>(
+    defaultValue: ThemeMode.light,
+  );
 
   @override
   ThemeMode get themeMode => themeModeStreamValue.value ?? ThemeMode.light;
@@ -1037,8 +1011,8 @@ class _MapIntegrationAppDataRepository extends AppDataRepositoryContract {
   @override
   final StreamValue<DistanceInMetersValue> maxRadiusMetersStreamValue =
       StreamValue<DistanceInMetersValue>(
-    defaultValue: DistanceInMetersValue.fromRaw(50000, defaultValue: 50000),
-  );
+        defaultValue: DistanceInMetersValue.fromRaw(50000, defaultValue: 50000),
+      );
 
   @override
   DistanceInMetersValue get maxRadiusMeters => maxRadiusMetersStreamValue.value;
@@ -1055,8 +1029,8 @@ class _NoopTelemetryRepository implements TelemetryRepositoryContract {
 
   @override
   Future<TelemetryRepositoryContractPrimBool> finishTimedEvent(
-          EventTrackerTimedEventHandle handle) async =>
-      telemetryRepoBool(true);
+    EventTrackerTimedEventHandle handle,
+  ) async => telemetryRepoBool(true);
 
   @override
   Future<TelemetryRepositoryContractPrimBool> flushTimedEvents() async =>
@@ -1067,14 +1041,12 @@ class _NoopTelemetryRepository implements TelemetryRepositoryContract {
     EventTrackerEvents event, {
     TelemetryRepositoryContractPrimString? eventName,
     TelemetryRepositoryContractPrimMap? properties,
-  }) async =>
-      telemetryRepoBool(true);
+  }) async => telemetryRepoBool(true);
 
   @override
-  Future<TelemetryRepositoryContractPrimBool> mergeIdentity(
-          {required TelemetryRepositoryContractPrimString
-              previousUserId}) async =>
-      telemetryRepoBool(true);
+  Future<TelemetryRepositoryContractPrimBool> mergeIdentity({
+    required TelemetryRepositoryContractPrimString previousUserId,
+  }) async => telemetryRepoBool(true);
 
   @override
   void setScreenContext(TelemetryRepositoryContractPrimMap? screenContext) {}
@@ -1084,8 +1056,7 @@ class _NoopTelemetryRepository implements TelemetryRepositoryContract {
     EventTrackerEvents event, {
     TelemetryRepositoryContractPrimString? eventName,
     TelemetryRepositoryContractPrimMap? properties,
-  }) async =>
-      null;
+  }) async => null;
 }
 
 class _TestGeolocatorPlatform extends GeolocatorPlatform {
@@ -1116,31 +1087,26 @@ class _TestGeolocatorPlatform extends GeolocatorPlatform {
   @override
   Future<Position?> getLastKnownPosition({
     bool forceLocationManager = false,
-  }) async =>
-      _position;
+  }) async => _position;
 
   @override
   Future<Position> getCurrentPosition({
     LocationSettings? locationSettings,
-  }) async =>
-      _position;
+  }) async => _position;
 
   @override
   Stream<ServiceStatus> getServiceStatusStream() =>
       Stream.value(ServiceStatus.enabled);
 
   @override
-  Stream<Position> getPositionStream({
-    LocationSettings? locationSettings,
-  }) {
+  Stream<Position> getPositionStream({LocationSettings? locationSettings}) {
     return Stream<Position>.value(_position);
   }
 
   @override
   Future<LocationAccuracyStatus> requestTemporaryFullAccuracy({
     required String purposeKey,
-  }) async =>
-      LocationAccuracyStatus.precise;
+  }) async => LocationAccuracyStatus.precise;
 
   @override
   Future<LocationAccuracyStatus> getLocationAccuracy() async =>
