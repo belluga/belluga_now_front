@@ -555,6 +555,79 @@ void main() {
     );
   });
 
+  testWidgets(
+    'scroll activation follows the tab that dominates the usable viewport in both directions',
+    (tester) async {
+      tester.view.physicalSize = const Size(390, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await _pumpImmersiveScreen(
+        tester,
+        ImmersiveDetailScreen(
+          title: 'Event',
+          heroViewportHeightFactor: 0.2,
+          backPolicy: _FakeBackPolicy(),
+          heroContent: Container(color: Colors.black),
+          tabs: [
+            ImmersiveTabItem(
+              title: 'Sobre',
+              content: const SizedBox(
+                key: Key('shortAboutContent'),
+                height: 80,
+                child: Text('About body'),
+              ),
+            ),
+            ImmersiveTabItem(
+              title: 'Programação',
+              content: const SizedBox(
+                key: Key('shortProgrammingContent'),
+                height: 80,
+                child: Text('Programming body'),
+              ),
+            ),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final scrollPosition = _immersiveScrollPosition(tester);
+      final programming = find.byKey(const Key('shortProgrammingContent'));
+      await tester.scrollUntilVisible(
+        programming,
+        100,
+        scrollable: find
+            .descendant(
+              of: find.byKey(const Key('immersiveScrollView')),
+              matching: find.byType(Scrollable),
+            )
+            .first,
+      );
+
+      Future<void> placeProgrammingStartAt(double targetY) async {
+        for (var attempt = 0; attempt < 2; attempt += 1) {
+          final currentY = tester.getTopLeft(programming).dy;
+          scrollPosition.jumpTo(
+            (scrollPosition.pixels + currentY - targetY)
+                .clamp(
+                  scrollPosition.minScrollExtent,
+                  scrollPosition.maxScrollExtent,
+                )
+                .toDouble(),
+          );
+          await tester.pumpAndSettle();
+        }
+      }
+
+      await placeProgrammingStartAt(350);
+      expect(find.byKey(const Key('immersiveTabSelected_1')), findsOneWidget);
+
+      await placeProgrammingStartAt(550);
+      expect(find.byKey(const Key('immersiveTabSelected_0')), findsOneWidget);
+    },
+  );
+
   testWidgets('sliver content swipe routes from its section range', (
     tester,
   ) async {

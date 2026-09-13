@@ -217,7 +217,7 @@ class _ImmersiveDetailScreenState extends State<ImmersiveDetailScreen> {
     if (!_controller.scrollController.hasClients) {
       return;
     }
-    final scrollOffset = _controller.scrollController.offset;
+    final activationBoundary = MediaQuery.sizeOf(context).height / 2;
     int? boundaryTabIndex;
     for (var index = 0; index < _controller.tabItems.length; index += 1) {
       final sectionContext = _controller.tabItems[index].key.currentContext;
@@ -226,9 +226,8 @@ class _ImmersiveDetailScreenState extends State<ImmersiveDetailScreen> {
         continue;
       }
 
-      final viewport = RenderAbstractViewport.of(renderObject);
-      final sectionOffset = viewport.getOffsetToReveal(renderObject, 0).offset;
-      if (sectionOffset > scrollOffset) {
+      final sectionTop = renderObject.localToGlobal(Offset.zero).dy;
+      if (sectionTop > activationBoundary) {
         break;
       }
       boundaryTabIndex = index;
