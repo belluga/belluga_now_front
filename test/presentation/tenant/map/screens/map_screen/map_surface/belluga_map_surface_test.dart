@@ -2,6 +2,8 @@ import 'package:belluga_now/application/map_surface/belluga_map_handle.dart';
 import 'package:belluga_now/application/map_surface/belluga_map_interaction.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/map_surface/belluga_map_surface.dart';
+import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/map_surface/belluga_map_surface_flutter_map.dart'
+    as flutter_map_surface;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -61,23 +63,31 @@ void main() {
 
   test('classifies flutter_map sources at the adapter boundary', () {
     expect(
-      mapInteractionOriginForSource(MapEventSource.dragEnd),
+      flutter_map_surface.mapInteractionOriginForSource(MapEventSource.dragEnd),
       BellugaMapInteractionOrigin.user,
     );
     expect(
-      mapInteractionOriginForSource(MapEventSource.scrollWheel),
+      flutter_map_surface.mapInteractionOriginForSource(
+        MapEventSource.scrollWheel,
+      ),
       BellugaMapInteractionOrigin.user,
     );
     expect(
-      mapInteractionOriginForSource(MapEventSource.mapController),
+      flutter_map_surface.mapInteractionOriginForSource(
+        MapEventSource.mapController,
+      ),
       BellugaMapInteractionOrigin.programmatic,
     );
     expect(
-      mapInteractionOriginForSource(MapEventSource.fitCamera),
+      flutter_map_surface.mapInteractionOriginForSource(
+        MapEventSource.fitCamera,
+      ),
       BellugaMapInteractionOrigin.programmatic,
     );
     expect(
-      mapInteractionOriginForSource(MapEventSource.nonRotatedSizeChange),
+      flutter_map_surface.mapInteractionOriginForSource(
+        MapEventSource.nonRotatedSizeChange,
+      ),
       BellugaMapInteractionOrigin.system,
     );
   });
