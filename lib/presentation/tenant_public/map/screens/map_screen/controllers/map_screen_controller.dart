@@ -1183,9 +1183,14 @@ class MapScreenController implements Disposable {
     final requestSequence = ++_poiRequestSequence;
     final viewportQuery = _queryForViewport(query, viewport);
     if (viewportQuery == null) {
+      _requestedViewportFingerprint = null;
+      isViewportRefreshingStreamValue.addValue(false);
       sceneNoticeStreamValue.addValue(
         'Aproxime o mapa para atualizar os pontos desta area.',
       );
+      _setIdleState();
+      _setMapStatus(MapStatus.ready);
+      _setMapMessage(null);
       return;
     }
     final resolvedQuery = await _resolveRuntimeQuery(viewportQuery);
@@ -1242,6 +1247,7 @@ class MapScreenController implements Disposable {
       if (!_isLatestPoiRequest(requestSequence)) {
         return;
       }
+      _requestedViewportFingerprint = null;
       isViewportRefreshingStreamValue.addValue(false);
       if (_hasCommittedScene) {
         sceneNoticeStreamValue.addValue(

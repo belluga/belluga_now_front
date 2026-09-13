@@ -3386,8 +3386,61 @@ void main() {
           localController.filteredPoisStreamValue.value?.map((poi) => poi.id),
           <String>['committed'],
         );
+        expect(localController.isViewportRefreshingStreamValue.value, isFalse);
+        expect(localController.isLoading.value, isFalse);
+        expect(localController.mapStatusStreamValue.value, MapStatus.ready);
+        expect(
+          localController.sceneNoticeStreamValue.value,
+          'Aproxime o mapa para atualizar os pontos desta area.',
+        );
       },
     );
+
+    testWidgets('retries the same settled viewport after a scene failure', (
+      tester,
+    ) async {
+      final mapHandle = _FakeMapHandle(isReady: false);
+      final localController = _buildMapController(
+        poiRepository: _buildPoiRepository(mapRepository: mapRepository),
+        userLocationRepository: userLocationRepository,
+        telemetryRepository: telemetry,
+        mapHandle: mapHandle,
+        appData: _buildAppData(),
+      );
+      addTearDown(localController.onDispose);
+      await localController.init(
+        initialLocationGateResult:
+            LocationPermissionGateResult.continueWithoutLocation,
+      );
+      final viewport = _buildViewport(seed: 1);
+      mapRepository.failFetchPointsCount = 1;
+
+      mapHandle.emitInteraction(
+        BellugaMapInteractionEvent(
+          type: BellugaMapInteractionType.ready,
+          zoom: 15,
+          viewport: viewport,
+        ),
+      );
+      await tester.pump();
+      expect(mapRepository.fetchPointsCallCount, 1);
+      expect(localController.mapStatusStreamValue.value, MapStatus.error);
+
+      mapHandle.emitInteraction(
+        BellugaMapInteractionEvent(
+          type: BellugaMapInteractionType.pan,
+          zoom: 15,
+          viewport: viewport,
+          userGesture: false,
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump();
+
+      expect(mapRepository.fetchPointsCallCount, 2);
+      expect(localController.mapStatusStreamValue.value, MapStatus.ready);
+      await tester.pump(const Duration(seconds: 10));
+    });
 
     testWidgets(
       'hydrates the canonical scene after a settled programmatic camera move',
