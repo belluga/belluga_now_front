@@ -1,5 +1,4 @@
 import 'package:belluga_now/application/icons/account_profile_external_link_icon_registry.dart';
-import 'package:belluga_now/application/extensions/compute_on_color.dart';
 import 'package:belluga_now/domain/partners/account_profile_external_link.dart';
 import 'package:flutter/material.dart';
 
@@ -55,7 +54,7 @@ class _ExternalLinkButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final backgroundColor = colorScheme.secondaryContainer;
+    final backgroundColor = colorScheme.primaryContainer;
     return Semantics(
       button: true,
       label: 'Abrir ${link.label}',
@@ -64,7 +63,7 @@ class _ExternalLinkButton extends StatelessWidget {
         tooltip: link.label,
         constraints: const BoxConstraints.tightFor(width: 48, height: 48),
         style: IconButton.styleFrom(
-          foregroundColor: backgroundColor.computeIconColor(context),
+          foregroundColor: colorScheme.onPrimaryContainer,
           backgroundColor: backgroundColor,
         ),
         onPressed: onPressed,

@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:belluga_now/application/extensions/compute_on_color.dart';
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_app_chooser_contract.dart';
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_launch_target.dart';
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_provider_brand_asset.dart';
@@ -176,9 +175,7 @@ class _DirectionProviderButton extends StatelessWidget {
           );
 
     final theme = Theme.of(context);
-    final unbrandedBackgroundColor = compact
-        ? theme.colorScheme.surfaceContainerHighest
-        : theme.colorScheme.secondaryContainer;
+    final unbrandedBackgroundColor = theme.colorScheme.primaryContainer;
     final ButtonStyle buttonStyle;
     if (compact) {
       buttonStyle =
@@ -186,7 +183,7 @@ class _DirectionProviderButton extends StatelessWidget {
                   ? FilledButton.styleFrom(
                       backgroundColor: unbrandedBackgroundColor,
                       foregroundColor: enabled
-                          ? unbrandedBackgroundColor.computeIconColor(context)
+                          ? theme.colorScheme.onPrimaryContainer
                           : null,
                     )
                   : FilledButton.styleFrom(
@@ -211,9 +208,7 @@ class _DirectionProviderButton extends StatelessWidget {
     } else if (brand == null) {
       buttonStyle = FilledButton.styleFrom(
         backgroundColor: unbrandedBackgroundColor,
-        foregroundColor: enabled
-            ? unbrandedBackgroundColor.computeIconColor(context)
-            : null,
+        foregroundColor: enabled ? theme.colorScheme.onPrimaryContainer : null,
         minimumSize: Size(0, height),
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         padding: EdgeInsets.symmetric(horizontal: label.isEmpty ? 8 : 10),

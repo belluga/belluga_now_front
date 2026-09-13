@@ -161,20 +161,13 @@ void main() {
   });
 
   testWidgets(
-    'keeps brand and disabled treatments while resolving accessible Outros icons',
+    'keeps brand and disabled treatments while Outros uses the primary palette pair',
     (tester) async {
       final schemes = <ColorScheme>[
-        ColorScheme.light().copyWith(
-          secondaryContainer: const Color(0xfff5f5f5),
-          onSecondaryContainer: const Color(0xfff5f5f5),
-          surfaceContainerHighest: const Color(0xfff5f5f5),
-          onSurface: const Color(0xfff5f5f5),
-        ),
-        ColorScheme.dark().copyWith(
-          secondaryContainer: const Color(0xff121212),
-          onSecondaryContainer: const Color(0xff121212),
-          surfaceContainerHighest: const Color(0xff121212),
-          onSurface: const Color(0xff121212),
+        ColorScheme.fromSeed(seedColor: Colors.deepOrange),
+        ColorScheme.fromSeed(
+          seedColor: Colors.deepOrange,
+          brightness: Brightness.dark,
         ),
       ];
 
@@ -220,9 +213,7 @@ void main() {
                       _DisabledMaterialReference(
                         key: const Key('disabledOtherReference'),
                         compact: compact,
-                        backgroundColor: compact
-                            ? scheme.surfaceContainerHighest
-                            : scheme.secondaryContainer,
+                        backgroundColor: scheme.primaryContainer,
                       ),
                     ],
                   ),
@@ -238,9 +229,7 @@ void main() {
               tester,
               const Key('otherContrastButton'),
             );
-            final expectedBackground = compact
-                ? scheme.surfaceContainerHighest
-                : scheme.secondaryContainer;
+            final expectedBackground = scheme.primaryContainer;
 
             expect(otherBackground, enabled ? expectedBackground : isNotNull);
             expect(find.bySemanticsLabel('Outros'), findsOneWidget);
@@ -257,6 +246,7 @@ void main() {
               enabled,
             );
             if (enabled) {
+              expect(otherForeground, scheme.onPrimaryContainer);
               expect(
                 _contrastRatio(otherBackground!, otherForeground),
                 greaterThanOrEqualTo(4.5),
