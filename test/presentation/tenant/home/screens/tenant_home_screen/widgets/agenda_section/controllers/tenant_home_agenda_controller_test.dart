@@ -60,9 +60,12 @@ import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_se
 import 'package:event_tracker_handler/event_tracker_handler.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/intl.dart';
 import 'package:stream_value/core/stream_value.dart';
 import 'package:belluga_now/testing/invite_accept_result_builder.dart';
 import 'package:belluga_now/testing/invite_model_factory.dart';
+
+import '../../../../../../../../support/sticky_date_header_test_support.dart';
 
 List<EventModel>? _displayedEvents(TenantHomeAgendaController controller) =>
     controller.displayStateStreamValue.value?.events;
@@ -1135,6 +1138,82 @@ void main() {
       expect(controller.shouldShowInviteFilterAction, isTrue);
 
       controller.onDispose();
+    });
+
+    testWidgets('Home Agenda pins and pushes four date headers', (
+      tester,
+    ) async {
+      final controller = _CountingHomeAgendaController(
+        appDataRepository: _FakeAppDataRepository(
+          _buildAppData(minKm: 1, defaultKm: 5, maxKm: 10),
+        ),
+      );
+      final scrollController = ScrollController();
+      final dates = List<DateTime>.generate(
+        4,
+        (index) => DateTime.utc(2030, 5, 15 + index, 18),
+      );
+      controller.displayStateStreamValue.addValue(
+        TenantHomeAgendaDisplayState(
+          events: [
+            for (var index = 0; index < dates.length; index++)
+              _buildHomeAgendaEvent(
+                occurrenceId:
+                    '507f1f77bcf86cd799439${(880 + index).toString()}',
+                title: 'Sticky Home $index',
+                slug: 'sticky-home-$index',
+                startDateTime: dates[index],
+              ),
+            for (var index = 0; index < dates.length; index++)
+              _buildHomeAgendaEvent(
+                occurrenceId:
+                    '507f1f77bcf86cd799439${(890 + index).toString()}',
+                title: 'Sticky Home extra $index',
+                slug: 'sticky-home-extra-$index',
+                startDateTime: dates[index].add(const Duration(hours: 1)),
+              ),
+            for (var index = 0; index < 2; index++)
+              _buildHomeAgendaEvent(
+                occurrenceId:
+                    '507f1f77bcf86cd799439${(900 + index).toString()}',
+                title: 'Sticky Home fourth-date tail $index',
+                slug: 'sticky-home-fourth-tail-$index',
+                startDateTime: dates[3].add(Duration(hours: 2 + index)),
+              ),
+          ],
+        ),
+      );
+      controller.isInitialLoadingStreamValue.addValue(false);
+      controller.isPageLoadingStreamValue.addValue(false);
+      controller.hasMoreStreamValue.addValue(false);
+      addTearDown(controller.onDispose);
+      addTearDown(scrollController.dispose);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: HomeAgendaSectionView(
+              controller: controller,
+              scrollController: scrollController,
+              builder: (context, slots) => slots.scrollViewBuilder(
+                headerSlivers: slots.headerSlivers,
+                scrollController: scrollController,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      await expectStickyDateHeaderTransitions(
+        tester: tester,
+        scrollable: find.byKey(const Key('homeAgendaScrollView')),
+        pinnedChrome: find.byType(HomeAgendaAppBar),
+        verifyPrePinEntry: false,
+        dateLabels: dates
+            .map((date) => DateFormat.MMMMEEEEd().format(date).toUpperCase())
+            .toList(growable: false),
+      );
     });
 
     testWidgets(
@@ -2896,7 +2975,7 @@ void main() {
             ),
           ),
         );
-        await tester.pumpAndSettle();
+        await tester.pump();
 
         final scrollable = find.byType(Scrollable).first;
         await tester.dragUntilVisible(
@@ -3267,13 +3346,12 @@ void main() {
                 controller: controller,
                 scrollController: shellScrollController,
                 builder: (context, slots) {
-                  return NestedScrollView(
-                    controller: shellScrollController,
-                    headerSliverBuilder: (context, innerBoxIsScrolled) => [
+                  return slots.scrollViewBuilder(
+                    headerSlivers: [
                       const SliverToBoxAdapter(child: SizedBox(height: 240)),
                       ...slots.headerSlivers,
                     ],
-                    body: slots.body,
+                    scrollController: shellScrollController,
                   );
                 },
               ),
@@ -3288,7 +3366,10 @@ void main() {
         );
         expect(controller.isRadiusActionCompactStreamValue.value, isFalse);
 
-        await tester.drag(find.byType(ListView), const Offset(0, -80));
+        final agendaScrollView = find.byKey(
+          const ValueKey<String>('homeAgendaScrollView'),
+        );
+        await tester.drag(agendaScrollView, const Offset(0, -80));
         await tester.pumpAndSettle();
 
         expect(shellScrollController.offset, greaterThan(0));
@@ -3298,7 +3379,7 @@ void main() {
         );
         expect(controller.isRadiusActionCompactStreamValue.value, isTrue);
 
-        await tester.fling(find.byType(ListView), const Offset(0, 400), 2000);
+        await tester.fling(agendaScrollView, const Offset(0, 400), 2000);
         await tester.pumpAndSettle();
 
         expect(shellScrollController.offset, 0);
@@ -3340,13 +3421,12 @@ void main() {
                 controller: controller,
                 scrollController: shellScrollController,
                 builder: (context, slots) {
-                  return NestedScrollView(
-                    controller: shellScrollController,
-                    headerSliverBuilder: (context, innerBoxIsScrolled) => [
+                  return slots.scrollViewBuilder(
+                    headerSlivers: [
                       const SliverToBoxAdapter(child: SizedBox(height: 280)),
                       ...slots.headerSlivers,
                     ],
-                    body: slots.body,
+                    scrollController: shellScrollController,
                   );
                 },
               ),
@@ -3356,10 +3436,7 @@ void main() {
         await tester.pumpAndSettle();
 
         await tester.drag(
-          find.byWidgetPredicate(
-            (widget) =>
-                widget is ListView && widget.scrollDirection == Axis.vertical,
-          ),
+          find.byKey(const ValueKey<String>('homeAgendaScrollView')),
           const Offset(0, -380),
         );
         await tester.pumpAndSettle();
@@ -3371,10 +3448,7 @@ void main() {
           find.byKey(_primaryFilterKey(primaryFilter)),
         );
         await tester.drag(
-          find.byWidgetPredicate(
-            (widget) =>
-                widget is ListView && widget.scrollDirection == Axis.vertical,
-          ),
+          find.byKey(const ValueKey<String>('homeAgendaScrollView')),
           const Offset(0, -220),
         );
         await tester.pumpAndSettle();
@@ -3444,8 +3518,10 @@ void main() {
             _buildAppData(minKm: 1, defaultKm: 5, maxKm: 10),
           ),
         );
+        final scrollController = ScrollController();
 
         addTearDown(controller.onDispose);
+        addTearDown(scrollController.dispose);
 
         unawaited(controller.init());
 
@@ -3455,11 +3531,9 @@ void main() {
               body: HomeAgendaSectionView(
                 controller: controller,
                 builder: (context, slots) {
-                  return CustomScrollView(
-                    slivers: [
-                      ...slots.headerSlivers,
-                      SliverFillRemaining(child: slots.body),
-                    ],
+                  return slots.scrollViewBuilder(
+                    headerSlivers: slots.headerSlivers,
+                    scrollController: scrollController,
                   );
                 },
               ),
@@ -3530,8 +3604,10 @@ void main() {
             _buildAppData(minKm: 1, defaultKm: 5, maxKm: 10),
           ),
         );
+        final scrollController = ScrollController();
 
         addTearDown(controller.onDispose);
+        addTearDown(scrollController.dispose);
 
         unawaited(controller.init());
 
@@ -3541,11 +3617,9 @@ void main() {
               body: HomeAgendaSectionView(
                 controller: controller,
                 builder: (context, slots) {
-                  return CustomScrollView(
-                    slivers: [
-                      ...slots.headerSlivers,
-                      SliverFillRemaining(child: slots.body),
-                    ],
+                  return slots.scrollViewBuilder(
+                    headerSlivers: slots.headerSlivers,
+                    scrollController: scrollController,
                   );
                 },
               ),
@@ -3697,7 +3771,7 @@ void main() {
     );
 
     testWidgets(
-      'home nested inner agenda scroll keeps radius action compact and restores at top',
+      'home agenda viewport scroll keeps radius action compact and restores at top',
       (tester) async {
         final controller = _buildAgendaController(
           scheduleRepository: ScheduleRepository(
@@ -3724,12 +3798,9 @@ void main() {
                 controller: controller,
                 scrollController: shellScrollController,
                 builder: (context, slots) {
-                  return NestedScrollView(
-                    controller: shellScrollController,
-                    headerSliverBuilder: (context, innerBoxIsScrolled) => [
-                      ...slots.headerSlivers,
-                    ],
-                    body: slots.body,
+                  return slots.scrollViewBuilder(
+                    headerSlivers: slots.headerSlivers,
+                    scrollController: shellScrollController,
                   );
                 },
               ),
@@ -3744,7 +3815,10 @@ void main() {
         );
         expect(controller.isRadiusActionCompactStreamValue.value, isFalse);
 
-        await tester.drag(find.byType(ListView), const Offset(0, -900));
+        final agendaScrollView = find.byKey(
+          const ValueKey<String>('homeAgendaScrollView'),
+        );
+        await tester.drag(agendaScrollView, const Offset(0, -900));
         await tester.pumpAndSettle();
 
         expect(
@@ -3753,7 +3827,7 @@ void main() {
         );
         expect(controller.isRadiusActionCompactStreamValue.value, isTrue);
 
-        await tester.fling(find.byType(ListView), const Offset(0, 1400), 4000);
+        await tester.fling(agendaScrollView, const Offset(0, 1400), 4000);
         await tester.pumpAndSettle();
 
         expect(
@@ -3785,8 +3859,10 @@ void main() {
             _buildAppData(minKm: 1, defaultKm: 5, maxKm: 10),
           ),
         );
+        final scrollController = ScrollController();
 
         addTearDown(controller.onDispose);
+        addTearDown(scrollController.dispose);
 
         await controller.init();
         controller.setDiscoveryFilterSelection(
@@ -3799,11 +3875,9 @@ void main() {
               body: HomeAgendaSectionView(
                 controller: controller,
                 builder: (context, slots) {
-                  return CustomScrollView(
-                    slivers: [
-                      ...slots.headerSlivers,
-                      SliverFillRemaining(child: slots.body),
-                    ],
+                  return slots.scrollViewBuilder(
+                    headerSlivers: slots.headerSlivers,
+                    scrollController: scrollController,
                   );
                 },
               ),
@@ -3842,8 +3916,10 @@ void main() {
             _buildAppData(minKm: 1, defaultKm: 5, maxKm: 10),
           ),
         );
+        final scrollController = ScrollController();
 
         addTearDown(controller.onDispose);
+        addTearDown(scrollController.dispose);
 
         await controller.init();
 
@@ -3857,11 +3933,9 @@ void main() {
               body: HomeAgendaSectionView(
                 controller: controller,
                 builder: (context, slots) {
-                  return CustomScrollView(
-                    slivers: [
-                      ...slots.headerSlivers,
-                      SliverFillRemaining(child: slots.body),
-                    ],
+                  return slots.scrollViewBuilder(
+                    headerSlivers: slots.headerSlivers,
+                    scrollController: scrollController,
                   );
                 },
               ),
@@ -4063,6 +4137,7 @@ EventModel _buildHomeAgendaEvent({
   required String occurrenceId,
   required String title,
   required String slug,
+  DateTime? startDateTime,
 }) {
   return EventDTO.fromJson({
     'event_id': occurrenceId.replaceRange(23, 24, '0'),
@@ -4084,7 +4159,8 @@ EventModel _buildHomeAgendaEvent({
         'coordinates': [-40.495395, -20.671339],
       },
     },
-    'date_time_start': '2026-03-06T20:00:00+00:00',
+    'date_time_start':
+        startDateTime?.toIso8601String() ?? '2026-03-06T20:00:00+00:00',
     'counterpart_preview': const [],
     'tags': const ['music'],
   }).toDomain();
@@ -6662,10 +6738,36 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
   Future<void> stopTracking() async {}
 }
 
-HomeAgendaBody _homeAgendaBody(TenantHomeAgendaController controller) {
-  return HomeAgendaBody(
-    controller: controller,
-    catalog: controller.discoveryFilterCatalogStreamValue.value,
-    selection: controller.discoveryFilterSelectionStreamValue.value,
-  );
+Widget _homeAgendaBody(TenantHomeAgendaController controller) {
+  return _TestHomeAgendaBody(controller: controller);
+}
+
+class _TestHomeAgendaBody extends StatefulWidget {
+  const _TestHomeAgendaBody({required this.controller});
+
+  final TenantHomeAgendaController controller;
+
+  @override
+  State<_TestHomeAgendaBody> createState() => _TestHomeAgendaBodyState();
+}
+
+class _TestHomeAgendaBodyState extends State<_TestHomeAgendaBody> {
+  final _scrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return HomeAgendaBody(
+      controller: widget.controller,
+      catalog: widget.controller.discoveryFilterCatalogStreamValue.value,
+      selection: widget.controller.discoveryFilterSelectionStreamValue.value,
+      headerSlivers: const [],
+      scrollController: _scrollController,
+    );
+  }
 }

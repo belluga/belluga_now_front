@@ -1,10 +1,7 @@
 import 'package:value_object_pattern/value_object.dart';
 
 class EventProgrammingCountValue extends ValueObject<int> {
-  EventProgrammingCountValue({
-    super.defaultValue = 0,
-    super.isRequired = true,
-  });
+  EventProgrammingCountValue({super.defaultValue = 0, super.isRequired = true});
 
   @override
   int doParse(dynamic parseValue) {

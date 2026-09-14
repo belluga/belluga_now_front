@@ -37,8 +37,8 @@ class TenantAdminDiscoveryFilterSurfaceScreen extends StatefulWidget {
 
 class _TenantAdminDiscoveryFilterSurfaceScreenState
     extends State<TenantAdminDiscoveryFilterSurfaceScreen> {
-  final TenantAdminDiscoveryFiltersController _controller =
-      GetIt.I.get<TenantAdminDiscoveryFiltersController>();
+  final TenantAdminDiscoveryFiltersController _controller = GetIt.I
+      .get<TenantAdminDiscoveryFiltersController>();
 
   @override
   void initState() {
@@ -47,8 +47,9 @@ class _TenantAdminDiscoveryFilterSurfaceScreenState
   }
 
   Future<void> _editKey(int index) async {
-    final current =
-        _controller.filtersForSurface(widget.surface).elementAt(index);
+    final current = _controller
+        .filtersForSurface(widget.surface)
+        .elementAt(index);
     final result = await showTenantAdminFieldEditSheet(
       context: context,
       title: 'Editar chave do filtro',
@@ -69,8 +70,9 @@ class _TenantAdminDiscoveryFilterSurfaceScreenState
   }
 
   Future<void> _editLabel(int index) async {
-    final current =
-        _controller.filtersForSurface(widget.surface).elementAt(index);
+    final current = _controller
+        .filtersForSurface(widget.surface)
+        .elementAt(index);
     final result = await showTenantAdminFieldEditSheet(
       context: context,
       title: 'Editar rótulo do filtro',
@@ -102,8 +104,9 @@ class _TenantAdminDiscoveryFilterSurfaceScreenState
       );
       return;
     }
-    final current =
-        _controller.filtersForSurface(widget.surface).elementAt(index);
+    final current = _controller
+        .filtersForSurface(widget.surface)
+        .elementAt(index);
     final result = await showTenantAdminDiscoveryFilterRuleSheet(
       context: context,
       filter: current,
@@ -117,8 +120,9 @@ class _TenantAdminDiscoveryFilterSurfaceScreenState
   }
 
   Future<void> _editVisual(int index) async {
-    final current =
-        _controller.filtersForSurface(widget.surface).elementAt(index);
+    final current = _controller
+        .filtersForSurface(widget.surface)
+        .elementAt(index);
     final result = await showTenantAdminMapFilterVisualSheet(
       context: context,
       filter: _toMapFilterItem(current),
@@ -136,8 +140,9 @@ class _TenantAdminDiscoveryFilterSurfaceScreenState
         clearImageUriValue: TenantAdminFlagValue(result.imageUri == null),
         overrideMarkerValue: TenantAdminFlagValue(result.overrideMarker),
         markerOverride: result.markerOverride,
-        clearMarkerOverrideValue:
-            TenantAdminFlagValue(result.markerOverride == null),
+        clearMarkerOverrideValue: TenantAdminFlagValue(
+          result.markerOverride == null,
+        ),
       ),
     );
   }
@@ -285,6 +290,7 @@ class _SurfaceFiltersEditor extends StatelessWidget {
                   bottom: index == filters.length - 1 ? 0 : 12,
                 ),
                 child: _SurfaceFilterRow(
+                  controller: controller,
                   surface: surface,
                   index: index,
                   item: filters.elementAt(index),
@@ -333,6 +339,7 @@ class _SurfaceFiltersEditor extends StatelessWidget {
 
 class _SurfaceFilterRow extends StatelessWidget {
   const _SurfaceFilterRow({
+    required this.controller,
     required this.surface,
     required this.index,
     required this.item,
@@ -347,6 +354,7 @@ class _SurfaceFilterRow extends StatelessWidget {
     required this.onMoveDown,
   });
 
+  final TenantAdminDiscoveryFiltersController controller;
   final TenantAdminDiscoveryFilterSurfaceDefinition surface;
   final int index;
   final TenantAdminDiscoveryFilterCatalogItem item;
@@ -379,13 +387,14 @@ class _SurfaceFilterRow extends StatelessWidget {
         ),
         label: item.label,
         secondaryLabel: item.key,
-        ruleSummary: _ruleSummary(item),
+        ruleSummary: _ruleSummary(controller, item),
         supportsMarkerOverride: surface.supportsMarkerOverride,
         overrideMarker: item.overrideMarker,
         markerOverride: item.markerOverride,
         imageUri: item.imageUri,
-        visualButtonLabel:
-            surface.supportsMarkerOverride ? 'Visual/Marcador' : 'Visual',
+        visualButtonLabel: surface.supportsMarkerOverride
+            ? 'Visual/Marcador'
+            : 'Visual',
         hasPrevious: hasPrevious,
         hasNext: hasNext,
         onEditKey: onEditKey,
@@ -399,13 +408,25 @@ class _SurfaceFilterRow extends StatelessWidget {
     );
   }
 
-  String _ruleSummary(TenantAdminDiscoveryFilterCatalogItem item) {
+  String _ruleSummary(
+    TenantAdminDiscoveryFiltersController controller,
+    TenantAdminDiscoveryFilterCatalogItem item,
+  ) {
+    final validationError = controller.filterRuleError(surface, item);
+    if (validationError != null) {
+      return 'Regra inválida: $validationError.';
+    }
     final entities = item.query.entities;
-    final typeCount = item.query.typeValuesByEntity.values
-        .fold<int>(0, (total, values) => total + values.length);
-    final taxonomyCount = item.query.taxonomyValuesByGroup.values
-        .fold<int>(0, (total, values) => total + values.length);
-    final marker = surface.supportsMarkerOverride &&
+    final typeCount = item.query.typeValuesByEntity.values.fold<int>(
+      0,
+      (total, values) => total + values.length,
+    );
+    final taxonomyCount = item.query.taxonomyValuesByGroup.values.fold<int>(
+      0,
+      (total, values) => total + values.length,
+    );
+    final marker =
+        surface.supportsMarkerOverride &&
             item.overrideMarker &&
             item.markerOverride != null
         ? item.markerOverride!.mode.label

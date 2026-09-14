@@ -1,12 +1,13 @@
 import 'package:belluga_contact_channels/belluga_contact_channels.dart';
+import 'package:belluga_now/domain/partners/account_profile.dart';
 import 'package:belluga_now/domain/partners/account_profile_gallery_group.dart';
 import 'package:belluga_now/domain/partners/account_profile_external_link.dart';
 import 'package:belluga_now/domain/partners/engagement_data.dart';
 import 'package:belluga_now/domain/partners/account_profile_nested_group.dart';
+import 'package:belluga_now/domain/partners/account_profile_summary.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_module_data.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_fields.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_public_detail_path_value.dart';
-import 'package:belluga_now/domain/shared/account_profile_contact_source_summary.dart';
 import 'package:belluga_now/domain/shared/value_objects/account_profile_contact_channel_id_value.dart';
 import 'package:belluga_now/domain/shared/value_objects/account_profile_contact_source_account_profile_id_value.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
@@ -17,7 +18,7 @@ import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:value_object_pattern/domain/value_objects/mongo_id_value.dart';
 
-class AccountProfileModel {
+class AccountProfileComplete extends AccountProfile {
   final MongoIDValue idValue;
   final AccountProfileNameValue nameValue;
   final SlugValue slugValue;
@@ -25,7 +26,6 @@ class AccountProfileModel {
   final ThumbUriValue? avatarValue;
   final ThumbUriValue? coverValue;
   final DescriptionValue? bioValue;
-  final DescriptionValue? contentValue;
   final List<AccountProfileGalleryGroup> galleryGroupValues;
   final List<AccountProfileTagValue> tagValues;
   final List<PartnerEventView> agendaEventViews;
@@ -37,8 +37,6 @@ class AccountProfileModel {
   final LatitudeValue? locationLatitudeValue;
   final LongitudeValue? locationLongitudeValue;
   final List<AccountProfileNestedGroup> nestedProfileGroupValues;
-  final DomainBooleanValue canOpenPublicDetailValue;
-  final AccountProfilePublicDetailPathValue? publicDetailPathValue;
   final BellugaContactSourceMode contactModeValue;
   final AccountProfileContactSourceAccountProfileIdValue?
   contactSourceAccountProfileIdValue;
@@ -46,11 +44,11 @@ class AccountProfileModel {
   final AccountProfileContactChannelIdValue? contactBubbleChannelIdValue;
   final List<BellugaContactChannel> effectiveContactChannelValues;
   final BellugaContactChannel? effectiveContactBubbleChannelValue;
-  final AccountProfileContactSourceSummary? contactSourceProfile;
-  final AccountProfileContactSourceSummary? effectiveContactSourceProfile;
+  final AccountProfileSummary? contactSourceProfile;
+  final AccountProfileSummary? effectiveContactSourceProfile;
   final List<AccountProfileExternalLink> externalLinkValues;
 
-  AccountProfileModel({
+  AccountProfileComplete({
     required this.idValue,
     required this.nameValue,
     required this.slugValue,
@@ -58,7 +56,6 @@ class AccountProfileModel {
     this.avatarValue,
     this.coverValue,
     this.bioValue,
-    this.contentValue,
     List<AccountProfileGalleryGroup>? galleryGroupValues,
     List<AccountProfileTagValue>? tagValues,
     List<PartnerEventView>? agendaEventViews,
@@ -70,8 +67,8 @@ class AccountProfileModel {
     this.locationLatitudeValue,
     this.locationLongitudeValue,
     List<AccountProfileNestedGroup>? nestedProfileGroupValues,
-    DomainBooleanValue? canOpenPublicDetailValue,
-    this.publicDetailPathValue,
+    super.canOpenPublicDetailValue,
+    super.publicDetailPathValue,
     BellugaContactSourceMode? contactModeValue,
     AccountProfileContactSourceAccountProfileIdValue?
     contactSourceAccountProfileId,
@@ -106,10 +103,6 @@ class AccountProfileModel {
        externalLinkValues = List<AccountProfileExternalLink>.unmodifiable(
          externalLinkValues ?? const <AccountProfileExternalLink>[],
        ),
-       canOpenPublicDetailValue =
-           canOpenPublicDetailValue ??
-           (DomainBooleanValue(defaultValue: false, isRequired: false)
-             ..parse('false')),
        isVerifiedValue = isVerifiedValue ?? AccountProfileIsVerifiedValue(),
        acceptedInvitesValue =
            acceptedInvitesValue ?? AccountProfileAcceptedInvitesValue(),
@@ -128,7 +121,6 @@ class AccountProfileModel {
   Uri? get coverUri => coverValue?.value;
   String? get coverUrl => coverUri?.toString();
   String? get bio => bioValue?.value;
-  String? get content => contentValue?.value;
   List<AccountProfileGalleryGroup> get galleryGroups =>
       List<AccountProfileGalleryGroup>.unmodifiable(galleryGroupValues);
   List<AccountProfileTagValue> get tags =>
@@ -150,7 +142,6 @@ class AccountProfileModel {
   double? get locationLng => locationLongitudeValue?.value;
   List<AccountProfileNestedGroup> get nestedProfileGroups =>
       List<AccountProfileNestedGroup>.unmodifiable(nestedProfileGroupValues);
-  bool get canOpenPublicDetail => canOpenPublicDetailValue.value;
   String? get contactSourceAccountProfileId {
     final raw = contactSourceAccountProfileIdValue?.value.trim();
     if (raw == null || raw.isEmpty) {
@@ -181,15 +172,7 @@ class AccountProfileModel {
     return channel;
   }
 
-  String? get publicDetailPath {
-    final raw = publicDetailPathValue?.value.trim();
-    if (raw == null || raw.isEmpty) {
-      return null;
-    }
-    return raw;
-  }
-
-  AccountProfileModel copyWith({
+  AccountProfileComplete copyWith({
     MongoIDValue? idValue,
     AccountProfileNameValue? nameValue,
     SlugValue? slugValue,
@@ -197,7 +180,6 @@ class AccountProfileModel {
     ThumbUriValue? avatarValue,
     ThumbUriValue? coverValue,
     DescriptionValue? bioValue,
-    DescriptionValue? contentValue,
     List<AccountProfileGalleryGroup>? galleryGroupValues,
     List<AccountProfileTagValue>? tagValues,
     List<PartnerEventView>? agendaEventViews,
@@ -218,11 +200,11 @@ class AccountProfileModel {
     AccountProfileContactChannelIdValue? contactBubbleChannelId,
     List<BellugaContactChannel>? effectiveContactChannelValues,
     BellugaContactChannel? effectiveContactBubbleChannelValue,
-    AccountProfileContactSourceSummary? contactSourceProfile,
-    AccountProfileContactSourceSummary? effectiveContactSourceProfile,
+    AccountProfileSummary? contactSourceProfile,
+    AccountProfileSummary? effectiveContactSourceProfile,
     List<AccountProfileExternalLink>? externalLinkValues,
   }) {
-    return AccountProfileModel(
+    return AccountProfileComplete(
       idValue: idValue ?? this.idValue,
       nameValue: nameValue ?? this.nameValue,
       slugValue: slugValue ?? this.slugValue,
@@ -230,7 +212,6 @@ class AccountProfileModel {
       avatarValue: avatarValue ?? this.avatarValue,
       coverValue: coverValue ?? this.coverValue,
       bioValue: bioValue ?? this.bioValue,
-      contentValue: contentValue ?? this.contentValue,
       galleryGroupValues: galleryGroupValues ?? this.galleryGroupValues,
       tagValues: tagValues ?? this.tagValues,
       agendaEventViews: agendaEventViews ?? this.agendaEventViews,

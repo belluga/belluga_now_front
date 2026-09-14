@@ -9,6 +9,7 @@ import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.d
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_settings.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_boolean_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_account_profile_id_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_count_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_discovery_filters_settings_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_dynamic_map_value.dart';
@@ -35,6 +36,95 @@ void main() {
 
   tearDown(() async {
     await GetIt.I.reset();
+  });
+
+  test('reads and updates the single home favorites pin field', () async {
+    final adapter = _RoutingAdapter();
+    final repository = TenantAdminSettingsRepository(
+      dio: Dio()..httpClientAdapter = adapter,
+      tenantScope: _MutableTenantScope('https://tenant-a.test'),
+    );
+
+    final initial = await repository.fetchHomeFavoritesPinnedProfile();
+    final updated = await repository.updateHomeFavoritesPinnedProfile(
+      accountProfileId: TenantAdminAccountProfileIdValue('profile-2'),
+    );
+
+    expect(initial.accountProfileId, 'profile-1');
+    expect(initial.selectedProfileDisplayName, 'Profile One');
+    expect(initial.isAvailable, isTrue);
+    expect(updated.accountProfileId, 'profile-2');
+    expect(adapter.requests, hasLength(2));
+    expect(
+      adapter.requests.first.uri.path,
+      '/admin/api/v1/settings/values/home_favorites_pinned_profile',
+    );
+    expect(adapter.requests.last.method, 'PATCH');
+    expect(
+      adapter.requests.last.data,
+      equals(<String, dynamic>{'account_profile_id': 'profile-2'}),
+    );
+  });
+
+  test('rejects malformed home favorites pin readback', () async {
+    final adapter = _RoutingAdapter(
+      homeFavoritesPinnedProfilePayload: const <String, dynamic>{
+        'data': 'malformed',
+      },
+    );
+    final repository = TenantAdminSettingsRepository(
+      dio: Dio()..httpClientAdapter = adapter,
+      tenantScope: _MutableTenantScope('https://tenant-a.test'),
+    );
+
+    await expectLater(
+      repository.fetchHomeFavoritesPinnedProfile(),
+      throwsA(isA<Exception>()),
+    );
+  });
+
+  test('rejects incomplete home favorites pin invariants', () async {
+    final adapter = _RoutingAdapter(
+      homeFavoritesPinnedProfilePayload: const <String, dynamic>{
+        'data': {
+          'setting_type': 'home_favorites_pinned_profile',
+          'value': <String, dynamic>{},
+          'availability': 'unset',
+          'selected_profile': null,
+        },
+      },
+    );
+    final repository = TenantAdminSettingsRepository(
+      dio: Dio()..httpClientAdapter = adapter,
+      tenantScope: _MutableTenantScope('https://tenant-a.test'),
+    );
+
+    await expectLater(
+      repository.fetchHomeFavoritesPinnedProfile(),
+      throwsA(isA<FormatException>()),
+    );
+  });
+
+  test('rejects malformed scalar in home favorites pin readback', () async {
+    final adapter = _RoutingAdapter(
+      homeFavoritesPinnedProfilePayload: const <String, dynamic>{
+        'data': {
+          'setting_type': 'home_favorites_pinned_profile',
+          'value': <String, dynamic>{'account_profile_id': ''},
+          'availability': 'unset',
+          'selected_profile': null,
+        },
+      },
+    );
+    final repository = TenantAdminSettingsRepository(
+      dio: Dio()..httpClientAdapter = adapter,
+      tenantScope: _MutableTenantScope('https://tenant-a.test'),
+    );
+
+    await expectLater(
+      repository.fetchHomeFavoritesPinnedProfile(),
+      throwsA(isA<FormatException>()),
+    );
   });
 
   test('fetchFirebaseSettings parses firebase response', () async {
@@ -2004,6 +2094,7 @@ class _RoutingAdapter implements HttpClientAdapter {
     this.pushStatusPayload,
     this.createDomainValidationMessage,
     this.pushCredentialsResponseData,
+    this.homeFavoritesPinnedProfilePayload,
     List<Map<String, dynamic>>? domainsPayload,
     Map<String, dynamic>? appDomainsPayload,
     List<Map<String, dynamic>>? pushCredentialsPayload,
@@ -2069,6 +2160,7 @@ class _RoutingAdapter implements HttpClientAdapter {
   final Map<String, dynamic>? pushStatusPayload;
   final String? createDomainValidationMessage;
   final Object? pushCredentialsResponseData;
+  final Map<String, dynamic>? homeFavoritesPinnedProfilePayload;
   final Map<String, dynamic> _appDomainsPayload;
   final Map<String, bool> _typedAppDomainPersistedByPlatform;
   final List<Map<String, dynamic>> _pushCredentialsPayload;
@@ -2172,6 +2264,25 @@ class _RoutingAdapter implements HttpClientAdapter {
         ..clear()
         ..add(nextCredential);
       return _jsonResponse({'data': nextCredential});
+    }
+
+    if (path.endsWith('/settings/values/home_favorites_pinned_profile')) {
+      if (homeFavoritesPinnedProfilePayload != null) {
+        return _jsonResponse(homeFavoritesPinnedProfilePayload!);
+      }
+      final profileId = method == 'PATCH'
+          ? (options.data as Map)['account_profile_id']?.toString()
+          : 'profile-1';
+      return _jsonResponse({
+        'data': {
+          'setting_type': 'home_favorites_pinned_profile',
+          'value': {'account_profile_id': profileId},
+          'availability': profileId == null ? 'unset' : 'available',
+          'selected_profile': profileId == null
+              ? null
+              : {'id': profileId, 'display_name': 'Profile One'},
+        },
+      });
     }
 
     if (path.endsWith('/settings/values') && method == 'GET') {

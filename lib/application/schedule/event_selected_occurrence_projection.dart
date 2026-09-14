@@ -1,11 +1,13 @@
 import 'package:belluga_now/domain/schedule/event_model.dart';
-import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
+import 'package:belluga_now/domain/partners/account_profile_summary.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_public_detail_path_value.dart';
 import 'package:belluga_now/domain/schedule/event_occurrence_option.dart';
 import 'package:belluga_now/domain/schedule/event_profile_group.dart';
 import 'package:belluga_now/domain/schedule/event_programming_item.dart';
-import 'package:belluga_now/domain/schedule/value_objects/event_linked_account_profile_text_value.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_text_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_occurrence_values.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_tag_value.dart';
+import 'package:belluga_now/domain/value_objects/domain_boolean_value.dart';
 import 'package:value_object_pattern/domain/value_objects/date_time_value.dart';
 
 class EventSelectedOccurrenceProjection {
@@ -167,7 +169,7 @@ class EventSelectedOccurrenceProjection {
     return value?.value?.toIso8601String() ?? '';
   }
 
-  static List<EventLinkedAccountProfile> _selectedOccurrenceLinkedProfiles(
+  static List<AccountProfileSummary> _selectedOccurrenceLinkedProfiles(
     EventModel event,
     EventOccurrenceOption selectedOccurrence,
   ) {
@@ -176,12 +178,12 @@ class EventSelectedOccurrenceProjection {
       return event.linkedAccountProfiles;
     }
 
-    final occurrenceById = <String, EventLinkedAccountProfile>{
+    final occurrenceById = <String, AccountProfileSummary>{
       for (final profile in occurrenceProfiles)
         if (profile.id.trim().isNotEmpty) profile.id.trim(): profile,
     };
     final seenIds = <String>{};
-    final merged = <EventLinkedAccountProfile>[];
+    final merged = <AccountProfileSummary>[];
 
     for (final profile in event.linkedAccountProfiles) {
       final profileId = profile.id.trim();
@@ -207,13 +209,13 @@ class EventSelectedOccurrenceProjection {
       merged.add(profile);
     }
 
-    return List<EventLinkedAccountProfile>.unmodifiable(merged);
+    return List<AccountProfileSummary>.unmodifiable(merged);
   }
 
   static List<EventProfileGroup> _selectedOccurrenceProfileGroups(
     EventModel event,
     EventOccurrenceOption selectedOccurrence,
-    List<EventLinkedAccountProfile> linkedAccountProfiles,
+    List<AccountProfileSummary> linkedAccountProfiles,
   ) {
     final baseGroups = event.profileGroups.isNotEmpty
         ? event.profileGroups
@@ -222,7 +224,7 @@ class EventSelectedOccurrenceProjection {
       return event.profileGroups;
     }
 
-    final profilesById = <String, EventLinkedAccountProfile>{
+    final profilesById = <String, AccountProfileSummary>{
       for (final profile in linkedAccountProfiles)
         if (profile.id.trim().isNotEmpty) profile.id.trim(): profile,
     };
@@ -239,7 +241,7 @@ class EventSelectedOccurrenceProjection {
             : resolvedProfiles
                   .map((profile) => profile.id.trim())
                   .where((id) => id.isNotEmpty)
-                  .map(EventLinkedAccountProfileTextValue.new)
+                  .map(AccountProfileTextValue.new)
                   .toList(growable: false);
         return EventProfileGroup(
           idValue: group.idValue,
@@ -254,11 +256,11 @@ class EventSelectedOccurrenceProjection {
     );
   }
 
-  static List<EventLinkedAccountProfile> _resolveProfileGroupProfiles({
+  static List<AccountProfileSummary> _resolveProfileGroupProfiles({
     required EventProfileGroup group,
-    required Map<String, EventLinkedAccountProfile> profilesById,
+    required Map<String, AccountProfileSummary> profilesById,
   }) {
-    final snapshotProfilesById = <String, EventLinkedAccountProfile>{
+    final snapshotProfilesById = <String, AccountProfileSummary>{
       for (final profile in group.profiles)
         if (profile.id.trim().isNotEmpty) profile.id.trim(): profile,
     };
@@ -267,7 +269,7 @@ class EventSelectedOccurrenceProjection {
         .where((id) => id.isNotEmpty)
         .toList(growable: false);
     if (groupProfileIds.isNotEmpty) {
-      return List<EventLinkedAccountProfile>.unmodifiable(
+      return List<AccountProfileSummary>.unmodifiable(
         groupProfileIds
             .map(
               (profileId) => _resolveGroupedProfile(
@@ -276,12 +278,12 @@ class EventSelectedOccurrenceProjection {
                 snapshotProfilesById: snapshotProfilesById,
               ),
             )
-            .whereType<EventLinkedAccountProfile>(),
+            .whereType<AccountProfileSummary>(),
       );
     }
 
     final seenIds = <String>{};
-    final resolvedProfiles = <EventLinkedAccountProfile>[];
+    final resolvedProfiles = <AccountProfileSummary>[];
     for (final profile in group.profiles) {
       final profileId = profile.id.trim();
       if (profileId.isNotEmpty && !seenIds.add(profileId)) {
@@ -296,13 +298,13 @@ class EventSelectedOccurrenceProjection {
             profile,
       );
     }
-    return List<EventLinkedAccountProfile>.unmodifiable(resolvedProfiles);
+    return List<AccountProfileSummary>.unmodifiable(resolvedProfiles);
   }
 
-  static EventLinkedAccountProfile? _resolveGroupedProfile({
+  static AccountProfileSummary? _resolveGroupedProfile({
     required String profileId,
-    required Map<String, EventLinkedAccountProfile> profilesById,
-    required Map<String, EventLinkedAccountProfile> snapshotProfilesById,
+    required Map<String, AccountProfileSummary> profilesById,
+    required Map<String, AccountProfileSummary> snapshotProfilesById,
   }) {
     final normalizedProfileId = profileId.trim();
     if (normalizedProfileId.isEmpty) {
@@ -360,7 +362,7 @@ class EventSelectedOccurrenceProjection {
   }
 
   static String _linkedAccountProfileSignature(
-    List<EventLinkedAccountProfile> profiles,
+    List<AccountProfileSummary> profiles,
   ) {
     return profiles
         .map((profile) {
@@ -379,45 +381,45 @@ class EventSelectedOccurrenceProjection {
             profile.id.trim(),
             profile.displayName.trim(),
             profile.profileType.trim(),
+            profile.partyType?.trim() ?? '',
             profile.slug.trim(),
             profile.avatarUrl?.trim() ?? '',
             profile.coverUrl?.trim() ?? '',
-            profile.partyType?.trim() ?? '',
             profile.locationAddress?.trim() ?? '',
             profile.locationLat?.toString() ?? '',
             profile.locationLng?.toString() ?? '',
-            profile.canOpenPublicDetail.toString(),
-            profile.publicDetailPath?.trim() ?? '',
+            profile.publicDetailUrl ?? '',
             taxonomySignature,
           ].join(':');
         })
         .join('|');
   }
 
-  static EventLinkedAccountProfile _mergeLinkedAccountProfile({
-    required EventLinkedAccountProfile aggregate,
-    required EventLinkedAccountProfile selectedOccurrence,
+  static AccountProfileSummary _mergeLinkedAccountProfile({
+    required AccountProfileSummary aggregate,
+    required AccountProfileSummary selectedOccurrence,
   }) {
-    return EventLinkedAccountProfile(
+    final publicDetailUrl =
+        selectedOccurrence.publicDetailUrl ?? aggregate.publicDetailUrl;
+    return AccountProfileSummary(
       idValue: aggregate.idValue,
-      displayNameValue: selectedOccurrence.displayName.trim().isNotEmpty
-          ? selectedOccurrence.displayNameValue
-          : aggregate.displayNameValue,
+      nameValue: selectedOccurrence.name.trim().isNotEmpty
+          ? selectedOccurrence.nameValue
+          : aggregate.nameValue,
       profileTypeValue: selectedOccurrence.profileType.trim().isNotEmpty
           ? selectedOccurrence.profileTypeValue
           : aggregate.profileTypeValue,
+      partyTypeValue:
+          selectedOccurrence.partyTypeValue ?? aggregate.partyTypeValue,
       slugValue: selectedOccurrence.slug.trim().isNotEmpty
           ? selectedOccurrence.slugValue
           : aggregate.slugValue,
-      avatarUrlValue: (selectedOccurrence.avatarUrl?.trim().isNotEmpty ?? false)
-          ? selectedOccurrence.avatarUrlValue
-          : aggregate.avatarUrlValue,
-      coverUrlValue: (selectedOccurrence.coverUrl?.trim().isNotEmpty ?? false)
-          ? selectedOccurrence.coverUrlValue
-          : aggregate.coverUrlValue,
-      partyTypeValue: (selectedOccurrence.partyType?.trim().isNotEmpty ?? false)
-          ? selectedOccurrence.partyTypeValue
-          : aggregate.partyTypeValue,
+      avatarValue: (selectedOccurrence.avatarUrl?.trim().isNotEmpty ?? false)
+          ? selectedOccurrence.avatarValue
+          : aggregate.avatarValue,
+      coverValue: (selectedOccurrence.coverUrl?.trim().isNotEmpty ?? false)
+          ? selectedOccurrence.coverValue
+          : aggregate.coverValue,
       locationAddressValue:
           (selectedOccurrence.locationAddress?.trim().isNotEmpty ?? false)
           ? selectedOccurrence.locationAddressValue
@@ -428,13 +430,13 @@ class EventSelectedOccurrenceProjection {
       locationLongitudeValue:
           selectedOccurrence.locationLongitudeValue ??
           aggregate.locationLongitudeValue,
-      canOpenPublicDetailValue: selectedOccurrence.canOpenPublicDetail
-          ? selectedOccurrence.canOpenPublicDetailValue
-          : aggregate.canOpenPublicDetailValue,
-      publicDetailPathValue:
-          (selectedOccurrence.publicDetailPath?.trim().isNotEmpty ?? false)
-          ? selectedOccurrence.publicDetailPathValue
-          : aggregate.publicDetailPathValue,
+      canOpenPublicDetailValue: DomainBooleanValue(
+        defaultValue: false,
+        isRequired: false,
+      )..parse((publicDetailUrl != null).toString()),
+      publicDetailPathValue: publicDetailUrl == null
+          ? null
+          : AccountProfilePublicDetailPathValue(publicDetailUrl),
       taxonomyTerms: _mergeTaxonomyTerms(
         primary: selectedOccurrence.taxonomyTerms,
         secondary: aggregate.taxonomyTerms,
@@ -442,9 +444,9 @@ class EventSelectedOccurrenceProjection {
     );
   }
 
-  static EventLinkedAccountProfileTaxonomyTerms _mergeTaxonomyTerms({
-    required EventLinkedAccountProfileTaxonomyTerms primary,
-    required EventLinkedAccountProfileTaxonomyTerms secondary,
+  static AccountProfileTaxonomyTerms _mergeTaxonomyTerms({
+    required AccountProfileTaxonomyTerms primary,
+    required AccountProfileTaxonomyTerms secondary,
   }) {
     if (primary.isEmpty) {
       return secondary;
@@ -453,10 +455,10 @@ class EventSelectedOccurrenceProjection {
       return primary;
     }
 
-    final merged = EventLinkedAccountProfileTaxonomyTerms();
+    final merged = AccountProfileTaxonomyTerms();
     final seen = <String>{};
 
-    void ingest(EventLinkedAccountProfileTaxonomyTerms source) {
+    void ingest(AccountProfileTaxonomyTerms source) {
       for (final term in source) {
         final key = '${term.typeValue.value}:${term.valueValue.value}';
         if (!seen.add(key)) {
@@ -480,9 +482,8 @@ class EventSelectedOccurrenceProjection {
   static String _tagSignature(Iterable<dynamic> tags) {
     return tags
         .map(
-          (tag) => tag is EventTagValue
-              ? tag.value.trim()
-              : tag.toString().trim(),
+          (tag) =>
+              tag is EventTagValue ? tag.value.trim() : tag.toString().trim(),
         )
         .where((tag) => tag.isNotEmpty)
         .join('|');

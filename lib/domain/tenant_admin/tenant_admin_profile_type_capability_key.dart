@@ -9,7 +9,6 @@ enum TenantAdminProfileTypeCapabilityKey {
   isPoiEnabled,
   isReferenceLocationEnabled,
   hasBio,
-  hasContent,
   hasTaxonomies,
   hasAvatar,
   hasCover,
@@ -31,7 +30,6 @@ enum TenantAdminProfileTypeCapabilityKey {
     TenantAdminProfileTypeCapabilityKey.isReferenceLocationEnabled =>
       'is_reference_location_enabled',
     TenantAdminProfileTypeCapabilityKey.hasBio => 'has_bio',
-    TenantAdminProfileTypeCapabilityKey.hasContent => 'has_content',
     TenantAdminProfileTypeCapabilityKey.hasTaxonomies => 'has_taxonomies',
     TenantAdminProfileTypeCapabilityKey.hasAvatar => 'has_avatar',
     TenantAdminProfileTypeCapabilityKey.hasCover => 'has_cover',

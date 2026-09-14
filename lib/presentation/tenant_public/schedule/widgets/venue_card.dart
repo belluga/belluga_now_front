@@ -1,33 +1,26 @@
 import 'package:auto_route/auto_route.dart';
-import 'package:belluga_now/domain/partner/partner_resume.dart';
+import 'package:belluga_now/domain/partners/account_profile_summary.dart';
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
 import 'package:flutter/material.dart';
 
 class VenueCard extends StatelessWidget {
   const VenueCard({super.key, required this.venue});
 
-  final PartnerResume venue;
+  final AccountProfileSummary venue;
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    final publicDetailPath = venue.publicDetailPath?.trim();
-    final logoImageUri = venue.logoImageUri;
-    final ctaPath = venue.canOpenPublicDetail &&
-            publicDetailPath != null &&
-            publicDetailPath.isNotEmpty
-        ? publicDetailPath
-        : null;
+    final logoImageUri = venue.avatarUri;
+    final ctaPath = venue.publicDetailUrl;
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: colorScheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: colorScheme.outlineVariant,
-        ),
+        border: Border.all(color: colorScheme.outlineVariant),
       ),
       child: Row(
         children: [

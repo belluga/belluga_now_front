@@ -29,7 +29,7 @@ class PartnerEventView {
   final PartnerProjectionOptionalTextValue? venueTitleValue;
   final ThumbUriValue? imageUriValue;
   final EventCounterpartCountValue? counterpartCountValue;
-  final List<PartnerSupportedEntityView> linkedAccountProfiles;
+  final List<AccountProfileSummary> linkedAccountProfiles;
 
   String get eventId => eventIdValue.value;
   String get occurrenceId => occurrenceIdValue.value;
@@ -90,16 +90,12 @@ class PartnerEventView {
 
   Uri? get imageUri => imageUriValue?.value;
   int get counterpartCount => counterpartCountValue?.value ?? 0;
-  List<PartnerSupportedEntityView> get counterpartProfiles =>
-      List<PartnerSupportedEntityView>.unmodifiable(
-        linkedAccountProfiles.where(
-          (profile) => profile.title.trim().isNotEmpty,
-        ),
-      );
-  PartnerSupportedEntityView? get primaryCounterpart =>
+  List<AccountProfileSummary> get counterpartProfiles =>
+      List<AccountProfileSummary>.unmodifiable(linkedAccountProfiles);
+  AccountProfileSummary? get primaryCounterpart =>
       counterpartProfiles.isEmpty ? null : counterpartProfiles.first;
   String get counterpartNamesLabel => counterpartProfiles
-      .map((profile) => profile.title.trim())
+      .map((profile) => profile.name.trim())
       .where((t) => t.isNotEmpty)
       .join(', ');
 }

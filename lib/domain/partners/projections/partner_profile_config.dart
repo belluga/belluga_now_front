@@ -1,4 +1,4 @@
-import 'package:belluga_now/domain/partners/account_profile_model.dart';
+import 'package:belluga_now/domain/partners/account_profile_complete.dart';
 import 'package:belluga_now/domain/partners/projections/value_objects/partner_projection_text_values.dart';
 
 part 'partner_profile_config/profile_module_config.dart';

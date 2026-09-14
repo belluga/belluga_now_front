@@ -1,6 +1,6 @@
 import 'package:belluga_now/domain/partners/value_objects/account_profile_nested_group_fields.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_gallery_player_aspect_ratio_value.dart';
-import 'package:belluga_now/domain/partners/value_objects/account_profile_nested_group_member_text_value.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_text_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_gallery/belluga_gallery.dart';
 
@@ -16,26 +16,25 @@ class AccountProfileGalleryItem {
     required this.cardUrlValue,
     required this.modalUrlValue,
     this.type = AccountProfileGalleryItemType.photo,
-    AccountProfileNestedGroupMemberTextValue? titleValue,
-    AccountProfileNestedGroupMemberTextValue? youtubeVideoIdValue,
+    AccountProfileTextValue? titleValue,
+    AccountProfileTextValue? youtubeVideoIdValue,
     AccountProfileGalleryPlayerAspectRatioValue? playerAspectRatioValue,
-  }) : titleValue = titleValue ?? AccountProfileNestedGroupMemberTextValue(),
-       youtubeVideoIdValue =
-           youtubeVideoIdValue ?? AccountProfileNestedGroupMemberTextValue(),
+  }) : titleValue = titleValue ?? AccountProfileTextValue(),
+       youtubeVideoIdValue = youtubeVideoIdValue ?? AccountProfileTextValue(),
        playerAspectRatioValue =
            playerAspectRatioValue ??
            AccountProfileGalleryPlayerAspectRatioValue();
 
   final AccountProfileNestedGroupIdValue itemIdValue;
-  final AccountProfileNestedGroupMemberTextValue titleValue;
-  final AccountProfileNestedGroupMemberTextValue descriptionValue;
+  final AccountProfileTextValue titleValue;
+  final AccountProfileTextValue descriptionValue;
   final AccountProfileNestedGroupOrderValue orderValue;
   final ThumbUriValue imageUrlValue;
   final ThumbUriValue thumbUrlValue;
   final ThumbUriValue cardUrlValue;
   final ThumbUriValue modalUrlValue;
   final AccountProfileGalleryItemType type;
-  final AccountProfileNestedGroupMemberTextValue youtubeVideoIdValue;
+  final AccountProfileTextValue youtubeVideoIdValue;
   final AccountProfileGalleryPlayerAspectRatioValue playerAspectRatioValue;
 
   String get itemId => itemIdValue.value;

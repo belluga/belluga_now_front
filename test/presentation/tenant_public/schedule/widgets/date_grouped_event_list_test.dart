@@ -66,48 +66,48 @@ void main() {
     expect(labelRect.right, lessThanOrEqualTo(390));
   });
 
-  testWidgets(
-    'preserves the legacy date header layout unless scaling is opted in',
-    (tester) async {
-      final date = DateTime(2030, 8, 26);
-      final event = buildUpcomingOcurrenceResume(
-        id: '507f1f77bcf86cd799439097',
-        slug: 'legacy-date-header',
-        title: 'Evento com cabeçalho legado',
-        imageUri: Uri.parse('http://example.com/event.jpg'),
-        startDateTime: date.add(const Duration(hours: 18)),
-        location: 'Campo do Buenos Aires',
-        venueTitle: 'Carvoeiro',
-      );
+  testWidgets('Event Search box facade keeps date headers non-sticky', (
+    tester,
+  ) async {
+    final date = DateTime(2030, 8, 26);
+    final event = buildUpcomingOcurrenceResume(
+      id: '507f1f77bcf86cd799439097',
+      slug: 'legacy-date-header',
+      title: 'Evento com cabeçalho legado',
+      imageUri: Uri.parse('http://example.com/event.jpg'),
+      startDateTime: date.add(const Duration(hours: 18)),
+      location: 'Campo do Buenos Aires',
+      venueTitle: 'Carvoeiro',
+    );
 
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: DateGroupedEventList(
-              events: [event],
-              onEventSelected: (_) {},
-              primary: false,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-            ),
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: DateGroupedEventList(
+            events: [event],
+            onEventSelected: (_) {},
+            primary: false,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
           ),
         ),
-      );
-      await tester.pump();
+      ),
+    );
+    await tester.pump();
 
-      final label = DateFormat.MMMMEEEEd().format(date).toUpperCase();
-      final labelFinder = find.text(label);
-      expect(labelFinder, findsOneWidget);
-      expect(
-        find.ancestor(of: labelFinder, matching: find.byType(FittedBox)),
-        findsNothing,
-      );
+    final label = DateFormat.MMMMEEEEd().format(date).toUpperCase();
+    final labelFinder = find.text(label);
+    expect(labelFinder, findsOneWidget);
+    expect(
+      find.ancestor(of: labelFinder, matching: find.byType(FittedBox)),
+      findsNothing,
+    );
+    expect(find.byType(PinnedHeaderSliver), findsNothing);
 
-      final labelWidget = tester.widget<Text>(labelFinder);
-      expect(labelWidget.maxLines, isNull);
-      expect(labelWidget.softWrap, isNull);
-    },
-  );
+    final labelWidget = tester.widget<Text>(labelFinder);
+    expect(labelWidget.maxLines, isNull);
+    expect(labelWidget.softWrap, isNull);
+  });
 
   testWidgets(
     'groups by local calendar date and orders shuffled occurrences by start time',
@@ -412,6 +412,83 @@ void main() {
               .toUpperCase(),
         ),
         findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets(
+    'sliver facade keeps AGORA unpinned and creates one pinned group per date',
+    (tester) async {
+      final now = DateTime.now();
+      final events = <UpcomingOcurrenceResume>[
+        buildUpcomingOcurrenceResume(
+          id: '507f1f77bcf86cd799439111',
+          slug: 'happening-now',
+          title: 'Acontecendo Agora',
+          imageUri: Uri.parse('http://example.com/now.jpg'),
+          startDateTime: now.subtract(const Duration(minutes: 30)),
+          endDateTime: now.add(const Duration(minutes: 30)),
+          location: 'Centro',
+        ),
+        buildUpcomingOcurrenceResume(
+          id: '507f1f77bcf86cd799439112',
+          slug: 'tomorrow',
+          title: 'Evento Amanhã',
+          imageUri: Uri.parse('http://example.com/tomorrow.jpg'),
+          startDateTime: now.add(const Duration(days: 1)),
+          location: 'Centro',
+        ),
+        buildUpcomingOcurrenceResume(
+          id: '507f1f77bcf86cd799439113',
+          slug: 'after-tomorrow',
+          title: 'Evento Depois de Amanhã',
+          imageUri: Uri.parse('http://example.com/after-tomorrow.jpg'),
+          startDateTime: now.add(const Duration(days: 2)),
+          location: 'Centro',
+        ),
+      ];
+      late List<Widget> slivers;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) {
+                slivers = DateGroupedEventList(
+                  events: events,
+                  highlightNowEvents: true,
+                  footer: const SizedBox(key: Key('terminal-footer')),
+                  onEventSelected: (_) {},
+                ).buildSlivers(context);
+                return CustomScrollView(slivers: slivers);
+              },
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(slivers, hasLength(5));
+      expect((slivers[0] as SliverPadding).child, isA<SliverToBoxAdapter>());
+      expect((slivers[1] as SliverPadding).child, isA<SliverList>());
+
+      final dateGroups = slivers
+          .skip(2)
+          .take(2)
+          .map((sliver) => (sliver as SliverPadding).child)
+          .whereType<SliverMainAxisGroup>()
+          .toList();
+      expect(dateGroups, hasLength(2));
+      for (final group in dateGroups) {
+        expect(group.children.first, isA<PinnedHeaderSliver>());
+        expect(group.children.last, isA<SliverList>());
+      }
+
+      final terminalSliver = (slivers.last as SliverPadding).child;
+      expect(terminalSliver, isA<SliverToBoxAdapter>());
+      expect(
+        ((terminalSliver as SliverToBoxAdapter).child! as Padding).child!.key,
+        const Key('terminal-footer'),
       );
     },
   );

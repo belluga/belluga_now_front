@@ -264,8 +264,10 @@ class _GalleryGroupCard extends StatelessWidget {
                       decoration: const InputDecoration(
                         labelText: 'Nome da galeria',
                       ),
-                      onFieldSubmitted: (value) =>
-                          unawaited(onRenameGroup(group.groupId, value)),
+                      onFieldSubmitted: busy
+                          ? null
+                          : (value) =>
+                                unawaited(onRenameGroup(group.groupId, value)),
                       onChanged: (value) =>
                           onInputChanged('$groupErrorPrefix.subtitle', value),
                       validator: (value) {
@@ -337,6 +339,7 @@ class _GalleryGroupCard extends StatelessWidget {
                     item: group.items[itemIndex],
                     index: itemIndex,
                     totalItems: group.items.length,
+                    busy: busy,
                     fieldErrors: fieldErrors,
                     resolveInputValue: resolveInputValue,
                     onInputChanged: onInputChanged,
@@ -443,6 +446,7 @@ class _GalleryItemCard extends StatelessWidget {
     required this.item,
     required this.index,
     required this.totalItems,
+    required this.busy,
     required this.fieldErrors,
     required this.resolveInputValue,
     required this.onInputChanged,
@@ -457,6 +461,7 @@ class _GalleryItemCard extends StatelessWidget {
   final TenantAdminAccountProfileGalleryItemDraft item;
   final int index;
   final int totalItems;
+  final bool busy;
   final Map<String, String> fieldErrors;
   final String Function(String fieldPath, String authoritativeValue)
   resolveInputValue;
@@ -514,8 +519,11 @@ class _GalleryItemCard extends StatelessWidget {
                   errorKey: Key(
                     'tenantAdminGalleryItemTitleError_${item.itemId}',
                   ),
-                  onSubmitted: (value) =>
-                      unawaited(onTitleChanged(groupId, item.itemId, value)),
+                  onSubmitted: busy
+                      ? null
+                      : (value) => unawaited(
+                          onTitleChanged(groupId, item.itemId, value),
+                        ),
                   onChanged: (value) =>
                       onInputChanged('$errorPrefix.title', value),
                 ),
@@ -535,9 +543,11 @@ class _GalleryItemCard extends StatelessWidget {
                   errorKey: Key(
                     'tenantAdminGalleryItemDescriptionError_${item.itemId}',
                   ),
-                  onSubmitted: (value) => unawaited(
-                    onDescriptionChanged(groupId, item.itemId, value),
-                  ),
+                  onSubmitted: busy
+                      ? null
+                      : (value) => unawaited(
+                          onDescriptionChanged(groupId, item.itemId, value),
+                        ),
                   onChanged: (value) =>
                       onInputChanged('$errorPrefix.description', value),
                 ),
@@ -548,9 +558,11 @@ class _GalleryItemCard extends StatelessWidget {
                   children: [
                     OutlinedButton.icon(
                       key: Key('tenantAdminGalleryItemReplace_${item.itemId}'),
-                      onPressed: () => unawaited(
-                        onReplaceItemRequested(groupId, item.itemId),
-                      ),
+                      onPressed: busy
+                          ? null
+                          : () => unawaited(
+                              onReplaceItemRequested(groupId, item.itemId),
+                            ),
                       icon: Icon(
                         item.type ==
                                 TenantAdminAccountProfileGalleryItemType.photo
@@ -567,7 +579,7 @@ class _GalleryItemCard extends StatelessWidget {
                     if (totalItems > 1)
                       IconButton(
                         tooltip: 'Mover para cima',
-                        onPressed: index == 0
+                        onPressed: busy || index == 0
                             ? null
                             : () => unawaited(
                                 onMoveItem(groupId, item.itemId, -1),
@@ -577,7 +589,7 @@ class _GalleryItemCard extends StatelessWidget {
                     if (totalItems > 1)
                       IconButton(
                         tooltip: 'Mover para baixo',
-                        onPressed: index >= totalItems - 1
+                        onPressed: busy || index >= totalItems - 1
                             ? null
                             : () => unawaited(
                                 onMoveItem(groupId, item.itemId, 1),
@@ -590,8 +602,9 @@ class _GalleryItemCard extends StatelessWidget {
                               TenantAdminAccountProfileGalleryItemType.photo
                           ? 'Remover foto'
                           : 'Remover vídeo',
-                      onPressed: () =>
-                          unawaited(onRemoveItem(groupId, item.itemId)),
+                      onPressed: busy
+                          ? null
+                          : () => unawaited(onRemoveItem(groupId, item.itemId)),
                       icon: const Icon(Icons.delete_outline),
                     ),
                   ],
@@ -635,7 +648,7 @@ class _AuthoritativeGalleryTextField extends StatelessWidget {
   final Object authoritativeSnapshot;
   final String value;
   final String labelText;
-  final ValueChanged<String> onSubmitted;
+  final ValueChanged<String>? onSubmitted;
   final ValueChanged<String> onChanged;
   final String? errorText;
   final Key? errorKey;

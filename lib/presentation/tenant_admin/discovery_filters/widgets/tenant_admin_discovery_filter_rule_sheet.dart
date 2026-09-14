@@ -7,7 +7,7 @@ import 'package:belluga_now/presentation/tenant_admin/discovery_filters/models/t
 import 'package:flutter/material.dart';
 
 Future<TenantAdminDiscoveryFilterCatalogItem?>
-    showTenantAdminDiscoveryFilterRuleSheet({
+showTenantAdminDiscoveryFilterRuleSheet({
   required BuildContext context,
   required TenantAdminDiscoveryFilterCatalogItem filter,
   required TenantAdminDiscoveryFilterSurfaceDefinition surface,
@@ -55,9 +55,7 @@ class _TenantAdminDiscoveryFilterRuleSheetState
     _selectedEntities = widget.filter.query.entities.toSet();
     if (_selectedEntities.isEmpty &&
         widget.surface.allowedSources.length == 1) {
-      _selectedEntities = {
-        widget.surface.allowedSources.first.apiValue,
-      };
+      _selectedEntities = {widget.surface.allowedSources.first.apiValue};
     }
     _selectedTypesByEntity = {
       for (final entry in widget.filter.query.typeValuesByEntity.entries)
@@ -67,14 +65,36 @@ class _TenantAdminDiscoveryFilterRuleSheetState
       for (final entry in widget.filter.query.taxonomyValuesByGroup.entries)
         entry.key: entry.value.map((token) => token.value).toSet(),
     };
-    _sanitizeSelection();
+  }
+
+  String? get _selectionError {
+    if (widget.surface.key !=
+        TenantAdminDiscoveryFilterSurfaceDefinition.map.key) {
+      return null;
+    }
+    if (_selectedEntities.length != 1) {
+      return 'Selecione exatamente uma entidade para este filtro do mapa.';
+    }
+    final allowedEntities = widget.surface.allowedSources
+        .map((source) => source.apiValue)
+        .toSet();
+    final entity = _selectedEntities.single;
+    if (!allowedEntities.contains(entity)) {
+      return 'A entidade configurada não é reconhecida. Selecione uma opção válida.';
+    }
+    if (_selectedTypesByEntity.keys.any((key) => key != entity)) {
+      return 'Há tipos vinculados a outra entidade. Selecione novamente a entidade.';
+    }
+    return null;
   }
 
   void _sanitizeSelection() {
-    final allowedEntities =
-        widget.surface.allowedSources.map((source) => source.apiValue).toSet();
-    _selectedEntities =
-        _selectedEntities.where(allowedEntities.contains).toSet();
+    final allowedEntities = widget.surface.allowedSources
+        .map((source) => source.apiValue)
+        .toSet();
+    _selectedEntities = _selectedEntities
+        .where(allowedEntities.contains)
+        .toSet();
     _selectedTypesByEntity.removeWhere(
       (entity, _) => !_selectedEntities.contains(entity),
     );
@@ -86,8 +106,9 @@ class _TenantAdminDiscoveryFilterRuleSheetState
           .toSet();
       final selected = _selectedTypesByEntity[source.apiValue];
       if (selected != null) {
-        _selectedTypesByEntity[source.apiValue] =
-            selected.where(allowedTypes.contains).toSet();
+        _selectedTypesByEntity[source.apiValue] = selected
+            .where(allowedTypes.contains)
+            .toSet();
       }
     }
 
@@ -102,13 +123,11 @@ class _TenantAdminDiscoveryFilterRuleSheetState
             .add(_termValue(option));
       }
     }
-    _selectedTaxonomyByGroup.removeWhere(
-      (group, values) {
-        final allowed = allowedTaxonomyValues[group] ?? const <String>{};
-        values.removeWhere((value) => !allowed.contains(value));
-        return values.isEmpty;
-      },
-    );
+    _selectedTaxonomyByGroup.removeWhere((group, values) {
+      final allowed = allowedTaxonomyValues[group] ?? const <String>{};
+      values.removeWhere((value) => !allowed.contains(value));
+      return values.isEmpty;
+    });
   }
 
   TenantAdminDiscoveryFilterCatalogItem _buildResult() {
@@ -131,6 +150,7 @@ class _TenantAdminDiscoveryFilterRuleSheetState
   @override
   Widget build(BuildContext context) {
     final groupedTaxonomy = _groupTaxonomyOptions();
+    final selectionError = _selectionError;
     return SafeArea(
       child: Padding(
         padding: EdgeInsets.only(
@@ -149,30 +169,48 @@ class _TenantAdminDiscoveryFilterRuleSheetState
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               const SizedBox(height: 12),
-              Text(
-                'Entidades',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
+              Text('Entidades', style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 8),
+              if (selectionError != null) ...[
+                Text(
+                  selectionError,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.error,
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
-                children: widget.surface.allowedSources.map((source) {
-                  return FilterChip(
-                    label: Text(source.label),
-                    selected: _selectedEntities.contains(source.apiValue),
-                    onSelected: (selected) {
-                      setState(() {
-                        if (selected) {
-                          _selectedEntities.add(source.apiValue);
-                        } else {
-                          _selectedEntities.remove(source.apiValue);
-                        }
-                        _sanitizeSelection();
-                      });
-                    },
-                  );
-                }).toList(growable: false),
+                children: widget.surface.allowedSources
+                    .map((source) {
+                      return FilterChip(
+                        label: Text(source.label),
+                        selected: _selectedEntities.contains(source.apiValue),
+                        onSelected: (selected) {
+                          setState(() {
+                            if (selected &&
+                                widget.surface.key ==
+                                    TenantAdminDiscoveryFilterSurfaceDefinition
+                                        .map
+                                        .key) {
+                              _selectedEntities = <String>{source.apiValue};
+                              _selectedTypesByEntity.removeWhere(
+                                (entity, _) => entity != source.apiValue,
+                              );
+                              _selectedTaxonomyByGroup.clear();
+                            } else if (selected) {
+                              _selectedEntities.add(source.apiValue);
+                            } else {
+                              _selectedEntities.remove(source.apiValue);
+                            }
+                            _sanitizeSelection();
+                          });
+                        },
+                      );
+                    })
+                    .toList(growable: false),
               ),
               const SizedBox(height: 16),
               ..._typeBlocks(context),
@@ -201,30 +239,34 @@ class _TenantAdminDiscoveryFilterRuleSheetState
                       Wrap(
                         spacing: 8,
                         runSpacing: 8,
-                        children: entry.value.options.map((option) {
-                          final term = _termValue(option);
-                          final selected =
-                              _selectedTaxonomyByGroup[option.taxonomySlug]
+                        children: entry.value.options
+                            .map((option) {
+                              final term = _termValue(option);
+                              final selected =
+                                  _selectedTaxonomyByGroup[option.taxonomySlug]
                                       ?.contains(term) ==
                                   true;
-                          return FilterChip(
-                            label: Text(option.label),
-                            selected: selected,
-                            onSelected: (isSelected) {
-                              setState(() {
-                                final terms =
-                                    _selectedTaxonomyByGroup.putIfAbsent(
-                                        option.taxonomySlug, () => <String>{});
-                                if (isSelected) {
-                                  terms.add(term);
-                                } else {
-                                  terms.remove(term);
-                                }
-                                _sanitizeSelection();
-                              });
-                            },
-                          );
-                        }).toList(growable: false),
+                              return FilterChip(
+                                label: Text(option.label),
+                                selected: selected,
+                                onSelected: (isSelected) {
+                                  setState(() {
+                                    final terms = _selectedTaxonomyByGroup
+                                        .putIfAbsent(
+                                          option.taxonomySlug,
+                                          () => <String>{},
+                                        );
+                                    if (isSelected) {
+                                      terms.add(term);
+                                    } else {
+                                      terms.remove(term);
+                                    }
+                                    _sanitizeSelection();
+                                  });
+                                },
+                              );
+                            })
+                            .toList(growable: false),
                       ),
                     ],
                   ),
@@ -239,7 +281,8 @@ class _TenantAdminDiscoveryFilterRuleSheetState
                   ),
                   const Spacer(),
                   FilledButton(
-                    onPressed: _selectedEntities.isEmpty
+                    onPressed:
+                        _selectedEntities.isEmpty || selectionError != null
                         ? null
                         : () => context.router.pop(_buildResult()),
                     child: const Text('Aplicar'),
@@ -280,27 +323,34 @@ class _TenantAdminDiscoveryFilterRuleSheetState
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
-                  children: typeOptions.map((option) {
-                    final selected = _selectedTypesByEntity[source.apiValue]
-                            ?.contains(option.slug) ==
-                        true;
-                    return FilterChip(
-                      label: Text(option.label),
-                      selected: selected,
-                      onSelected: (isSelected) {
-                        setState(() {
-                          final selectedTypes = _selectedTypesByEntity
-                              .putIfAbsent(source.apiValue, () => <String>{});
-                          if (isSelected) {
-                            selectedTypes.add(option.slug);
-                          } else {
-                            selectedTypes.remove(option.slug);
-                          }
-                          _sanitizeSelection();
-                        });
-                      },
-                    );
-                  }).toList(growable: false),
+                  children: typeOptions
+                      .map((option) {
+                        final selected =
+                            _selectedTypesByEntity[source.apiValue]?.contains(
+                              option.slug,
+                            ) ==
+                            true;
+                        return FilterChip(
+                          label: Text(option.label),
+                          selected: selected,
+                          onSelected: (isSelected) {
+                            setState(() {
+                              final selectedTypes = _selectedTypesByEntity
+                                  .putIfAbsent(
+                                    source.apiValue,
+                                    () => <String>{},
+                                  );
+                              if (isSelected) {
+                                selectedTypes.add(option.slug);
+                              } else {
+                                selectedTypes.remove(option.slug);
+                              }
+                              _sanitizeSelection();
+                            });
+                          },
+                        );
+                      })
+                      .toList(growable: false),
                 ),
             ],
           ),
@@ -348,10 +398,7 @@ class _TenantAdminDiscoveryFilterRuleSheetState
 }
 
 class _TaxonomyGroup {
-  _TaxonomyGroup({
-    required this.label,
-    required this.options,
-  });
+  _TaxonomyGroup({required this.label, required this.options});
 
   final String label;
   final List<TenantAdminMapFilterTaxonomyTermOption> options;

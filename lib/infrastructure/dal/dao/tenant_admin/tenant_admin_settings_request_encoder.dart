@@ -1,9 +1,15 @@
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_settings.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_account_profile_id_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_discovery_filters_settings_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
 
 class TenantAdminSettingsRequestEncoder {
   const TenantAdminSettingsRequestEncoder();
+
+  Map<String, dynamic> encodeHomeFavoritesPinnedProfilePatch(
+    TenantAdminAccountProfileIdValue? accountProfileId,
+  ) =>
+      <String, dynamic>{'account_profile_id': accountProfileId?.value};
 
   Map<String, dynamic> encodeMapUiSettingsPatch(
     TenantAdminMapUiSettings settings,

@@ -2,10 +2,7 @@ import 'package:value_object_pattern/domain/exceptions/value_exceptions.dart';
 import 'package:value_object_pattern/value_object.dart';
 
 class EventTypeIdValue extends ValueObject<String> {
-  EventTypeIdValue({
-    super.defaultValue = '',
-    super.isRequired = true,
-  });
+  EventTypeIdValue({super.defaultValue = '', super.isRequired = true});
 
   @override
   String doParse(String? parseValue) {

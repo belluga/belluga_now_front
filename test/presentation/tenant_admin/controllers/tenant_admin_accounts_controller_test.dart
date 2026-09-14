@@ -39,7 +39,6 @@ class _FakeAccountsRepository
   int createOnboardingCalls = 0;
   Object? createAccountError;
   String? lastOnboardingBio;
-  String? lastOnboardingContent;
   List<TenantAdminTaxonomyTerm> lastOnboardingTaxonomyTerms =
       <TenantAdminTaxonomyTerm>[];
   List<TenantAdminNestedProfileGroup> lastOnboardingNestedGroups =
@@ -259,7 +258,6 @@ class _FakeAccountsRepository
     TenantAdminTaxonomyTerms taxonomyTerms =
         const TenantAdminTaxonomyTerms.empty(),
     TenantAdminAccountsRepositoryContractPrimString? bio,
-    TenantAdminAccountsRepositoryContractPrimString? content,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
     List<TenantAdminNestedProfileGroup> nestedProfileGroups =
@@ -277,7 +275,6 @@ class _FakeAccountsRepository
     }
     createOnboardingCalls += 1;
     lastOnboardingBio = bio?.value;
-    lastOnboardingContent = content?.value;
     lastOnboardingTaxonomyTerms = List<TenantAdminTaxonomyTerm>.from(
       taxonomyTerms.items,
     );
@@ -303,7 +300,6 @@ class _FakeAccountsRepository
       location: location,
       taxonomyTerms: taxonomyTerms,
       bio: bio?.value,
-      content: content?.value,
     );
     _accounts = [..._accounts, account];
     final loaded = accountsStreamValue.value;
@@ -423,7 +419,6 @@ class _FakeAccountProfilesRepository
     TenantAdminTaxonomyTerms taxonomyTerms =
         const TenantAdminTaxonomyTerms.empty(),
     TenantAdminAccountProfilesRepoString? bio,
-    TenantAdminAccountProfilesRepoString? content,
     TenantAdminAccountProfilesRepoString? avatarUrl,
     TenantAdminAccountProfilesRepoString? coverUrl,
     TenantAdminMediaUpload? avatarUpload,
@@ -546,7 +541,6 @@ class _FakeAccountProfilesRepository
     TenantAdminLocation? location,
     TenantAdminTaxonomyTerms? taxonomyTerms,
     TenantAdminAccountProfilesRepoString? bio,
-    TenantAdminAccountProfilesRepoString? content,
     TenantAdminAccountProfilesRepoString? avatarUrl,
     TenantAdminAccountProfilesRepoString? coverUrl,
     TenantAdminAccountProfilesRepoBool? removeAvatar,
@@ -644,7 +638,6 @@ class _FakeAccountProfilesRepository
             isFavoritable: TenantAdminFlagValue(true),
             isPoiEnabled: TenantAdminFlagValue(true),
             hasBio: TenantAdminFlagValue(false),
-            hasContent: TenantAdminFlagValue(false),
             hasTaxonomies: TenantAdminFlagValue(false),
             hasAvatar: TenantAdminFlagValue(false),
             hasCover: TenantAdminFlagValue(false),
@@ -936,7 +929,6 @@ void main() {
             isFavoritable: TenantAdminFlagValue(true),
             isPoiEnabled: TenantAdminFlagValue(true),
             hasBio: TenantAdminFlagValue(false),
-            hasContent: TenantAdminFlagValue(false),
             hasTaxonomies: TenantAdminFlagValue(false),
             hasAvatar: TenantAdminFlagValue(false),
             hasCover: TenantAdminFlagValue(false),
@@ -1007,7 +999,6 @@ void main() {
               isFavoritable: TenantAdminFlagValue(true),
               isPoiEnabled: TenantAdminFlagValue(false),
               hasBio: TenantAdminFlagValue(false),
-              hasContent: TenantAdminFlagValue(false),
               hasTaxonomies: TenantAdminFlagValue(false),
               hasAvatar: TenantAdminFlagValue(false),
               hasCover: TenantAdminFlagValue(false),
@@ -1053,7 +1044,6 @@ void main() {
               isFavoritable: TenantAdminFlagValue(true),
               isPoiEnabled: TenantAdminFlagValue(false),
               hasBio: TenantAdminFlagValue(false),
-              hasContent: TenantAdminFlagValue(false),
               hasTaxonomies: TenantAdminFlagValue(false),
               hasAvatar: TenantAdminFlagValue(false),
               hasCover: TenantAdminFlagValue(false),
@@ -1096,7 +1086,6 @@ void main() {
                 isFavoritable: TenantAdminFlagValue(true),
                 isPoiEnabled: TenantAdminFlagValue(false),
                 hasBio: TenantAdminFlagValue(false),
-                hasContent: TenantAdminFlagValue(false),
                 hasTaxonomies: TenantAdminFlagValue(false),
                 hasAvatar: TenantAdminFlagValue(false),
                 hasCover: TenantAdminFlagValue(false),

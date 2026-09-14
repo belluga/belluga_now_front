@@ -407,7 +407,6 @@ class _FakeAccountsRepository
     TenantAdminTaxonomyTerms taxonomyTerms =
         const TenantAdminTaxonomyTerms.empty(),
     TenantAdminAccountsRepositoryContractPrimString? bio,
-    TenantAdminAccountsRepositoryContractPrimString? content,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
     List<TenantAdminNestedProfileGroup> nestedProfileGroups =
@@ -428,7 +427,6 @@ class _FakeAccountsRepository
         location: location,
         taxonomyTerms: taxonomyTerms,
         bio: bio?.value,
-        content: content?.value,
       ),
     );
   }
@@ -507,7 +505,6 @@ class _FakeAccountProfilesRepository
           isFavoritable: TenantAdminFlagValue(true),
           isPoiEnabled: TenantAdminFlagValue(false),
           hasBio: TenantAdminFlagValue(false),
-          hasContent: TenantAdminFlagValue(false),
           hasTaxonomies: TenantAdminFlagValue(true),
           hasAvatar: TenantAdminFlagValue(false),
           hasCover: TenantAdminFlagValue(false),
@@ -598,7 +595,6 @@ class _FakeAccountProfilesRepository
     TenantAdminTaxonomyTerms taxonomyTerms =
         const TenantAdminTaxonomyTerms.empty(),
     TenantAdminAccountProfilesRepoString? bio,
-    TenantAdminAccountProfilesRepoString? content,
     TenantAdminAccountProfilesRepoString? avatarUrl,
     TenantAdminAccountProfilesRepoString? coverUrl,
     TenantAdminMediaUpload? avatarUpload,
@@ -636,7 +632,6 @@ class _FakeAccountProfilesRepository
     TenantAdminLocation? location,
     TenantAdminTaxonomyTerms? taxonomyTerms,
     TenantAdminAccountProfilesRepoString? bio,
-    TenantAdminAccountProfilesRepoString? content,
     TenantAdminAccountProfilesRepoString? avatarUrl,
     TenantAdminAccountProfilesRepoString? coverUrl,
     TenantAdminAccountProfilesRepoBool? removeAvatar,
@@ -720,7 +715,6 @@ class _FakeAccountProfilesRepository
             isFavoritable: TenantAdminFlagValue(true),
             isPoiEnabled: TenantAdminFlagValue(false),
             hasBio: TenantAdminFlagValue(false),
-            hasContent: TenantAdminFlagValue(false),
             hasTaxonomies: TenantAdminFlagValue(true),
             hasAvatar: TenantAdminFlagValue(false),
             hasCover: TenantAdminFlagValue(false),
