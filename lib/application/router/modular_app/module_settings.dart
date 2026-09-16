@@ -34,7 +34,6 @@ import 'package:belluga_now/domain/repositories/poi_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/proximity_preferences_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/self_profile_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
-import 'package:belluga_now/domain/repositories/static_assets_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
@@ -44,7 +43,6 @@ import 'package:belluga_now/domain/repositories/tenant_admin_events_repository_c
 import 'package:belluga_now/domain/repositories/tenant_admin_organizations_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_settings_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_selected_tenant_repository_contract.dart';
-import 'package:belluga_now/domain/repositories/tenant_admin_static_assets_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
@@ -71,7 +69,6 @@ import 'package:belluga_now/infrastructure/repositories/poi_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/proximity_preferences_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/self_profile_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/schedule_repository.dart';
-import 'package:belluga_now/infrastructure/repositories/static_assets_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/telemetry_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_account_profiles_repository.dart';
@@ -81,7 +78,6 @@ import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admi
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_organizations_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_settings_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_selected_tenant_repository.dart';
-import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_static_assets_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_taxonomies_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/user_events_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/user_location_repository.dart';
@@ -315,9 +311,6 @@ class ModuleSettings extends ModuleSettingsContract {
     _registerIfAbsent<TenantAdminSelectedTenantRepositoryContract>(
       () => TenantAdminSelectedTenantRepository(),
     );
-    _registerIfAbsent<TenantAdminStaticAssetsRepositoryContract>(
-      () => TenantAdminStaticAssetsRepository(),
-    );
     final tenantAdminTaxonomiesRepository = TenantAdminTaxonomiesRepository();
     final taxonomiesRepository =
         _registerIfAbsent<TenantAdminTaxonomiesRepositoryContract>(
@@ -334,8 +327,6 @@ class ModuleSettings extends ModuleSettingsContract {
       () => TenantAdminDiscoveryFilterRuleCatalogRepository(
         accountProfilesRepository: GetIt.I
             .get<TenantAdminAccountProfilesRepositoryContract>(),
-        staticAssetsRepository: GetIt.I
-            .get<TenantAdminStaticAssetsRepositoryContract>(),
         taxonomiesRepository: GetIt.I
             .get<TenantAdminTaxonomiesRepositoryContract>(),
         batchTermsRepository: GetIt.I
@@ -384,9 +375,6 @@ class ModuleSettings extends ModuleSettingsContract {
     );
     _registerIfAbsent<AccountProfilesRepositoryContract>(
       () => AccountProfilesRepository(),
-    );
-    _registerIfAbsent<StaticAssetsRepositoryContract>(
-      () => StaticAssetsRepository(),
     );
     _registerIfAbsent<UserEventsRepositoryContract>(
       () => UserEventsRepository(),

@@ -31,8 +31,8 @@ class TenantAdminShellScreen extends StatefulWidget {
 class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
   static const _railBreakpoint = 980.0;
   static const _desktopMaxWidth = 1480.0;
-  final TenantAdminShellController _controller =
-      GetIt.I.get<TenantAdminShellController>();
+  final TenantAdminShellController _controller = GetIt.I
+      .get<TenantAdminShellController>();
 
   final List<_AdminDestination> _destinations = const [
     _AdminDestination(
@@ -60,12 +60,12 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
       section: AdminShellSection.accounts,
     ),
     _AdminDestination(
-      label: 'Ativos',
-      title: 'Ativos estáticos',
-      icon: Icons.place_outlined,
-      selectedIcon: Icons.place,
-      route: TenantAdminStaticAssetsListRoute(),
-      section: AdminShellSection.assets,
+      label: 'Taxonomias',
+      title: 'Taxonomias',
+      icon: Icons.category_outlined,
+      selectedIcon: Icons.category,
+      route: TenantAdminTaxonomiesListRoute(),
+      section: AdminShellSection.taxonomies,
     ),
     _AdminDestination(
       label: 'Config',
@@ -109,7 +109,6 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
         'Snapshot do environment',
       TenantAdminOrganizationsListRoute.name => 'Organizações',
       TenantAdminProfileTypesListRoute.name => 'Tipos de perfil',
-      TenantAdminStaticProfileTypesListRoute.name => 'Tipos de ativo',
       TenantAdminTaxonomiesListRoute.name => 'Taxonomias',
       TenantAdminEventTypesRoute.name => 'Tipos de evento',
       TenantAdminDiscoveryFilterSurfaceRoute.name => 'Filtros',
@@ -154,17 +153,6 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
             context.router.push(const TenantAdminProfileTypesListRoute());
           },
           icon: const Icon(Icons.category_outlined),
-        ),
-      ];
-    }
-    if (routeName == TenantAdminStaticAssetsListRoute.name) {
-      return [
-        IconButton.filledTonal(
-          tooltip: 'Tipos de Ativo',
-          onPressed: () {
-            context.router.push(const TenantAdminStaticProfileTypesListRoute());
-          },
-          icon: const Icon(Icons.layers_outlined),
         ),
       ];
     }
@@ -247,9 +235,7 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
 
   Widget _buildTenantAdminAuthGate() {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Tenant admin login'),
-      ),
+      appBar: AppBar(title: const Text('Tenant admin login')),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 520),
@@ -350,10 +336,10 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
     final port = parsedTenant.hasPort
         ? parsedTenant.port
         : hasScheme
-            ? null
-            : (landlordOrigin != null && landlordOrigin.hasPort)
-                ? landlordOrigin.port
-                : null;
+        ? null
+        : (landlordOrigin != null && landlordOrigin.hasPort)
+        ? landlordOrigin.port
+        : null;
 
     return Uri(
       scheme: scheme,
@@ -450,10 +436,7 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
     required Widget child,
     required RouteBackPolicy backPolicy,
   }) {
-    return RouteBackScope(
-      backPolicy: backPolicy,
-      child: child,
-    );
+    return RouteBackScope(backPolicy: backPolicy, child: child);
   }
 
   Widget _buildNavigationSurface({
@@ -533,27 +516,33 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
                 final router = context.router;
                 final routeData = context.topRoute;
                 final currentName = routeData.name;
-                final adminSection =
-                    resolveCanonicalAdminShellSection(routeData);
+                final adminSection = resolveCanonicalAdminShellSection(
+                  routeData,
+                );
                 final selectedIndex = _selectedIndex(adminSection);
-                final routeChromeMode =
-                    resolveCanonicalRouteChromeMode(routeData);
-                final isAdminDashboardRoot =
-                    isCanonicalAdminDashboardRoot(routeData);
-                final isAdminSectionRoot =
-                    isCanonicalAdminSectionRoot(routeData);
+                final routeChromeMode = resolveCanonicalRouteChromeMode(
+                  routeData,
+                );
+                final isAdminDashboardRoot = isCanonicalAdminDashboardRoot(
+                  routeData,
+                );
+                final isAdminSectionRoot = isCanonicalAdminSectionRoot(
+                  routeData,
+                );
                 final isAdminInternal = isCanonicalAdminInternal(routeData);
                 final showShellScaffoldChrome =
                     routeChromeMode != RouteChromeMode.fullscreen;
-                final showShellGlobalHeader = showShellScaffoldChrome &&
+                final showShellGlobalHeader =
+                    showShellScaffoldChrome &&
                     routeChromeMode != RouteChromeMode.scopedSectionAppBar;
                 final selectedTenantLabel = _controller.resolveTenantLabel(
                   tenants: availableTenants,
                   tenantDomain: selectedTenantDomain!,
                 );
                 final canChangeTenant = availableTenants.length > 1;
-                final shellRouterKey =
-                    ValueKey('tenant-admin-shell-router-$selectedTenantDomain');
+                final shellRouterKey = ValueKey(
+                  'tenant-admin-shell-router-$selectedTenantDomain',
+                );
                 final scopedTheme = TenantAdminScopeTheme.resolve(
                   Theme.of(context),
                 );
@@ -566,8 +555,8 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
                 );
                 final routeBackPolicy =
                     buildCanonicalRouteBackPolicyForRouteData(
-                  routeData: routeData,
-                );
+                      routeData: routeData,
+                    );
 
                 return Theme(
                   data: scopedTheme,
@@ -612,7 +601,11 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
                                       children: [
                                         Padding(
                                           padding: const EdgeInsets.fromLTRB(
-                                              14, 14, 0, 14),
+                                            14,
+                                            14,
+                                            0,
+                                            14,
+                                          ),
                                           child: _buildNavigationSurface(
                                             context: scopeContext,
                                             padding: const EdgeInsets.only(
@@ -682,8 +675,12 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
                             resizeToAvoidBottomInset: false,
                             body: SafeArea(
                               child: Padding(
-                                padding:
-                                    const EdgeInsets.fromLTRB(12, 12, 12, 0),
+                                padding: const EdgeInsets.fromLTRB(
+                                  12,
+                                  12,
+                                  12,
+                                  0,
+                                ),
                                 child: Column(
                                   children: [
                                     showShellGlobalHeader
@@ -707,9 +704,7 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
                                     Expanded(
                                       child: _buildWorkspaceSurface(
                                         backPolicy: routeBackPolicy,
-                                        child: AutoRouter(
-                                          key: shellRouterKey,
-                                        ),
+                                        child: AutoRouter(key: shellRouterKey),
                                       ),
                                     ),
                                   ],

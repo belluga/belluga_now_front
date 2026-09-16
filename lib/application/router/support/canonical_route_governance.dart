@@ -99,7 +99,7 @@ final class _CanonicalRouteDescriptor {
   bool get isAdminSectionRoot => switch (family) {
     CanonicalRouteFamily.tenantAdminEventsRoot ||
     CanonicalRouteFamily.tenantAdminAccountsRoot ||
-    CanonicalRouteFamily.tenantAdminAssetsRoot ||
+    CanonicalRouteFamily.tenantAdminTaxonomiesRoot ||
     CanonicalRouteFamily.tenantAdminSettingsRoot => true,
     _ => false,
   };
@@ -107,7 +107,7 @@ final class _CanonicalRouteDescriptor {
   bool get isAdminInternal => switch (family) {
     CanonicalRouteFamily.tenantAdminEventsInternal ||
     CanonicalRouteFamily.tenantAdminAccountsInternal ||
-    CanonicalRouteFamily.tenantAdminAssetsInternal ||
+    CanonicalRouteFamily.tenantAdminTaxonomiesInternal ||
     CanonicalRouteFamily.tenantAdminSettingsInternal => true,
     _ => false,
   };
@@ -253,14 +253,6 @@ _descriptors = <CanonicalRouteFamily, _CanonicalRouteDescriptor>{
   ),
   CanonicalRouteFamily.partnerDetail: _CanonicalRouteDescriptor(
     family: CanonicalRouteFamily.partnerDetail,
-    surfaceKind: BackSurfaceKind.rootOpenable,
-    buildNoHistoryOutcome: (_, explicitFallbackRoute, _) =>
-        RouteNoHistoryOutcome.fallback(
-          explicitFallbackRoute ?? const DiscoveryRoute(),
-        ),
-  ),
-  CanonicalRouteFamily.staticAssetDetail: _CanonicalRouteDescriptor(
-    family: CanonicalRouteFamily.staticAssetDetail,
     surfaceKind: BackSurfaceKind.rootOpenable,
     buildNoHistoryOutcome: (_, explicitFallbackRoute, _) =>
         RouteNoHistoryOutcome.fallback(
@@ -427,17 +419,17 @@ _descriptors = <CanonicalRouteFamily, _CanonicalRouteDescriptor>{
     sectionRootRoute: const TenantAdminAccountsListRoute(),
     sectionPath: '/admin/accounts',
   ),
-  CanonicalRouteFamily.tenantAdminAssetsRoot: _adminSectionRootDescriptor(
-    family: CanonicalRouteFamily.tenantAdminAssetsRoot,
-    section: AdminShellSection.assets,
-    sectionRootRoute: const TenantAdminStaticAssetsListRoute(),
-    sectionPath: '/admin/assets',
+  CanonicalRouteFamily.tenantAdminTaxonomiesRoot: _adminSectionRootDescriptor(
+    family: CanonicalRouteFamily.tenantAdminTaxonomiesRoot,
+    section: AdminShellSection.taxonomies,
+    sectionRootRoute: const TenantAdminTaxonomiesListRoute(),
+    sectionPath: '/admin/taxonomies',
   ),
-  CanonicalRouteFamily.tenantAdminAssetsInternal: _adminInternalDescriptor(
-    family: CanonicalRouteFamily.tenantAdminAssetsInternal,
-    section: AdminShellSection.assets,
-    sectionRootRoute: const TenantAdminStaticAssetsListRoute(),
-    sectionPath: '/admin/assets',
+  CanonicalRouteFamily.tenantAdminTaxonomiesInternal: _adminInternalDescriptor(
+    family: CanonicalRouteFamily.tenantAdminTaxonomiesInternal,
+    section: AdminShellSection.taxonomies,
+    sectionRootRoute: const TenantAdminTaxonomiesListRoute(),
+    sectionPath: '/admin/taxonomies',
   ),
   CanonicalRouteFamily.tenantAdminFiltersRoot: _adminSectionRootDescriptor(
     family: CanonicalRouteFamily.tenantAdminFiltersRoot,

@@ -43,8 +43,8 @@ class CityPoiModel implements MapPoi {
     PoiBooleanValue? isDynamicValue,
     this.movementRadiusValue,
     List<PoiTagValue>? tagValues,
-    PoiReferenceTypeValue? refTypeValue,
-    PoiReferenceIdValue? refIdValue,
+    required this.refTypeValue,
+    required this.refIdValue,
     this.refSlugValue,
     this.refPathValue,
     PoiStackKeyValue? stackKeyValue,
@@ -57,19 +57,26 @@ class CityPoiModel implements MapPoi {
     this.updatedAtValue,
     this.distanceMetersValue,
     this.visual,
-  })  : tagValues = List.unmodifiable(tagValues ?? const <PoiTagValue>[]),
-        stackItems = List.unmodifiable(
-          (stackItems ?? CityPoiStackItems()).value,
-        ),
-        linkedProfiles =
-            List.unmodifiable(linkedProfiles ?? const <CityPoiLinkedProfile>[]),
-        isDynamicValue = isDynamicValue ?? _defaultFalseBooleanValue(),
-        refTypeValue = refTypeValue ?? _defaultRefTypeValue(),
-        refIdValue = refIdValue ?? _defaultRefIdValue(),
-        stackKeyValue = stackKeyValue ?? _defaultStackKeyValue(),
-        stackCountValue = stackCountValue ?? _defaultStackCountValue(),
-        isHappeningNowValue =
-            isHappeningNowValue ?? _defaultFalseBooleanValue();
+  }) : tagValues = List.unmodifiable(tagValues ?? const <PoiTagValue>[]),
+       stackItems = List.unmodifiable(
+         (stackItems ?? CityPoiStackItems()).value,
+       ),
+       linkedProfiles = List.unmodifiable(
+         linkedProfiles ?? const <CityPoiLinkedProfile>[],
+       ),
+       isDynamicValue = isDynamicValue ?? _defaultFalseBooleanValue(),
+       stackKeyValue = stackKeyValue ?? _defaultStackKeyValue(),
+       stackCountValue = stackCountValue ?? _defaultStackCountValue(),
+       isHappeningNowValue =
+           isHappeningNowValue ?? _defaultFalseBooleanValue() {
+    if (refIdValue.value.trim().isEmpty) {
+      throw ArgumentError.value(
+        refIdValue.value,
+        'refIdValue',
+        'Map POI source identity requires a reference id.',
+      );
+    }
+  }
 
   final CityPoiIdValue idValue;
   final CityPoiNameValue nameValue;
@@ -180,12 +187,10 @@ class CityPoiModel implements MapPoi {
     }
     final startValue = DateTimeValue()..parse(timeStart!.toIso8601String());
     final end = timeEnd;
-    final endValue =
-        end == null ? null : (DateTimeValue()..parse(end.toIso8601String()));
-    return EventScheduleDisplay(
-      startValue: startValue,
-      endValue: endValue,
-    );
+    final endValue = end == null
+        ? null
+        : (DateTimeValue()..parse(end.toIso8601String()));
+    return EventScheduleDisplay(startValue: startValue, endValue: endValue);
   }
 
   String? get eventScheduleLabel => eventScheduleDisplay?.detailLabel;
@@ -267,7 +272,8 @@ class CityPoiModel implements MapPoi {
     DistanceInMetersValue? distanceMetersValue,
     CityPoiVisual? visual,
   }) {
-    final resolvedStackItems = stackItems ??
+    final resolvedStackItems =
+        stackItems ??
         (() {
           final collection = CityPoiStackItems();
           for (final item in this.stackItems) {
@@ -308,16 +314,6 @@ class CityPoiModel implements MapPoi {
 
   static PoiBooleanValue _defaultFalseBooleanValue() {
     final value = PoiBooleanValue()..parse('false');
-    return value;
-  }
-
-  static PoiReferenceTypeValue _defaultRefTypeValue() {
-    final value = PoiReferenceTypeValue()..parse('static');
-    return value;
-  }
-
-  static PoiReferenceIdValue _defaultRefIdValue() {
-    final value = PoiReferenceIdValue()..parse('');
     return value;
   }
 

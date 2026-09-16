@@ -1,6 +1,5 @@
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_profile_type_dto.dart';
-import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_static_profile_type_dto.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -50,24 +49,6 @@ void main() {
         );
       },
     );
-
-    test('parses canonical visual payload for static profile types', () {
-      final dto = TenantAdminStaticProfileTypeDTO.fromJson({
-        'type': 'beach',
-        'label': 'Beach',
-        'allowed_taxonomies': const ['region'],
-        'visual': {'mode': 'image', 'image_source': 'cover'},
-        'capabilities': {'is_poi_enabled': true, 'has_cover': true},
-      });
-
-      final definition = dto.toDomain();
-
-      expect(definition.visual?.mode, TenantAdminPoiVisualMode.image);
-      expect(
-        definition.visual?.imageSource,
-        TenantAdminPoiVisualImageSource.cover,
-      );
-    });
 
     test('parses canonical type_asset image payload for account profile types', () {
       final dto = TenantAdminProfileTypeDTO.fromJson({

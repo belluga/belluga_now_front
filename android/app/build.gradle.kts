@@ -27,7 +27,6 @@ private val appLinkRoutePathPrefixes = listOf(
     "/privacy-policy",
     "/profile",
     "/home",
-    "/static",
 )
 
 private val appLinkRouteExactPaths = listOf("/")

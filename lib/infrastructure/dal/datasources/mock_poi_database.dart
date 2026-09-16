@@ -22,6 +22,8 @@ class MockPoiDatabase {
   static final List<CityPoiDTO> _rawPois = List.unmodifiable(<CityPoiDTO>[
     CityPoiDTO(
       id: 'poi-sponsor-kidelicia-loja-central',
+      refType: 'account_profile',
+      refId: 'poi-sponsor-kidelicia-loja-central',
       name: 'Kidelícia Sorvetes - Loja Central',
       description:
           'Patrocinador oficial Belluga Now — sorvetes artesanais e ponto de encontro.',
@@ -36,6 +38,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-event-luau-praia-do-morro',
+      refType: 'event',
+      refId: 'poi-event-luau-praia-do-morro',
       name: 'Luau Praia do Morro',
       description: 'Apresentação musical ao vivo na areia da Praia do Morro.',
       address: 'Praia do Morro, Guarapari',
@@ -47,6 +51,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-event-feira-artesanal',
+      refType: 'event',
+      refId: 'poi-event-feira-artesanal',
       name: 'Feira Artesanal da Orla',
       description: 'Feira cultural com artistas locais e gastronomia típica.',
       address: 'Orla da Praia das Castanheiras, Centro, Guarapari',
@@ -58,6 +64,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-restaurant-american-grill',
+      refType: 'account_profile',
+      refId: 'poi-restaurant-american-grill',
       name: 'American Grill',
       description: 'Regional',
       address: 'Guarapari',
@@ -68,6 +76,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-restaurant-acaizeiro',
+      refType: 'account_profile',
+      refId: 'poi-restaurant-acaizeiro',
       name: 'Açaizeiro',
       description: 'Sabores locais e pratos da casa.',
       address: 'Guarapari',
@@ -76,8 +86,10 @@ class MockPoiDatabase {
       longitude: -40.4793957,
       tags: ['açai', 'sobremesa'],
     ),
-    const CityPoiDTO(
+    CityPoiDTO(
       id: 'poi-restaurant-barraca-do-marcelo',
+      refType: 'account_profile',
+      refId: 'poi-restaurant-barraca-do-marcelo',
       name: 'Barraca do Marcelo',
       description:
           'Regional, Petiscos, Bolinho De Aipim De Meaípe, Seafood, Fish, Brazilian, Fries',
@@ -89,6 +101,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-restaurant-bella-grill',
+      refType: 'account_profile',
+      refId: 'poi-restaurant-bella-grill',
       name: 'Bella Grill',
       description: 'Sabores locais e pratos da casa.',
       address: 'Guarapari',
@@ -97,8 +111,10 @@ class MockPoiDatabase {
       longitude: -40.4976746,
       tags: ['churrasco'],
     ),
-    const CityPoiDTO(
+    CityPoiDTO(
       id: 'poi-restaurant-alfredo-adega-restaurante',
+      refType: 'account_profile',
+      refId: 'poi-restaurant-alfredo-adega-restaurante',
       name: 'Adega Restaurante',
       description: 'Restaurante em Alfredo Chaves.',
       address: 'Matilde, Alfredo Chaves - ES',
@@ -107,8 +123,10 @@ class MockPoiDatabase {
       longitude: -40.816068,
       tags: ['restaurante', 'alfredo chaves', 'matilde'],
     ),
-    const CityPoiDTO(
+    CityPoiDTO(
       id: 'poi-restaurant-alfredo-restaurante-prainha',
+      refType: 'account_profile',
+      refId: 'poi-restaurant-alfredo-restaurante-prainha',
       name: 'Restaurante Prainha',
       description: 'Restaurante em Alfredo Chaves.',
       address: 'Matilde, Alfredo Chaves - ES',
@@ -117,8 +135,10 @@ class MockPoiDatabase {
       longitude: -40.81689,
       tags: ['restaurante', 'alfredo chaves', 'matilde'],
     ),
-    const CityPoiDTO(
+    CityPoiDTO(
       id: 'poi-restaurant-alfredo-restaurante-boldrini',
+      refType: 'account_profile',
+      refId: 'poi-restaurant-alfredo-restaurante-boldrini',
       name: 'Restaurante Boldrini',
       description: 'Restaurante em Alfredo Chaves.',
       address: 'Centro, Alfredo Chaves - ES',
@@ -127,8 +147,10 @@ class MockPoiDatabase {
       longitude: -40.751046,
       tags: ['restaurante', 'alfredo chaves', 'centro'],
     ),
-    const CityPoiDTO(
+    CityPoiDTO(
       id: 'poi-restaurant-alfredo-padaria-confeitaria-boldrini',
+      refType: 'account_profile',
+      refId: 'poi-restaurant-alfredo-padaria-confeitaria-boldrini',
       name: 'Padaria e Confeitaria Boldrini',
       description: 'Padaria e confeitaria em Alfredo Chaves.',
       address: 'Centro, Alfredo Chaves - ES',
@@ -137,8 +159,10 @@ class MockPoiDatabase {
       longitude: -40.751134,
       tags: ['padaria', 'café', 'alfredo chaves', 'centro'],
     ),
-    const CityPoiDTO(
+    CityPoiDTO(
       id: 'poi-restaurant-alfredo-padaria-ki-pao',
+      refType: 'account_profile',
+      refId: 'poi-restaurant-alfredo-padaria-ki-pao',
       name: 'Padaria Ki-pão',
       description: 'Padaria em Alfredo Chaves.',
       address: 'Centro, Alfredo Chaves - ES',
@@ -147,8 +171,10 @@ class MockPoiDatabase {
       longitude: -40.750269,
       tags: ['padaria', 'café', 'alfredo chaves', 'centro'],
     ),
-    const CityPoiDTO(
+    CityPoiDTO(
       id: 'poi-restaurant-alfredo-sitio-recanto-das-videiras',
+      refType: 'account_profile',
+      refId: 'poi-restaurant-alfredo-sitio-recanto-das-videiras',
       name: 'Sitio Recanto das Videiras',
       description: 'Restaurante em Alfredo Chaves.',
       address: 'Alfredo Chaves - ES',
@@ -159,6 +185,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-restaurant-benfica',
+      refType: 'account_profile',
+      refId: 'poi-restaurant-benfica',
       name: 'Benfica',
       description: 'Capixaba',
       address: 'Rua Henrique Coutinho, 16 lj 6, Centro, Guarapari',
@@ -169,6 +197,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-restaurant-bistro-pousada-orchidas',
+      refType: 'account_profile',
+      refId: 'poi-restaurant-bistro-pousada-orchidas',
       name: 'Bistro & Pousada Orchidas',
       description: 'Sabores locais e pratos da casa.',
       address: 'Guarapari',
@@ -178,6 +208,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-restaurant-bistro-crepusculo',
+      refType: 'account_profile',
+      refId: 'poi-restaurant-bistro-crepusculo',
       name: 'Bistro Crepusculo',
       description: 'Sabores locais e pratos da casa.',
       address: 'Rua Getúlio Vargas, Guarapari',
@@ -187,6 +219,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-restaurant-bistro-sal-e-tal',
+      refType: 'account_profile',
+      refId: 'poi-restaurant-bistro-sal-e-tal',
       name: 'Bistro Sal e Tal',
       description: 'Sabores locais e pratos da casa.',
       address: 'Guarapari',
@@ -196,6 +230,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-restaurant-bolhina-s',
+      refType: 'account_profile',
+      refId: 'poi-restaurant-bolhina-s',
       name: 'Bolhina\'s',
       description: 'Pizza, Mineira',
       address: 'Guarapari',
@@ -205,6 +241,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-restaurant-bolinhas-bar-e-restaurante',
+      refType: 'account_profile',
+      refId: 'poi-restaurant-bolinhas-bar-e-restaurante',
       name: 'Bolinhas Bar e Restaurante',
       description: 'Sabores locais e pratos da casa.',
       address: 'Avenida Desembargador Laurival de Almeida, Centro, Guarapari',
@@ -214,6 +252,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-restaurant-bom-preco',
+      refType: 'account_profile',
+      refId: 'poi-restaurant-bom-preco',
       name: 'Bom Preço',
       description: 'Sabores locais e pratos da casa.',
       address: 'Guarapari',
@@ -223,6 +263,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-restaurant-box-mineiro',
+      refType: 'account_profile',
+      refId: 'poi-restaurant-box-mineiro',
       name: 'Box Mineiro',
       description: 'Regional',
       address: 'Rua Henrique Coutinho, 34, Guarapari',
@@ -232,6 +274,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-restaurant-brasileirinha',
+      refType: 'account_profile',
+      refId: 'poi-restaurant-brasileirinha',
       name: 'Brasileirinha',
       description: 'Regional',
       address: 'Guarapari',
@@ -241,6 +285,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-restaurant-buffalo-grill',
+      refType: 'account_profile',
+      refId: 'poi-restaurant-buffalo-grill',
       name: 'Buffalo Grill',
       description: 'Steak House',
       address: 'Avenida Praiana, Guarapari',
@@ -250,6 +296,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-restaurant-butiquim',
+      refType: 'account_profile',
+      refId: 'poi-restaurant-butiquim',
       name: 'Butiquim',
       description: 'Sabores locais e pratos da casa.',
       address: 'Guarapari',
@@ -259,6 +307,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-restaurant-caldo-prosa',
+      refType: 'account_profile',
+      refId: 'poi-restaurant-caldo-prosa',
       name: 'Caldo & Prosa',
       description: 'Sabores locais e pratos da casa.',
       address: 'Guarapari',
@@ -268,6 +318,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-restaurant-canecao-restaurante',
+      refType: 'account_profile',
+      refId: 'poi-restaurant-canecao-restaurante',
       name: 'Canecão Restaurante',
       description: 'Sabores locais e pratos da casa.',
       address: 'Avenida Maria de Lourdes Carvalho Dantas, Guarapari',
@@ -277,6 +329,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-restaurant-cantinho-de-curuca',
+      refType: 'account_profile',
+      refId: 'poi-restaurant-cantinho-de-curuca',
       name: 'Cantinho de Curuca',
       description: 'Capixaba',
       address: 'Guarapari',
@@ -286,6 +340,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-restaurant-caranguelua',
+      refType: 'account_profile',
+      refId: 'poi-restaurant-caranguelua',
       name: 'Caranguelua',
       description: 'Regional',
       address: 'Guarapari',
@@ -295,6 +351,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-restaurant-casa-portuguesa',
+      refType: 'account_profile',
+      refId: 'poi-restaurant-casa-portuguesa',
       name: 'Casa Portuguêsa',
       description: 'Sabores locais e pratos da casa.',
       address: 'Guarapari',
@@ -304,6 +362,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-restaurant-chef-s',
+      refType: 'account_profile',
+      refId: 'poi-restaurant-chef-s',
       name: 'Chef\'s',
       description: 'Barbecue',
       address: 'Avenida Paris, 60, Guarapari',
@@ -313,6 +373,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-restaurant-chopperia-informal',
+      refType: 'account_profile',
+      refId: 'poi-restaurant-chopperia-informal',
       name: 'Chopperia Informal',
       description: 'Regional',
       address: 'Guarapari',
@@ -322,6 +384,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-restaurant-churrascaria-carretao-gaucho',
+      refType: 'account_profile',
+      refId: 'poi-restaurant-churrascaria-carretao-gaucho',
       name: 'Churrascaria Carretão Gaucho',
       description: 'Churrasco',
       address: 'Rua José Capristano Nobre, Guarapari',
@@ -331,6 +395,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-restaurant-cia-comida',
+      refType: 'account_profile',
+      refId: 'poi-restaurant-cia-comida',
       name: 'Cia & Comida',
       description: 'Regional',
       address: 'Guarapari',
@@ -340,6 +406,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-restaurant-cia-sabor',
+      refType: 'account_profile',
+      refId: 'poi-restaurant-cia-sabor',
       name: 'Cia & Sabor',
       description: 'Regional',
       address: 'Guarapari',
@@ -349,6 +417,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-restaurant-cia-do-camarao',
+      refType: 'account_profile',
+      refId: 'poi-restaurant-cia-do-camarao',
       name: 'Cia do Camarão',
       description: 'Sabores locais e pratos da casa.',
       address: 'Avenida Maria de Lourdes Carvalho Dantas, Guarapari',
@@ -358,6 +428,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-restaurant-comida-e-cia',
+      refType: 'account_profile',
+      refId: 'poi-restaurant-comida-e-cia',
       name: 'Comida e Cia',
       description: 'Sabores locais e pratos da casa.',
       address: 'Avenida José Alcântara Bourguingnon, Guarapari',
@@ -367,6 +439,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-restaurant-deck',
+      refType: 'account_profile',
+      refId: 'poi-restaurant-deck',
       name: 'Deck',
       description: 'Pizza, Burger',
       address: 'Guarapari',
@@ -376,6 +450,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-restaurant-delicias-de-bacalhao',
+      refType: 'account_profile',
+      refId: 'poi-restaurant-delicias-de-bacalhao',
       name: 'Delicias de Bacalhao',
       description: 'Fish',
       address: 'Guarapari',
@@ -385,6 +461,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-restaurant-doce-prazer',
+      refType: 'account_profile',
+      refId: 'poi-restaurant-doce-prazer',
       name: 'Doce prazer',
       description: 'Sabores locais e pratos da casa.',
       address: 'Guarapari',
@@ -394,6 +472,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-restaurant-dona-cotinha-restaurante-e-pizzaria',
+      refType: 'account_profile',
+      refId: 'poi-restaurant-dona-cotinha-restaurante-e-pizzaria',
       name: 'Dona Cotinha - Restaurante e Pizzaria',
       description: 'Italian',
       address: 'Guarapari',
@@ -403,6 +483,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-restaurant-dona-cotinha-restaurante-e-pizzaria',
+      refType: 'account_profile',
+      refId: 'poi-restaurant-dona-cotinha-restaurante-e-pizzaria',
       name: 'Dona Cotinha - Restaurante e Pizzaria',
       description: 'Italian',
       address: 'Guarapari',
@@ -412,6 +494,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-restaurant-dona-orly',
+      refType: 'account_profile',
+      refId: 'poi-restaurant-dona-orly',
       name: 'Dona Orly',
       description: 'Comida Caseira, Prato Feito, Marmitex, Self-Service',
       address: 'Rua Mariano A. Souza, Belo Horizonte, Guarapari',
@@ -421,6 +505,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-restaurant-donatello-restaurante-e-pizzaria',
+      refType: 'account_profile',
+      refId: 'poi-restaurant-donatello-restaurante-e-pizzaria',
       name: 'Donatello Restaurante e Pizzaria',
       description: 'Pizza',
       address: 'Avenida Maria de Lourdes Carvalho Dantas',
@@ -430,6 +516,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-restaurant-emporio-bacutia-pizzaria-e-lanchonete',
+      refType: 'account_profile',
+      refId: 'poi-restaurant-emporio-bacutia-pizzaria-e-lanchonete',
       name: 'Empório Bacutia Pizzaria e Lanchonete',
       description: 'Sabores locais e pratos da casa.',
       address: 'Guarapari',
@@ -439,6 +527,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-restaurant-encontro-gourmet-padaria-e-restaurante',
+      refType: 'account_profile',
+      refId: 'poi-restaurant-encontro-gourmet-padaria-e-restaurante',
       name: 'Encontro Gourmet Padaria e Restaurante',
       description: 'Sabores locais e pratos da casa.',
       address: 'Avenida Maria de Lourdes Carvalho Dantas',
@@ -448,6 +538,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-restaurant-espaco-sorriso',
+      refType: 'account_profile',
+      refId: 'poi-restaurant-espaco-sorriso',
       name: 'Espaço Sorriso',
       description: 'Sabores locais e pratos da casa.',
       address: 'Guarapari',
@@ -457,6 +549,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-restaurant-farofa-carioca',
+      refType: 'account_profile',
+      refId: 'poi-restaurant-farofa-carioca',
       name: 'Farofa Carioca',
       description: 'Sabores locais e pratos da casa.',
       address: 'Guarapari',
@@ -466,6 +560,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-restaurant-fillet-bar-e-restaurante',
+      refType: 'account_profile',
+      refId: 'poi-restaurant-fillet-bar-e-restaurante',
       name: 'Fillet Bar e Restaurante',
       description: 'Sabores locais e pratos da casa.',
       address: 'Avenida Maria de Lourdes Carvalho Dantas',
@@ -475,6 +571,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-restaurant-frango-do-assis',
+      refType: 'account_profile',
+      refId: 'poi-restaurant-frango-do-assis',
       name: 'Frango do Assis',
       description: 'Sabores locais e pratos da casa.',
       address: 'Guarapari',
@@ -484,6 +582,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-restaurant-free-dog-pizzaria-e-lanchonete',
+      refType: 'account_profile',
+      refId: 'poi-restaurant-free-dog-pizzaria-e-lanchonete',
       name: 'Free Dog Pizzaria e Lanchonete',
       description: 'Pizza, Sandwich',
       address: 'Avenida José Ferreira Ferro',
@@ -493,6 +593,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-restaurant-gostoso',
+      refType: 'account_profile',
+      refId: 'poi-restaurant-gostoso',
       name: 'Gostoso',
       description: 'Regional',
       address: 'Guarapari',
@@ -502,6 +604,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-restaurant-herois-burger',
+      refType: 'account_profile',
+      refId: 'poi-restaurant-herois-burger',
       name: 'Heróis Burger',
       description: 'Burger',
       address: 'Guarapari',
@@ -511,6 +615,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-restaurant-hotel-coronado',
+      refType: 'account_profile',
+      refId: 'poi-restaurant-hotel-coronado',
       name: 'Hotel Coronado',
       description: 'Sabores locais e pratos da casa.',
       address: 'Guarapari',
@@ -520,6 +626,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-restaurant-helio-restaurante-e-pizzaria',
+      refType: 'account_profile',
+      refId: 'poi-restaurant-helio-restaurante-e-pizzaria',
       name: 'Hélio Restaurante e Pizzaria',
       description: 'Pizza',
       address: 'Rua Mônaco',
@@ -529,6 +637,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-restaurant-kebab-s',
+      refType: 'account_profile',
+      refId: 'poi-restaurant-kebab-s',
       name: 'Kebab\'s',
       description: 'Pizza',
       address: 'Guarapari',
@@ -538,6 +648,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-restaurant-kibe-lanches',
+      refType: 'account_profile',
+      refId: 'poi-restaurant-kibe-lanches',
       name: 'Kibe Lanches',
       description: 'Lebanese',
       address: 'Guarapari',
@@ -547,6 +659,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-restaurant-lagoa-grande-restaurante',
+      refType: 'account_profile',
+      refId: 'poi-restaurant-lagoa-grande-restaurante',
       name: 'Lagoa Grande Restaurante',
       description: 'Sabores locais e pratos da casa.',
       address: 'Guarapari',
@@ -556,6 +670,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-restaurant-le-cave',
+      refType: 'account_profile',
+      refId: 'poi-restaurant-le-cave',
       name: 'Le Cave',
       description: 'Italian, Pizza',
       address: 'Guarapari',
@@ -565,6 +681,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-restaurant-lokal',
+      refType: 'account_profile',
+      refId: 'poi-restaurant-lokal',
       name: 'Lokal',
       description: 'Sabores locais e pratos da casa.',
       address: 'Guarapari',
@@ -574,6 +692,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-lodging-bistro-pousada-orchidas',
+      refType: 'account_profile',
+      refId: 'poi-lodging-bistro-pousada-orchidas',
       name: 'Bistro & Pousada Orchidas',
       description: 'Guest House',
       address: 'Guarapari',
@@ -583,6 +703,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-lodging-biz-motel',
+      refType: 'account_profile',
+      refId: 'poi-lodging-biz-motel',
       name: 'Biz Motel',
       description: 'Motel',
       address: 'Guarapari',
@@ -592,6 +714,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-lodging-bristol-residence-hotel',
+      refType: 'account_profile',
+      refId: 'poi-lodging-bristol-residence-hotel',
       name: 'Bristol Residence Hotel',
       description: 'Hotel',
       address: 'Guarapari',
@@ -601,6 +725,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-lodging-cantinho-de-curuca',
+      refType: 'account_profile',
+      refId: 'poi-lodging-cantinho-de-curuca',
       name: 'Cantinho de Curuca',
       description: 'Hotel',
       address: 'Guarapari',
@@ -610,6 +736,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-lodging-casa-de-penha',
+      refType: 'account_profile',
+      refId: 'poi-lodging-casa-de-penha',
       name: 'Casa de Penha',
       description: 'Guest House',
       address: 'Rua Las Vegas',
@@ -619,6 +747,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-lodging-chacara-sabadini',
+      refType: 'account_profile',
+      refId: 'poi-lodging-chacara-sabadini',
       name: 'Chácara Sabadini',
       description: 'Guest House',
       address: 'Rua Celso P Siqueira',
@@ -628,6 +758,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-lodging-coral-de-ubu',
+      refType: 'account_profile',
+      refId: 'poi-lodging-coral-de-ubu',
       name: 'Coral de Ubu',
       description: 'Hotel',
       address: 'Guarapari',
@@ -637,6 +769,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-lodging-dinotel-guarapari',
+      refType: 'account_profile',
+      refId: 'poi-lodging-dinotel-guarapari',
       name: 'Dinotel Guarapari',
       description: 'Hotel',
       address: 'Avenida Davino Matos',
@@ -646,6 +780,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-lodging-doce-vida-pousada',
+      refType: 'account_profile',
+      refId: 'poi-lodging-doce-vida-pousada',
       name: 'Doce Vida Pousada',
       description: 'Guest House',
       address: 'Guarapari',
@@ -655,6 +791,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-lodging-flat-guarapari',
+      refType: 'account_profile',
+      refId: 'poi-lodging-flat-guarapari',
       name: 'Flat Guarapari',
       description: 'Guest House',
       address: 'Guarapari',
@@ -664,6 +802,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-lodging-fragata-hotel',
+      refType: 'account_profile',
+      refId: 'poi-lodging-fragata-hotel',
       name: 'Fragata Hotel',
       description: 'Hotel',
       address: 'Rua Brasília, Guarapari',
@@ -673,6 +813,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-lodging-hospedaria-da-alice',
+      refType: 'account_profile',
+      refId: 'poi-lodging-hospedaria-da-alice',
       name: 'Hospedaria da Alice',
       description: 'Hostel',
       address: 'Rua Mariano A. Souza, 217, Belo Horizonte, Guarapari',
@@ -682,6 +824,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-lodging-hotel-aquario',
+      refType: 'account_profile',
+      refId: 'poi-lodging-hotel-aquario',
       name: 'Hotel Aquario',
       description: 'Hotel',
       address: 'Rua Onze, Ubu, Anchieta',
@@ -691,6 +835,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-lodging-hotel-atlantico',
+      refType: 'account_profile',
+      refId: 'poi-lodging-hotel-atlantico',
       name: 'Hotel Atlântico',
       description: 'Hotel',
       address: 'Guarapari',
@@ -700,6 +846,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-lodging-hotel-bom-jesus',
+      refType: 'account_profile',
+      refId: 'poi-lodging-hotel-bom-jesus',
       name: 'Hotel Bom Jesus',
       description: 'Hotel',
       address: 'Guarapari',
@@ -709,6 +857,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-lodging-hotel-coronado',
+      refType: 'account_profile',
+      refId: 'poi-lodging-hotel-coronado',
       name: 'Hotel Coronado',
       description: 'Hotel',
       address: 'Guarapari',
@@ -718,6 +868,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-lodging-hotel-fazenda-flamboyant',
+      refType: 'account_profile',
+      refId: 'poi-lodging-hotel-fazenda-flamboyant',
       name: 'Hotel Fazenda Flamboyant',
       description: 'Hotel',
       address: 'Guarapari',
@@ -727,6 +879,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-lodging-hotel-guarapousada',
+      refType: 'account_profile',
+      refId: 'poi-lodging-hotel-guarapousada',
       name: 'Hotel Guarapousada',
       description: 'Hotel',
       address: 'Avenida Antônio Guimarães, Itapebussu, Guarapari',
@@ -736,6 +890,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-lodging-hotel-hotur-guarapari',
+      refType: 'account_profile',
+      refId: 'poi-lodging-hotel-hotur-guarapari',
       name: 'Hotel Hotur Guarapari',
       description: 'Hotel',
       address: 'Guarapari',
@@ -745,6 +901,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-lodging-hotel-meaipe',
+      refType: 'account_profile',
+      refId: 'poi-lodging-hotel-meaipe',
       name: 'Hotel Meaipe',
       description: 'Hotel',
       address: 'Guarapari',
@@ -754,6 +912,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-attraction-amor-es',
+      refType: 'account_profile',
+      refId: 'poi-attraction-amor-es',
       name: '#amor♥es',
       description: 'Ponto turístico imperdível em Guarapari.',
       address: 'Guarapari',
@@ -763,6 +923,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-attraction-casa-de-quarentena-dos-imigrantes',
+      refType: 'account_profile',
+      refId: 'poi-attraction-casa-de-quarentena-dos-imigrantes',
       name: 'Casa de Quarentena dos Imigrantes',
       description: 'Ponto turístico imperdível em Guarapari.',
       address: 'Guarapari',
@@ -772,6 +934,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-attraction-estatua-do-marlim-azul',
+      refType: 'account_profile',
+      refId: 'poi-attraction-estatua-do-marlim-azul',
       name: 'Estátua do Marlim Azul',
       description: 'Patrimônio histórico que conta a história local.',
       address: 'Guarapari',
@@ -781,6 +945,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-attraction-gruta-do-santana',
+      refType: 'account_profile',
+      refId: 'poi-attraction-gruta-do-santana',
       name: 'Gruta do Santana',
       description: 'Patrimônio histórico que conta a história local.',
       address: 'Guarapari',
@@ -790,6 +956,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-attraction-hotel-radium',
+      refType: 'account_profile',
+      refId: 'poi-attraction-hotel-radium',
       name: 'Hotel Radium',
       description: 'Ponto turístico imperdível em Guarapari.',
       address: 'Guarapari',
@@ -799,6 +967,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-attraction-igreja-jesuita',
+      refType: 'account_profile',
+      refId: 'poi-attraction-igreja-jesuita',
       name: 'Igreja Jesuita',
       description: 'Patrimônio histórico que conta a história local.',
       address: 'Guarapari',
@@ -808,6 +978,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-attraction-mirante-da-lagoa',
+      refType: 'account_profile',
+      refId: 'poi-attraction-mirante-da-lagoa',
       name: 'Mirante da Lagoa',
       description: 'Ponto turístico imperdível em Guarapari.',
       address: 'Guarapari',
@@ -817,6 +989,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-attraction-mirante-de-buenos-aires',
+      refType: 'account_profile',
+      refId: 'poi-attraction-mirante-de-buenos-aires',
       name: 'Mirante de Buenos Aires',
       description: 'Ponto turístico imperdível em Guarapari.',
       address: 'Guarapari',
@@ -826,6 +1000,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-attraction-mirante-do-brejo-herbaceo',
+      refType: 'account_profile',
+      refId: 'poi-attraction-mirante-do-brejo-herbaceo',
       name: 'Mirante do Brejo Herbáceo',
       description: 'Ponto turístico imperdível em Guarapari.',
       address: 'Guarapari',
@@ -835,6 +1011,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-attraction-pedreira',
+      refType: 'account_profile',
+      refId: 'poi-attraction-pedreira',
       name: 'Pedreira',
       description: 'Ponto turístico imperdível em Guarapari.',
       address: 'Guarapari',
@@ -844,6 +1022,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-attraction-planet-sub',
+      refType: 'account_profile',
+      refId: 'poi-attraction-planet-sub',
       name: 'Planet Sub',
       description: 'Ponto turístico imperdível em Guarapari.',
       address: 'Guarapari',
@@ -853,6 +1033,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-attraction-poco-dos-jesuitas',
+      refType: 'account_profile',
+      refId: 'poi-attraction-poco-dos-jesuitas',
       name: 'Poço dos Jesuítas',
       description: 'Ponto turístico imperdível em Guarapari.',
       address: 'Guarapari',
@@ -862,6 +1044,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-attraction-praia-da-confissao',
+      refType: 'account_profile',
+      refId: 'poi-attraction-praia-da-confissao',
       name: 'Praia da Confissão',
       description: 'Ponto turístico imperdível em Guarapari.',
       address: 'Guarapari',
@@ -871,6 +1055,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-attraction-praca-central-onaldo-nogueira-garcia',
+      refType: 'account_profile',
+      refId: 'poi-attraction-praca-central-onaldo-nogueira-garcia',
       name: 'Praça Central Onaldo Nogueira Garcia',
       description: 'Parque urbano para aproveitar o dia ao ar livre.',
       address: 'Ubu, Anchieta',
@@ -880,6 +1066,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-attraction-praca-ciriaco-ramalhete-de-oliveira',
+      refType: 'account_profile',
+      refId: 'poi-attraction-praca-ciriaco-ramalhete-de-oliveira',
       name: 'Praça Ciriaco Ramalhete de Oliveira',
       description: 'Parque urbano para aproveitar o dia ao ar livre.',
       address: 'Guarapari',
@@ -889,6 +1077,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-attraction-praca-ciriaco-ramalhete-de-oliveira',
+      refType: 'account_profile',
+      refId: 'poi-attraction-praca-ciriaco-ramalhete-de-oliveira',
       name: 'Praça Ciriaco Ramalhete de Oliveira',
       description: 'Parque urbano para aproveitar o dia ao ar livre.',
       address: 'Guarapari',
@@ -898,6 +1088,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-attraction-praca-claudionor-coutinho',
+      refType: 'account_profile',
+      refId: 'poi-attraction-praca-claudionor-coutinho',
       name: 'Praça Claudionor Coutinho',
       description: 'Parque urbano para aproveitar o dia ao ar livre.',
       address: 'Guarapari',
@@ -907,6 +1099,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-attraction-praca-claudio-rogerio-nunes-coutinho',
+      refType: 'account_profile',
+      refId: 'poi-attraction-praca-claudio-rogerio-nunes-coutinho',
       name: 'Praça Cláudio Rogério Nunes Coutinho',
       description: 'Parque urbano para aproveitar o dia ao ar livre.',
       address: 'Guarapari',
@@ -916,6 +1110,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-attraction-praca-dayse-rangel',
+      refType: 'account_profile',
+      refId: 'poi-attraction-praca-dayse-rangel',
       name: 'Praça Dayse Rangel',
       description: 'Parque urbano para aproveitar o dia ao ar livre.',
       address: 'Guarapari',
@@ -925,6 +1121,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-attraction-praca-elizete-elias-dias',
+      refType: 'account_profile',
+      refId: 'poi-attraction-praca-elizete-elias-dias',
       name: 'Praça Elizete Elias Dias',
       description: 'Parque urbano para aproveitar o dia ao ar livre.',
       address: 'Guarapari',
@@ -934,6 +1132,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-nature-pedra-do-elefante',
+      refType: 'account_profile',
+      refId: 'poi-nature-pedra-do-elefante',
       name: 'Pedra do Elefante',
       description:
           'Formação rochosa símbolo de Buenos Aires, com trilha e vista panorâmica.',
@@ -945,6 +1145,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-nature-pedra-do-cruzeiro',
+      refType: 'account_profile',
+      refId: 'poi-nature-pedra-do-cruzeiro',
       name: 'Pedra do Cruzeiro',
       description:
           'Mirante natural em Buenos Aires com vista para o litoral de Guarapari.',
@@ -956,6 +1158,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-nature-morro-da-serra-grande',
+      refType: 'account_profile',
+      refId: 'poi-nature-morro-da-serra-grande',
       name: 'Morro da Serra Grande',
       description:
           'Ponto alto de mata atlântica ideal para caminhadas em Buenos Aires.',
@@ -967,6 +1171,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-beach-praia-boca-da-baleia',
+      refType: 'account_profile',
+      refId: 'poi-beach-praia-boca-da-baleia',
       name: 'Praia Boca da Baleia',
       description:
           'Praia icônica de Guarapari, excelente para aproveitar o litoral.',
@@ -977,6 +1183,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-beach-praia-boiao',
+      refType: 'account_profile',
+      refId: 'poi-beach-praia-boiao',
       name: 'Praia Boião',
       description:
           'Praia icônica de Guarapari, excelente para aproveitar o litoral.',
@@ -987,6 +1195,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-beach-praia-guaibura',
+      refType: 'account_profile',
+      refId: 'poi-beach-praia-guaibura',
       name: 'Praia Guaibura',
       description:
           'Praia icônica de Guarapari, excelente para aproveitar o litoral.',
@@ -997,6 +1207,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-beach-praia-maimba',
+      refType: 'account_profile',
+      refId: 'poi-beach-praia-maimba',
       name: 'Praia Maimbá',
       description:
           'Praia icônica de Guarapari, excelente para aproveitar o litoral.',
@@ -1007,6 +1219,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-beach-praia-maimba',
+      refType: 'account_profile',
+      refId: 'poi-beach-praia-maimba',
       name: 'Praia Maimbá',
       description:
           'Praia icônica de Guarapari, excelente para aproveitar o litoral.',
@@ -1017,6 +1231,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-beach-praia-maimba',
+      refType: 'account_profile',
+      refId: 'poi-beach-praia-maimba',
       name: 'Praia Maimbá',
       description:
           'Praia icônica de Guarapari, excelente para aproveitar o litoral.',
@@ -1027,6 +1243,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-beach-praia-peracanga',
+      refType: 'account_profile',
+      refId: 'poi-beach-praia-peracanga',
       name: 'Praia Peracanga',
       description:
           'Praia icônica de Guarapari, excelente para aproveitar o litoral.',
@@ -1037,6 +1255,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-beach-praia-recanto-dos-amores',
+      refType: 'account_profile',
+      refId: 'poi-beach-praia-recanto-dos-amores',
       name: 'Praia Recanto dos Amores',
       description:
           'Praia icônica de Guarapari, excelente para aproveitar o litoral.',
@@ -1047,6 +1267,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-beach-praia-santa-monica',
+      refType: 'account_profile',
+      refId: 'poi-beach-praia-santa-monica',
       name: 'Praia Santa Mônica',
       description:
           'Praia icônica de Guarapari, excelente para aproveitar o litoral.',
@@ -1057,6 +1279,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-beach-praia-setibao',
+      refType: 'account_profile',
+      refId: 'poi-beach-praia-setibao',
       name: 'Praia Setibão',
       description:
           'Praia icônica de Guarapari, excelente para aproveitar o litoral.',
@@ -1067,6 +1291,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-beach-praia-d-ule',
+      refType: 'account_profile',
+      refId: 'poi-beach-praia-d-ule',
       name: 'Praia d\'Ulé',
       description:
           'Praia icônica de Guarapari, excelente para aproveitar o litoral.',
@@ -1077,6 +1303,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-beach-praia-da-aldeia',
+      refType: 'account_profile',
+      refId: 'poi-beach-praia-da-aldeia',
       name: 'Praia da Aldeia',
       description:
           'Praia icônica de Guarapari, excelente para aproveitar o litoral.',
@@ -1087,6 +1315,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-beach-praia-da-aldeia',
+      refType: 'account_profile',
+      refId: 'poi-beach-praia-da-aldeia',
       name: 'Praia da Aldeia',
       description:
           'Praia icônica de Guarapari, excelente para aproveitar o litoral.',
@@ -1097,6 +1327,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-beach-praia-da-areia-preta',
+      refType: 'account_profile',
+      refId: 'poi-beach-praia-da-areia-preta',
       name: 'Praia da Areia Preta',
       description:
           'Praia icônica de Guarapari, excelente para aproveitar o litoral.',
@@ -1107,6 +1339,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-beach-praia-da-baleia',
+      refType: 'account_profile',
+      refId: 'poi-beach-praia-da-baleia',
       name: 'Praia da Baleia',
       description:
           'Praia icônica de Guarapari, excelente para aproveitar o litoral.',
@@ -1117,6 +1351,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-beach-praia-da-cerca',
+      refType: 'account_profile',
+      refId: 'poi-beach-praia-da-cerca',
       name: 'Praia da Cerca',
       description:
           'Praia icônica de Guarapari, excelente para aproveitar o litoral.',
@@ -1127,6 +1363,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-beach-praia-da-confissao',
+      refType: 'account_profile',
+      refId: 'poi-beach-praia-da-confissao',
       name: 'Praia da Confissão',
       description:
           'Praia icônica de Guarapari, excelente para aproveitar o litoral.',
@@ -1137,6 +1375,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-beach-praia-da-fonte',
+      refType: 'account_profile',
+      refId: 'poi-beach-praia-da-fonte',
       name: 'Praia da Fonte',
       description:
           'Praia icônica de Guarapari, excelente para aproveitar o litoral.',
@@ -1147,6 +1387,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-beach-praia-da-fonte',
+      refType: 'account_profile',
+      refId: 'poi-beach-praia-da-fonte',
       name: 'Praia da Fonte',
       description:
           'Praia icônica de Guarapari, excelente para aproveitar o litoral.',
@@ -1157,6 +1399,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-beach-praia-das-castanheiras',
+      refType: 'account_profile',
+      refId: 'poi-beach-praia-das-castanheiras',
       name: 'Praia das Castanheiras',
       description:
           'Praia icônica de Guarapari, excelente para aproveitar o litoral.',
@@ -1167,6 +1411,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-beach-praia-das-castanheiras',
+      refType: 'account_profile',
+      refId: 'poi-beach-praia-das-castanheiras',
       name: 'Praia das Castanheiras',
       description:
           'Praia icônica de Guarapari, excelente para aproveitar o litoral.',
@@ -1177,6 +1423,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-beach-praia-das-conchas',
+      refType: 'account_profile',
+      refId: 'poi-beach-praia-das-conchas',
       name: 'Praia das Conchas',
       description:
           'Praia icônica de Guarapari, excelente para aproveitar o litoral.',
@@ -1187,6 +1435,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-beach-praia-das-falesias',
+      refType: 'account_profile',
+      refId: 'poi-beach-praia-das-falesias',
       name: 'Praia das Falésias',
       description:
           'Praia icônica de Guarapari, excelente para aproveitar o litoral.',
@@ -1197,6 +1447,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-beach-praia-das-virtudes',
+      refType: 'account_profile',
+      refId: 'poi-beach-praia-das-virtudes',
       name: 'Praia das Virtudes',
       description:
           'Praia icônica de Guarapari, excelente para aproveitar o litoral.',
@@ -1207,6 +1459,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-beach-praia-de-guanabara',
+      refType: 'account_profile',
+      refId: 'poi-beach-praia-de-guanabara',
       name: 'Praia de Guanabara',
       description:
           'Praia icônica de Guarapari, excelente para aproveitar o litoral.',
@@ -1217,6 +1471,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-beach-praia-de-interlagos',
+      refType: 'account_profile',
+      refId: 'poi-beach-praia-de-interlagos',
       name: 'Praia de Interlagos',
       description:
           'Praia icônica de Guarapari, excelente para aproveitar o litoral.',
@@ -1227,6 +1483,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-beach-praia-de-mateus-lopes',
+      refType: 'account_profile',
+      refId: 'poi-beach-praia-de-mateus-lopes',
       name: 'Praia de Mateus Lopes',
       description:
           'Praia icônica de Guarapari, excelente para aproveitar o litoral.',
@@ -1237,6 +1495,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-beach-praia-de-meaipe',
+      refType: 'account_profile',
+      refId: 'poi-beach-praia-de-meaipe',
       name: 'Praia de Meaípe',
       description:
           'Praia icônica de Guarapari, excelente para aproveitar o litoral.',
@@ -1247,6 +1507,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-beach-praia-de-parati',
+      refType: 'account_profile',
+      refId: 'poi-beach-praia-de-parati',
       name: 'Praia de Parati',
       description:
           'Praia icônica de Guarapari, excelente para aproveitar o litoral.',
@@ -1257,6 +1519,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-beach-praia-de-parati',
+      refType: 'account_profile',
+      refId: 'poi-beach-praia-de-parati',
       name: 'Praia de Parati',
       description:
           'Praia icônica de Guarapari, excelente para aproveitar o litoral.',
@@ -1267,6 +1531,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-beach-praia-de-ponta-da-fruta',
+      refType: 'account_profile',
+      refId: 'poi-beach-praia-de-ponta-da-fruta',
       name: 'Praia de Ponta da Fruta',
       description:
           'Praia icônica de Guarapari, excelente para aproveitar o litoral.',
@@ -1277,6 +1543,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-beach-praia-de-setiba',
+      refType: 'account_profile',
+      refId: 'poi-beach-praia-de-setiba',
       name: 'Praia de Setiba',
       description:
           'Praia icônica de Guarapari, excelente para aproveitar o litoral.',
@@ -1287,6 +1555,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-beach-praia-de-setiba-grande',
+      refType: 'account_profile',
+      refId: 'poi-beach-praia-de-setiba-grande',
       name: 'Praia de Setiba Grande',
       description:
           'Praia icônica de Guarapari, excelente para aproveitar o litoral.',
@@ -1297,6 +1567,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-beach-praia-de-ubu',
+      refType: 'account_profile',
+      refId: 'poi-beach-praia-de-ubu',
       name: 'Praia de Ubu',
       description:
           'Praia icônica de Guarapari, excelente para aproveitar o litoral.',
@@ -1307,6 +1579,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-beach-praia-do-alem',
+      refType: 'account_profile',
+      refId: 'poi-beach-praia-do-alem',
       name: 'Praia do Além',
       description:
           'Praia icônica de Guarapari, excelente para aproveitar o litoral.',
@@ -1317,6 +1591,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-beach-praia-do-bacutia',
+      refType: 'account_profile',
+      refId: 'poi-beach-praia-do-bacutia',
       name: 'Praia do Bacutia',
       description:
           'Praia icônica de Guarapari, excelente para aproveitar o litoral.',
@@ -1327,6 +1603,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-beach-praia-do-camping',
+      refType: 'account_profile',
+      refId: 'poi-beach-praia-do-camping',
       name: 'Praia do Camping',
       description:
           'Praia icônica de Guarapari, excelente para aproveitar o litoral.',
@@ -1337,6 +1615,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-beach-praia-do-ermitao',
+      refType: 'account_profile',
+      refId: 'poi-beach-praia-do-ermitao',
       name: 'Praia do Ermitão',
       description:
           'Praia icônica de Guarapari, excelente para aproveitar o litoral.',
@@ -1347,6 +1627,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-beach-praia-do-meio',
+      refType: 'account_profile',
+      refId: 'poi-beach-praia-do-meio',
       name: 'Praia do Meio',
       description:
           'Praia icônica de Guarapari, excelente para aproveitar o litoral.',
@@ -1357,6 +1639,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-beach-praia-do-meio',
+      refType: 'account_profile',
+      refId: 'poi-beach-praia-do-meio',
       name: 'Praia do Meio',
       description:
           'Praia icônica de Guarapari, excelente para aproveitar o litoral.',
@@ -1367,6 +1651,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-beach-praia-do-morro',
+      refType: 'account_profile',
+      refId: 'poi-beach-praia-do-morro',
       name: 'Praia do Morro',
       description:
           'Praia icônica de Guarapari, excelente para aproveitar o litoral.',
@@ -1377,6 +1663,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-beach-praia-do-netuno',
+      refType: 'account_profile',
+      refId: 'poi-beach-praia-do-netuno',
       name: 'Praia do Netuno',
       description:
           'Praia icônica de Guarapari, excelente para aproveitar o litoral.',
@@ -1387,6 +1675,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-beach-praia-do-porto-velho',
+      refType: 'account_profile',
+      refId: 'poi-beach-praia-do-porto-velho',
       name: 'Praia do Porto Velho',
       description:
           'Praia icônica de Guarapari, excelente para aproveitar o litoral.',
@@ -1397,6 +1687,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-beach-praia-do-riacho',
+      refType: 'account_profile',
+      refId: 'poi-beach-praia-do-riacho',
       name: 'Praia do Riacho',
       description:
           'Praia icônica de Guarapari, excelente para aproveitar o litoral.',
@@ -1407,6 +1699,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-beach-praia-do-saco',
+      refType: 'account_profile',
+      refId: 'poi-beach-praia-do-saco',
       name: 'Praia do Saco',
       description:
           'Praia icônica de Guarapari, excelente para aproveitar o litoral.',
@@ -1417,6 +1711,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-beach-praia-do-sul',
+      refType: 'account_profile',
+      refId: 'poi-beach-praia-do-sul',
       name: 'Praia do Sul',
       description:
           'Praia icônica de Guarapari, excelente para aproveitar o litoral.',
@@ -1427,6 +1723,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-beach-praia-do-urubu',
+      refType: 'account_profile',
+      refId: 'poi-beach-praia-do-urubu',
       name: 'Praia do Urubu',
       description:
           'Praia icônica de Guarapari, excelente para aproveitar o litoral.',
@@ -1437,6 +1735,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-beach-praia-dos-adventistas',
+      refType: 'account_profile',
+      refId: 'poi-beach-praia-dos-adventistas',
       name: 'Praia dos Adventistas',
       description:
           'Praia icônica de Guarapari, excelente para aproveitar o litoral.',
@@ -1447,6 +1747,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-beach-praia-dos-carais',
+      refType: 'account_profile',
+      refId: 'poi-beach-praia-dos-carais',
       name: 'Praia dos Caraís',
       description:
           'Praia icônica de Guarapari, excelente para aproveitar o litoral.',
@@ -1457,6 +1759,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-beach-praia-dos-castelhanos',
+      refType: 'account_profile',
+      refId: 'poi-beach-praia-dos-castelhanos',
       name: 'Praia dos Castelhanos',
       description:
           'Praia icônica de Guarapari, excelente para aproveitar o litoral.',
@@ -1467,6 +1771,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-beach-praia-dos-namorados',
+      refType: 'account_profile',
+      refId: 'poi-beach-praia-dos-namorados',
       name: 'Praia dos Namorados',
       description:
           'Praia icônica de Guarapari, excelente para aproveitar o litoral.',
@@ -1477,6 +1783,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-beach-praia-dos-padres',
+      refType: 'account_profile',
+      refId: 'poi-beach-praia-dos-padres',
       name: 'Praia dos Padres',
       description:
           'Praia icônica de Guarapari, excelente para aproveitar o litoral.',
@@ -1487,6 +1795,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-health-caps',
+      refType: 'account_profile',
+      refId: 'poi-health-caps',
       name: 'CAPS',
       description: 'Referência em atendimento em Guarapari.',
       address: 'Guarapari',
@@ -1496,6 +1806,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-health-centro-de-especialidades-unificado-ceu',
+      refType: 'account_profile',
+      refId: 'poi-health-centro-de-especialidades-unificado-ceu',
       name: 'Centro de Especialidades Unificado - Ceu',
       description: 'Referência em atendimento em Guarapari.',
       address: 'Rodovia Edival José Petri, Vila Residêncial Samarco, Anchieta',
@@ -1505,6 +1817,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-health-hospital-geral-dr-luiz-buaiz',
+      refType: 'account_profile',
+      refId: 'poi-health-hospital-geral-dr-luiz-buaiz',
       name: 'Hospital Geral Dr. Luiz Buaiz',
       description: 'Referência em atendimento em Guarapari.',
       address: 'R. Pastor Simão Pedro Manske, Village da Praia, Guarapari',
@@ -1514,6 +1828,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-health-hospital-nossa-senhora-da-conceicao',
+      refType: 'account_profile',
+      refId: 'poi-health-hospital-nossa-senhora-da-conceicao',
       name: 'Hospital Nossa Senhora da Conceição',
       description: 'Referência em atendimento em Guarapari.',
       address: 'Rua Doutor Gerson da Silva Freire, 91, Guarapari',
@@ -1523,6 +1839,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-health-hospital-sao-judas-tadeu',
+      refType: 'account_profile',
+      refId: 'poi-health-hospital-sao-judas-tadeu',
       name: 'Hospital São Judas Tadeu',
       description: 'Referência em atendimento em Guarapari.',
       address: 'Rua Santana do Iapo, 54, Guarapari',
@@ -1532,6 +1850,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-nature-cachoeira-engenheiro-reeve',
+      refType: 'account_profile',
+      refId: 'poi-nature-cachoeira-engenheiro-reeve',
       name: 'Cachoeira Engenheiro Reeve (Matilde)',
       description:
           'Cachoeira citada como a mais famosa do município, no distrito de Matilde.',
@@ -1544,6 +1864,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-attraction-tunel-de-matilde',
+      refType: 'account_profile',
+      refId: 'poi-attraction-tunel-de-matilde',
       name: 'Túnel de Matilde',
       description: 'Atrativo turístico em Matilde.',
       address: 'Distrito de Matilde, Alfredo Chaves - ES',
@@ -1555,6 +1877,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-culture-estacao-ferroviaria-matilde',
+      refType: 'account_profile',
+      refId: 'poi-culture-estacao-ferroviaria-matilde',
       name: 'Estação Ferroviária de Matilde',
       description:
           'Antiga estação ferroviária (OSM: "Mathilde"), hoje ponto de visitação em Matilde.',
@@ -1567,6 +1891,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-attraction-rampa-voo-livre-cachoeira-alta',
+      refType: 'account_profile',
+      refId: 'poi-attraction-rampa-voo-livre-cachoeira-alta',
       name: 'Rampa de Voo Livre de Cachoeira Alta',
       description: 'Ponto de voo livre e turismo de aventura.',
       address: 'Cachoeira Alta, Alfredo Chaves - ES',
@@ -1578,6 +1904,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-culture-estacao-ferroviaria-ibitirui',
+      refType: 'account_profile',
+      refId: 'poi-culture-estacao-ferroviaria-ibitirui',
       name: 'Estação Ferroviária de Ibitiruí',
       description: 'Parada de trem (OSM: estação "Ibitiruí").',
       address: 'Ibitiruí, Alfredo Chaves - ES',
@@ -1589,6 +1917,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-church-igreja-nossa-senhora-da-conceicao',
+      refType: 'account_profile',
+      refId: 'poi-church-igreja-nossa-senhora-da-conceicao',
       name: 'Igreja Nossa Senhora da Conceição',
       description: 'Igreja citada como atrativo turístico em Alfredo Chaves.',
       address: 'Centro, Alfredo Chaves - ES',
@@ -1598,8 +1928,10 @@ class MockPoiDatabase {
       priority: 7,
       tags: ['igreja', 'centro'],
     ),
-    const CityPoiDTO(
+    CityPoiDTO(
       id: 'poi-nature-cachoeira-piripitinga',
+      refType: 'account_profile',
+      refId: 'poi-nature-cachoeira-piripitinga',
       name: 'Cachoeira de Piripitinga',
       description: 'Cachoeira citada pela Prefeitura de Alfredo Chaves.',
       address: 'Batatal, Alfredo Chaves - ES',
@@ -1609,8 +1941,10 @@ class MockPoiDatabase {
       priority: 5,
       tags: ['cachoeira', 'natureza'],
     ),
-    const CityPoiDTO(
+    CityPoiDTO(
       id: 'poi-nature-cachoeira-pinon',
+      refType: 'account_profile',
+      refId: 'poi-nature-cachoeira-pinon',
       name: 'Cachoeira do Pinon',
       description: 'Cachoeira citada pela Prefeitura de Alfredo Chaves.',
       address: 'Carolina, Alfredo Chaves - ES',
@@ -1622,6 +1956,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-nature-cachoeira-maravilha',
+      refType: 'account_profile',
+      refId: 'poi-nature-cachoeira-maravilha',
       name: 'Cachoeira de Maravilha',
       description: 'Cachoeira na região de Maravilha (São Roque de Maravilha).',
       address: 'Maravilha, Alfredo Chaves - ES',
@@ -1631,8 +1967,10 @@ class MockPoiDatabase {
       priority: 5,
       tags: ['cachoeira', 'natureza', 'maravilha'],
     ),
-    const CityPoiDTO(
+    CityPoiDTO(
       id: 'poi-nature-cachoeira-vovo-lucia',
+      refType: 'account_profile',
+      refId: 'poi-nature-cachoeira-vovo-lucia',
       name: 'Cachoeira da Vovó Lúcia (Ibitiruí)',
       description: 'Cachoeira em Ibitiruí, Alfredo Chaves.',
       address: 'Ibitiruí, Alfredo Chaves - ES',
@@ -1642,8 +1980,10 @@ class MockPoiDatabase {
       priority: 5,
       tags: ['cachoeira', 'ibitiruí', 'natureza'],
     ),
-    const CityPoiDTO(
+    CityPoiDTO(
       id: 'poi-nature-cachoeira-quintino',
+      refType: 'account_profile',
+      refId: 'poi-nature-cachoeira-quintino',
       name: 'Cachoeira do Quintino',
       description: 'Cachoeira citada pela Prefeitura de Alfredo Chaves.',
       address: 'Crubixá, Alfredo Chaves - ES',
@@ -1653,8 +1993,10 @@ class MockPoiDatabase {
       priority: 5,
       tags: ['cachoeira', 'natureza'],
     ),
-    const CityPoiDTO(
+    CityPoiDTO(
       id: 'poi-nature-cachoeira-daros',
+      refType: 'account_profile',
+      refId: 'poi-nature-cachoeira-daros',
       name: 'Cachoeira do Darós',
       description: 'Cachoeira em Alfredo Chaves (OSM: Cachoeira do Darós).',
       address: 'Alfredo Chaves - ES',
@@ -1664,8 +2006,10 @@ class MockPoiDatabase {
       priority: 5,
       tags: ['cachoeira', 'natureza'],
     ),
-    const CityPoiDTO(
+    CityPoiDTO(
       id: 'poi-nature-cachoeira-iracema',
+      refType: 'account_profile',
+      refId: 'poi-nature-cachoeira-iracema',
       name: 'Cachoeira de Iracema',
       description: 'Cachoeira em Alfredo Chaves (OSM: Cachoeira de Iracema).',
       address: 'Alfredo Chaves - ES',
@@ -1675,8 +2019,10 @@ class MockPoiDatabase {
       priority: 5,
       tags: ['cachoeira', 'natureza'],
     ),
-    const CityPoiDTO(
+    CityPoiDTO(
       id: 'poi-nature-cachoeira-iraceminha',
+      refType: 'account_profile',
+      refId: 'poi-nature-cachoeira-iraceminha',
       name: 'Cachoeira de Iraceminha',
       description:
           'Cachoeira em Alfredo Chaves (OSM: Cachoeira de Iraceminha).',
@@ -1687,8 +2033,10 @@ class MockPoiDatabase {
       priority: 5,
       tags: ['cachoeira', 'natureza'],
     ),
-    const CityPoiDTO(
+    CityPoiDTO(
       id: 'poi-nature-cachoeira-paganini',
+      refType: 'account_profile',
+      refId: 'poi-nature-cachoeira-paganini',
       name: 'Cachoeira do Paganini',
       description: 'Cachoeira em Alfredo Chaves (OSM: Cachoeira do Paganini).',
       address: 'Alfredo Chaves - ES',
@@ -1698,8 +2046,10 @@ class MockPoiDatabase {
       priority: 5,
       tags: ['cachoeira', 'natureza'],
     ),
-    const CityPoiDTO(
+    CityPoiDTO(
       id: 'poi-nature-cachoeira-alta',
+      refType: 'account_profile',
+      refId: 'poi-nature-cachoeira-alta',
       name: 'Cachoeira Alta',
       description: 'Cachoeira em Alfredo Chaves (OSM: Cachoeira Alta).',
       address: 'Cachoeira Alta, Alfredo Chaves - ES',
@@ -1709,8 +2059,10 @@ class MockPoiDatabase {
       priority: 5,
       tags: ['cachoeira', 'natureza', 'cachoeira alta'],
     ),
-    const CityPoiDTO(
+    CityPoiDTO(
       id: 'poi-nature-cachoeira-da-luz',
+      refType: 'account_profile',
+      refId: 'poi-nature-cachoeira-da-luz',
       name: 'Cachoeira da Luz',
       description: 'Cachoeira em Alfredo Chaves (OSM: Cachoeira da Luz).',
       address: 'Alfredo Chaves - ES',
@@ -1720,8 +2072,10 @@ class MockPoiDatabase {
       priority: 5,
       tags: ['cachoeira', 'natureza'],
     ),
-    const CityPoiDTO(
+    CityPoiDTO(
       id: 'poi-nature-cachoeira-do-cafundo',
+      refType: 'account_profile',
+      refId: 'poi-nature-cachoeira-do-cafundo',
       name: 'Cachoeira do Cafundó',
       description: 'Cachoeira em Alfredo Chaves (OSM: Cachoeira do Cafundó).',
       address: 'Alfredo Chaves - ES',
@@ -1731,8 +2085,10 @@ class MockPoiDatabase {
       priority: 5,
       tags: ['cachoeira', 'natureza'],
     ),
-    const CityPoiDTO(
+    CityPoiDTO(
       id: 'poi-nature-cachoeira-do-pasto',
+      refType: 'account_profile',
+      refId: 'poi-nature-cachoeira-do-pasto',
       name: 'Cachoeira do Pasto',
       description: 'Cachoeira em Alfredo Chaves (OSM: Cachoeira do Pasto).',
       address: 'Alfredo Chaves - ES',
@@ -1742,8 +2098,10 @@ class MockPoiDatabase {
       priority: 5,
       tags: ['cachoeira', 'natureza'],
     ),
-    const CityPoiDTO(
+    CityPoiDTO(
       id: 'poi-nature-pedra-do-gururu',
+      refType: 'account_profile',
+      refId: 'poi-nature-pedra-do-gururu',
       name: 'Pedra do Gururu',
       description: 'Pico/elevação em Alfredo Chaves (OSM: Pedra do Gururu).',
       address: 'Alfredo Chaves - ES',
@@ -1753,8 +2111,10 @@ class MockPoiDatabase {
       priority: 6,
       tags: ['natureza', 'trilha', 'mirante'],
     ),
-    const CityPoiDTO(
+    CityPoiDTO(
       id: 'poi-nature-rppn-alto-gururu',
+      refType: 'account_profile',
+      refId: 'poi-nature-rppn-alto-gururu',
       name: 'RPPN Alto Gururu',
       description:
           'Reserva Particular do Patrimônio Natural (OSM: Alto Gururu).',
@@ -1765,8 +2125,10 @@ class MockPoiDatabase {
       priority: 6,
       tags: ['natureza', 'reserva', 'gururu'],
     ),
-    const CityPoiDTO(
+    CityPoiDTO(
       id: 'poi-nature-pedra-de-santo-antonio',
+      refType: 'account_profile',
+      refId: 'poi-nature-pedra-de-santo-antonio',
       name: 'Pedra de Santo Antônio',
       description:
           'Pico/elevação em Alfredo Chaves (OSM: Pedra de Santo Antônio).',
@@ -1777,8 +2139,10 @@ class MockPoiDatabase {
       priority: 6,
       tags: ['natureza', 'trilha'],
     ),
-    const CityPoiDTO(
+    CityPoiDTO(
       id: 'poi-church-capela-sao-benedito',
+      refType: 'account_profile',
+      refId: 'poi-church-capela-sao-benedito',
       name: 'Capela de São Benedito',
       description: 'Capela citada como atrativo turístico em Alfredo Chaves.',
       address: 'Alfredo Chaves - ES',
@@ -1788,8 +2152,10 @@ class MockPoiDatabase {
       priority: 8,
       tags: ['igreja', 'capela', 'centro'],
     ),
-    const CityPoiDTO(
+    CityPoiDTO(
       id: 'poi-church-capela-sao-roque',
+      refType: 'account_profile',
+      refId: 'poi-church-capela-sao-roque',
       name: 'Capela de São Roque',
       description: 'Capela em Alfredo Chaves (OSM: Capela de São Roque).',
       address: 'Alfredo Chaves - ES',
@@ -1799,8 +2165,10 @@ class MockPoiDatabase {
       priority: 8,
       tags: ['igreja', 'capela'],
     ),
-    const CityPoiDTO(
+    CityPoiDTO(
       id: 'poi-church-igreja-sao-roque',
+      refType: 'account_profile',
+      refId: 'poi-church-igreja-sao-roque',
       name: 'Igreja de São Roque',
       description: 'Igreja em Alfredo Chaves (OSM: Igreja de São Roque).',
       address: 'São Roque de Maravilha, Alfredo Chaves - ES',
@@ -1810,8 +2178,10 @@ class MockPoiDatabase {
       priority: 8,
       tags: ['igreja', 'são roque', 'maravilha'],
     ),
-    const CityPoiDTO(
+    CityPoiDTO(
       id: 'poi-church-igreja-sagrada-familia-sagrada-familia',
+      refType: 'account_profile',
+      refId: 'poi-church-igreja-sagrada-familia-sagrada-familia',
       name: 'Igreja da Sagrada Família',
       description: 'Igreja em Alfredo Chaves (Sagrada Família).',
       address: 'Sagrada Família, Alfredo Chaves - ES',
@@ -1821,8 +2191,10 @@ class MockPoiDatabase {
       priority: 8,
       tags: ['igreja', 'sagrada família'],
     ),
-    const CityPoiDTO(
+    CityPoiDTO(
       id: 'poi-church-igreja-sagrada-familia-vila-nova-maravilha',
+      refType: 'account_profile',
+      refId: 'poi-church-igreja-sagrada-familia-vila-nova-maravilha',
       name: 'Igreja da Sagrada Família (Vila Nova de Maravilha)',
       description: 'Igreja em Alfredo Chaves (Vila Nova de Maravilha).',
       address: 'Vila Nova de Maravilha, Alfredo Chaves - ES',
@@ -1834,6 +2206,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-attraction-parque-exposicoes-reginaldo-roque-giori',
+      refType: 'account_profile',
+      refId: 'poi-attraction-parque-exposicoes-reginaldo-roque-giori',
       name: 'Parque de Exposições Reginaldo Roque Giori',
       description: 'Parque de exposições citado em publicações institucionais.',
       address: 'Alfredo Chaves - ES',
@@ -1845,6 +2219,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-culture-casa-do-artesao',
+      refType: 'account_profile',
+      refId: 'poi-culture-casa-do-artesao',
       name: 'Casa do Artesão',
       description:
           'Espaço de valorização da cultura local e economia criativa.',
@@ -1857,6 +2233,8 @@ class MockPoiDatabase {
     ),
     CityPoiDTO(
       id: 'poi-attraction-sao-roque-de-maravilha',
+      refType: 'account_profile',
+      refId: 'poi-attraction-sao-roque-de-maravilha',
       name: 'São Roque de Maravilha',
       description:
           'Comunidade do interior citada no Portal de Turismo (vilarejo na região de Maravilha).',
@@ -2165,6 +2543,8 @@ class MockPoiDatabase {
       final duplicatedCategory = normalizedCategoryIndex[normalizedName];
       final poi = CityPoiDTO(
         id: poiId,
+        refType: 'account_profile',
+        refId: poiId,
         name: rawName,
         description: (description != null && description.isNotEmpty)
             ? description
@@ -2302,6 +2682,8 @@ class MockPoiDatabase {
     }
     return CityPoiDTO(
       id: poi.id,
+      refType: poi.refType,
+      refId: poi.refId,
       name: poi.name,
       description: poi.description,
       address: poi.address,

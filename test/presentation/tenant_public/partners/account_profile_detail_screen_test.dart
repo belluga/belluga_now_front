@@ -29,11 +29,9 @@ import 'package:belluga_now/domain/repositories/account_profiles_repository_cont
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/proximity_preferences_repository_contract.dart';
-import 'package:belluga_now/domain/repositories/static_assets_repository_contract.dart';
 import 'package:belluga_now/domain/value_objects/domain_boolean_value.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
-import 'package:belluga_now/domain/static_assets/public_static_asset_model.dart';
 import 'package:belluga_now/presentation/tenant_public/partners/account_profile_detail_screen.dart';
 import 'package:belluga_now/presentation/tenant_public/partners/controllers/account_profile_detail_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/partners/controllers/account_profile_detail_state.dart';
@@ -2600,9 +2598,6 @@ void main() {
         profiles: [parentProfile, childProfile],
       );
       GetIt.I.registerSingleton<AccountProfilesRepositoryContract>(repository);
-      GetIt.I.registerSingleton<StaticAssetsRepositoryContract>(
-        _FakeStaticAssetsRepository(),
-      );
       GetIt.I.registerSingleton<DiscoveryModule>(DiscoveryModule());
 
       final router = RootStackRouter.build(
@@ -2726,9 +2721,6 @@ void main() {
       );
       final createdControllers = <_TrackingAccountProfileDetailController>[];
       GetIt.I.registerSingleton<AccountProfilesRepositoryContract>(repository);
-      GetIt.I.registerSingleton<StaticAssetsRepositoryContract>(
-        _FakeStaticAssetsRepository(),
-      );
       GetIt.I.registerFactory<AccountProfileDetailController>(() {
         final controller = _TrackingAccountProfileDetailController(
           id: createdControllers.length + 1,
@@ -3972,13 +3964,6 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
 
   @override
   List<AccountProfileComplete> getFavoriteAccountProfiles() => const [];
-}
-
-class _FakeStaticAssetsRepository implements StaticAssetsRepositoryContract {
-  @override
-  Future<PublicStaticAssetModel?> getStaticAssetByRef(
-    StaticAssetRepoText assetRef,
-  ) async => null;
 }
 
 AccountProfileComplete _buildArtistProfile() {

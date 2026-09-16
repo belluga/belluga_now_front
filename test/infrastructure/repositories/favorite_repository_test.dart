@@ -6,9 +6,7 @@ import 'package:belluga_now/infrastructure/dal/dao/auth_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_context.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/favorite_backend_contract.dart';
-import 'package:belluga_now/infrastructure/dal/dao/static_assets_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/tenant_backend_contract.dart';
-import 'package:belluga_now/infrastructure/dal/dao/unsupported_static_assets_backend.dart';
 import 'package:belluga_now/infrastructure/dal/dao/event_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dto/favorite/favorite_preview_dto.dart';
 import 'package:belluga_now/infrastructure/repositories/favorite_repository.dart';
@@ -194,10 +192,6 @@ class _StubBackend extends BackendContract {
   @override
   AccountProfilesBackendContract get accountProfiles =>
       throw UnimplementedError();
-
-  @override
-  StaticAssetsBackendContract get staticAssets =>
-      const UnsupportedStaticAssetsBackend();
 
   @override
   FavoriteBackendContract get favorites => _favoritesBackend;

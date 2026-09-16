@@ -47,10 +47,6 @@ class TenantAdminTaxonomyDefinition {
     return appliesToTarget(tenantAdminRequiredText('account_profile'));
   }
 
-  TenantAdminTaxonomyDefinitionPrimBool appliesToStaticAsset() {
-    return appliesToTarget(tenantAdminRequiredText('static_asset'));
-  }
-
   TenantAdminTaxonomyDefinitionPrimBool appliesToEvent() {
     return appliesToTarget(tenantAdminRequiredText('event'));
   }

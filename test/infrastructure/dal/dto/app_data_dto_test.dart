@@ -288,12 +288,12 @@ void main() {
                   },
                 },
                 {
-                  'key': 'beaches',
-                  'label': 'Praias',
+                  'key': 'places',
+                  'label': 'Locais',
                   'override_marker': false,
                   'query': {
-                    'source': 'static_asset',
-                    'types': ['beach'],
+                    'source': 'account_profile',
+                    'types': ['restaurant'],
                   },
                 },
               ],
@@ -304,7 +304,7 @@ void main() {
 
       expect(appData.mapFilterCatalogKeys.toList(), <String>[
         'events',
-        'beaches',
+        'places',
       ]);
       final events = appData.mapFilterOptions.categories.first;
       expect(events.label, 'Agenda');

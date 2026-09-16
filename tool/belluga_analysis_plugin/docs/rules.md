@@ -311,7 +311,6 @@ Stackable tenant-public detail screens must not resolve their detail controller 
 The covered launch surface is intentionally narrow:
 - `AccountProfileDetailScreen` / `AccountProfileDetailController`
 - `ImmersiveEventDetailScreen` / `ImmersiveEventDetailController`
-- `StaticAssetDetailScreen` / `StaticAssetDetailController`
 
 ### Remediation playbook
 1. Resolve covered detail controllers with `RouteInstanceScope.get<T>(context)`.

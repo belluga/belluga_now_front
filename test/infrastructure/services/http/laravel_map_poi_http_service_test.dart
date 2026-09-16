@@ -46,7 +46,7 @@ void main() {
 
       await service.getPois(
         _buildPoiQuery(
-          source: 'static_asset',
+          source: 'account_profile',
           categoryKeys: <String>{'beach'},
           types: <String>{'beach_spot'},
           tags: <String>{'family'},
@@ -465,6 +465,8 @@ class _PoiStacksAdapter implements HttpClientAdapter {
             'stack_count': 1,
             'top_poi': {
               'id': 'poi-1',
+              'ref_type': 'account_profile',
+              'ref_id': 'poi-1',
               'title': 'Restaurante',
               'subtitle': 'Descricao',
               'description': 'Descricao',
@@ -512,6 +514,8 @@ class _PoiImageStacksAdapter implements HttpClientAdapter {
             'stack_count': 1,
             'top_poi': {
               'id': 'poi-1',
+              'ref_type': 'event',
+              'ref_id': 'poi-1',
               'title': 'Festival',
               'subtitle': 'Descricao',
               'description': 'Descricao',

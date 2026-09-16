@@ -235,7 +235,7 @@ void main() {
           id: 'tax-2',
           slug: 'cuisine',
           name: 'Cozinha',
-          appliesTo: ['static_asset'],
+          appliesTo: ['event'],
           icon: null,
           color: null,
         ),

@@ -88,7 +88,7 @@ CityPoiModel _buildPoi(String id) {
     ),
     priorityValue: PoiPriorityValue()..parse('10'),
     isDynamicValue: PoiBooleanValue()..parse('false'),
-    refTypeValue: PoiReferenceTypeValue()..parse('static'),
+    refTypeValue: PoiReferenceTypeValue()..parse('account_profile'),
     refIdValue: PoiReferenceIdValue()..parse(id),
     stackItems: CityPoiStackItems(),
   );

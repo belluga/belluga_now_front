@@ -2,7 +2,6 @@ import 'package:belluga_now/application/tenant_admin/discovery_filters/tenant_ad
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_settings.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms_by_taxonomy_id.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_lowercase_token_value.dart';
@@ -24,7 +23,6 @@ class TenantAdminDiscoveryFilterRuleCatalogBuilder {
 
   TenantAdminMapFilterRuleCatalog build({
     required List<TenantAdminProfileTypeDefinition> accountTypes,
-    required List<TenantAdminStaticProfileTypeDefinition> staticTypes,
     required List<TenantAdminTaxonomyDefinition> taxonomies,
     required TenantAdminTaxonomyTermsBySlug termsBySlug,
     List<TenantAdminEventType> eventTypes = const <TenantAdminEventType>[],
@@ -34,19 +32,6 @@ class TenantAdminDiscoveryFilterRuleCatalogBuilder {
           (item) =>
               item.type.trim().isNotEmpty && item.capabilities.isPoiEnabled,
         )
-        .map(
-          (item) => TenantAdminMapFilterTypeOption(
-            slugValue: _tokenValue(item.type.trim().toLowerCase()),
-            labelValue: _requiredTextValue(
-              item.label.trim().isEmpty ? item.type : item.label.trim(),
-            ),
-          ),
-        )
-        .toList(growable: false)
-      ..sort((left, right) => left.label.compareTo(right.label));
-
-    final staticTypeOptions = staticTypes
-        .where((item) => item.type.trim().isNotEmpty)
         .map(
           (item) => TenantAdminMapFilterTypeOption(
             slugValue: _tokenValue(item.type.trim().toLowerCase()),
@@ -74,8 +59,6 @@ class TenantAdminDiscoveryFilterRuleCatalogBuilder {
     final taxonomyBySource = <TenantAdminMapFilterSource,
         List<TenantAdminMapFilterTaxonomyTermOption>>{
       TenantAdminMapFilterSource.accountProfile:
-          <TenantAdminMapFilterTaxonomyTermOption>[],
-      TenantAdminMapFilterSource.staticAsset:
           <TenantAdminMapFilterTaxonomyTermOption>[],
       TenantAdminMapFilterSource.event:
           <TenantAdminMapFilterTaxonomyTermOption>[],
@@ -105,9 +88,6 @@ class TenantAdminDiscoveryFilterRuleCatalogBuilder {
           taxonomyBySource[TenantAdminMapFilterSource.accountProfile]!
               .add(option);
         }
-        if (taxonomy.appliesToStaticAsset()) {
-          taxonomyBySource[TenantAdminMapFilterSource.staticAsset]!.add(option);
-        }
         if (taxonomy.appliesToEvent()) {
           taxonomyBySource[TenantAdminMapFilterSource.event]!.add(option);
         }
@@ -132,10 +112,6 @@ class TenantAdminDiscoveryFilterRuleCatalogBuilder {
         TenantAdminMapFilterSource.accountProfile:
             List<TenantAdminMapFilterTypeOption>.unmodifiable(
           accountTypeOptions,
-        ),
-        TenantAdminMapFilterSource.staticAsset:
-            List<TenantAdminMapFilterTypeOption>.unmodifiable(
-          staticTypeOptions,
         ),
         TenantAdminMapFilterSource.event:
             List<TenantAdminMapFilterTypeOption>.unmodifiable(
