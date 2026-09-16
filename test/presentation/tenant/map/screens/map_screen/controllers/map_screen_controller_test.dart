@@ -3447,6 +3447,7 @@ void main() {
           localController.selectedPoiStreamValue.value?.id,
           selectedPoi.id,
         );
+        mapRepository.nextPois = <CityPoiModel>[selectedPoi];
 
         mapHandle.emitInteraction(
           BellugaMapInteractionEvent(
@@ -3462,6 +3463,10 @@ void main() {
         expect(mapRepository.fetchPointsCallCount, callsBeforeMove + 1);
         expect(mapRepository.lastQuery?.northEast, nextViewport.northEast);
         expect(mapRepository.lastQuery?.southWest, nextViewport.southWest);
+        expect(
+          localController.filteredPoisStreamValue.value?.map((poi) => poi.id),
+          <String>[selectedPoi.id],
+        );
         expect(
           localController.selectedPoiStreamValue.value?.id,
           selectedPoi.id,
@@ -7011,6 +7016,17 @@ void main() {
 
         expect(localController.poiDeckIndexStreamValue.value, 1);
         expect(localController.selectedPoiStreamValue.value?.id, 'poi-far');
+        expect(fakeMapHandle.lastMoveCoordinate, isNotNull);
+        expect(
+          fakeMapHandle.lastMoveCoordinate!.latitude,
+          closeTo(farPoi.coordinate.latitude, 1e-9),
+        );
+        expect(
+          fakeMapHandle.lastMoveCoordinate!.longitude,
+          closeTo(farPoi.coordinate.longitude, 1e-9),
+        );
+        expect(fakeMapHandle.lastMoveZoom, 16);
+        expect(fakeMapHandle.lastVerticalViewportAnchor, closeTo(0.28, 1e-9));
         expect(find.text('Mais longe'), findsOneWidget);
       },
     );

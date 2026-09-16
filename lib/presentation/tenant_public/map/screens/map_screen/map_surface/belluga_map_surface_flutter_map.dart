@@ -192,6 +192,7 @@ class _BellugaMapSurfaceState extends State<BellugaMapSurface> {
   }
 
   bool _publishesViewportChange(MapEvent event) =>
+      (event is MapEventMove && event.source == MapEventSource.mapController) ||
       event is MapEventMoveEnd ||
       event is MapEventFlingAnimationEnd ||
       event is MapEventDoubleTapZoomEnd ||
