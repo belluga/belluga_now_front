@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:belluga_contact_channels/belluga_contact_channels.dart';
+import 'package:belluga_form_validation/belluga_form_validation.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
@@ -26,6 +29,8 @@ class _FakeAccountProfilesRepository
   String? lastCreatedPluralLabel;
   String? lastUpdatedPluralLabel;
   int fetchProfileTypeCalls = 0;
+  Completer<TenantAdminProfileTypeDefinition>? pendingUpdate;
+  int? lastExpectedCapabilityRevision;
 
   @override
   Future<List<TenantAdminProfileTypeDefinition>> fetchProfileTypes() async =>
@@ -97,6 +102,10 @@ class _FakeAccountProfilesRepository
     TenantAdminAccountProfilesRepoInt? expectedCapabilityRevision,
   }) async {
     lastUpdatedPluralLabel = pluralLabel?.value;
+    lastExpectedCapabilityRevision = expectedCapabilityRevision?.value;
+    if (pendingUpdate != null) {
+      return pendingUpdate!.future;
+    }
     final updated = tenantAdminProfileTypeDefinitionFromRaw(
       type: newType?.value ?? type.value,
       label: label?.value ?? 'Updated',
@@ -396,6 +405,45 @@ class _FakeTaxonomiesRepository
 }
 
 void main() {
+  test('revision conflict preserves detail and emits no update success', () async {
+    final definition = tenantAdminProfileTypeDefinitionFromRaw(
+      type: 'artist',
+      label: 'Artist',
+      capabilityRevision: 7,
+      allowedTaxonomies: const [],
+      capabilities: tenantAdminProfileTypeCapabilitiesFromRaw({}),
+    );
+    final repository = _FakeAccountProfilesRepository([definition]);
+    final pending = Completer<TenantAdminProfileTypeDefinition>();
+    repository.pendingUpdate = pending;
+    final controller = TenantAdminProfileTypesController(repository: repository);
+    addTearDown(controller.dispose);
+    controller.initDetailType(definition);
+
+    final submission = controller.submitUpdateType(
+      type: definition.type,
+      label: 'Changed',
+      capabilities: definition.capabilities,
+      expectedCapabilityRevision: definition.capabilityRevision,
+    );
+    expect(repository.lastExpectedCapabilityRevision, 7);
+    expect(controller.detailTypeStreamValue.value, same(definition));
+    expect(controller.successMessageStreamValue.value, isNull);
+
+    final conflict = FormApiFailure(
+      statusCode: 409,
+      errorCode: 'account_profile_type_revision_conflict',
+      message: 'The profile type capability revision has changed.',
+    );
+    pending.completeError(conflict);
+    await submission;
+
+    expect(controller.actionErrorMessageStreamValue.value, conflict.toString());
+    expect(controller.successMessageStreamValue.value, isNull);
+    expect(controller.detailTypeStreamValue.value, same(definition));
+    expect(controller.detailTypeStreamValue.value!.capabilityRevision, 7);
+  });
+
   test('appends profile type pages and stops when hasMore is false', () async {
     final types = List<TenantAdminProfileTypeDefinition>.generate(
       25,

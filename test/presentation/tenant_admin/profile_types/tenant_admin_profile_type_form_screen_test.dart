@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:belluga_contact_channels/belluga_contact_channels.dart';
 import 'package:belluga_now/application/router/support/canonical_route_family.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
@@ -34,6 +36,46 @@ void main() {
 
   tearDown(() async {
     await GetIt.I.reset();
+  });
+
+  testWidgets('drops duplicate pending saves and releases submission guard', (
+    tester,
+  ) async {
+    final controller = _TestProfileTypesController(0);
+    final pending = Completer<void>();
+    controller.pendingSubmission = pending;
+    await _pumpFormScreen(
+      tester,
+      controller: controller,
+      definition: tenantAdminProfileTypeDefinitionFromRaw(
+        type: 'artist',
+        label: 'Artist',
+        allowedTaxonomies: const [],
+        capabilityRevision: 7,
+        visual: TenantAdminPoiVisual.icon(
+          iconValue: TenantAdminRequiredTextValue()..parse('place'),
+          colorValue: TenantAdminHexColorValue()..parse('#FF8800'),
+        ),
+        capabilities: tenantAdminProfileTypeCapabilitiesFromRaw({}),
+      ),
+    );
+
+    final save = find.text('Salvar alteracoes');
+    await tester.ensureVisible(save);
+    await tester.tap(save);
+    await tester.tap(save);
+    await tester.pump();
+    expect(controller.submitUpdateCalls, 1);
+    expect(controller.lastExpectedCapabilityRevision, 7);
+    expect(controller.formSavingStreamValue.value, isTrue);
+    expect(controller.tryBeginFormSubmission(), isFalse);
+
+    pending.complete();
+    await tester.pumpAndSettle();
+    expect(controller.formSavingStreamValue.value, isFalse);
+    expect(controller.submitUpdateCalls, 1);
+    expect(controller.tryBeginFormSubmission(), isTrue);
+    controller.finishFormSubmission();
   });
 
   testWidgets(
@@ -1461,6 +1503,8 @@ class _TestProfileTypesController extends TenantAdminProfileTypesController {
   int submitUpdateCalls = 0;
   TenantAdminProfileTypeCapabilities? lastCapabilities;
   TenantAdminPoiVisual? lastVisual;
+  Completer<void>? pendingSubmission;
+  int? lastExpectedCapabilityRevision;
 
   @override
   Future<int> previewDisableProjectionCount(
@@ -1487,6 +1531,10 @@ class _TestProfileTypesController extends TenantAdminProfileTypesController {
     submitUpdateCalls += 1;
     lastCapabilities = capabilities;
     lastVisual = visual;
+    lastExpectedCapabilityRevision = expectedCapabilityRevision;
+    if (pendingSubmission != null) {
+      await pendingSubmission!.future;
+    }
   }
 }
 
