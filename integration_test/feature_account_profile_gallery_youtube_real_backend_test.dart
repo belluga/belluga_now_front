@@ -105,19 +105,53 @@ void main() {
           pluralLabel: tenantAdminAccountProfilesRepoString(
             'Gallery Runtime $unique',
           ),
-          capabilities: TenantAdminProfileTypeCapabilities(
-            isQueryable: TenantAdminFlagValue(true),
-            isPubliclyNavigable: TenantAdminFlagValue(true),
-            isPubliclyDiscoverable: TenantAdminFlagValue(true),
-            isFavoritable: TenantAdminFlagValue(false),
-            isPoiEnabled: TenantAdminFlagValue(false),
-            hasBio: TenantAdminFlagValue(false),
-            hasTaxonomies: TenantAdminFlagValue(false),
-            hasAvatar: TenantAdminFlagValue(false),
-            hasCover: TenantAdminFlagValue(false),
-            hasEvents: TenantAdminFlagValue(false),
-            hasGallery: TenantAdminFlagValue(true),
-          ),
+          capabilities: tenantAdminProfileTypeCapabilitiesFromRaw(<
+            String,
+            TenantAdminProfileTypeCapabilityValue
+          >{
+            'is_queryable': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: true,
+            ),
+            'is_publicly_navigable':
+                tenantAdminProfileTypeCapabilityValueFromRaw(
+                  value: true,
+                ),
+            'is_publicly_discoverable':
+                tenantAdminProfileTypeCapabilityValueFromRaw(
+                  value: true,
+                ),
+            'is_favoritable': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: false,
+            ),
+            'location_policy': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: 'disabled',
+            ),
+            'is_map_poi_enabled': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: false,
+            ),
+            'is_physical_host_enabled':
+                tenantAdminProfileTypeCapabilityValueFromRaw(
+                  value: false,
+                ),
+            'has_bio': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: false,
+            ),
+            'has_taxonomies': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: false,
+            ),
+            'has_avatar': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: false,
+            ),
+            'has_cover': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: false,
+            ),
+            'has_events': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: false,
+            ),
+            'has_gallery': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: true,
+            ),
+          }),
         );
         profileType = createdType.type;
 

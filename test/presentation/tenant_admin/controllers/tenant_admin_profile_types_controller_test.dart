@@ -9,6 +9,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
 import 'package:belluga_now/presentation/tenant_admin/profile_types/controllers/tenant_admin_profile_types_controller.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stream_value/core/stream_value.dart';
@@ -93,6 +94,7 @@ class _FakeAccountProfilesRepository
     TenantAdminAccountProfilesRepoString? pluralLabel,
     List<TenantAdminAccountProfilesRepoString>? allowedTaxonomies,
     TenantAdminProfileTypeCapabilities? capabilities,
+    TenantAdminAccountProfilesRepoInt? expectedCapabilityRevision,
   }) async {
     lastUpdatedPluralLabel = pluralLabel?.value;
     final updated = tenantAdminProfileTypeDefinitionFromRaw(
@@ -106,15 +108,39 @@ class _FakeAccountProfilesRepository
           <String>[],
       capabilities:
           capabilities ??
-          TenantAdminProfileTypeCapabilities(
-            isFavoritable: TenantAdminFlagValue(true),
-            isPoiEnabled: TenantAdminFlagValue(false),
-            hasBio: TenantAdminFlagValue(false),
-            hasTaxonomies: TenantAdminFlagValue(false),
-            hasAvatar: TenantAdminFlagValue(false),
-            hasCover: TenantAdminFlagValue(false),
-            hasEvents: TenantAdminFlagValue(false),
-          ),
+          tenantAdminProfileTypeCapabilitiesFromRaw(<
+            String,
+            TenantAdminProfileTypeCapabilityValue
+          >{
+            'is_favoritable': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: true,
+            ),
+            'location_policy': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: 'disabled',
+            ),
+            'is_map_poi_enabled': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: false,
+            ),
+            'is_physical_host_enabled':
+                tenantAdminProfileTypeCapabilityValueFromRaw(
+                  value: false,
+                ),
+            'has_bio': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: false,
+            ),
+            'has_taxonomies': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: false,
+            ),
+            'has_avatar': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: false,
+            ),
+            'has_cover': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: false,
+            ),
+            'has_events': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: false,
+            ),
+          }),
     );
     _types = _types
         .map((entry) {
@@ -203,6 +229,7 @@ class _FakeAccountProfilesRepository
     TenantAdminAccountProfilesRepoString? slug,
     TenantAdminAccountProfilesRepoInt? aggregateRevision,
     TenantAdminLocation? location,
+    TenantAdminAccountProfilesRepoBool? includeLocation,
     TenantAdminTaxonomyTerms? taxonomyTerms,
     TenantAdminAccountProfilesRepoString? bio,
     TenantAdminAccountProfilesRepoString? avatarUrl,
@@ -252,6 +279,7 @@ class _FakeAccountProfilesRepository
   Future<TenantAdminAccountProfilesRepoInt>
   fetchProfileTypeMapPoiProjectionImpact({
     required TenantAdminAccountProfilesRepoString type,
+    required TenantAdminProfileTypeCapabilities capabilities,
   }) async {
     lastProjectionImpactType = type.value;
     return tenantAdminAccountProfilesRepoInt(
@@ -375,14 +403,37 @@ void main() {
         type: 'type-$index',
         label: 'Type $index',
         allowedTaxonomies: [],
-        capabilities: TenantAdminProfileTypeCapabilities(
-          isFavoritable: TenantAdminFlagValue(false),
-          isPoiEnabled: TenantAdminFlagValue(false),
-          hasBio: TenantAdminFlagValue(false),
-          hasTaxonomies: TenantAdminFlagValue(false),
-          hasAvatar: TenantAdminFlagValue(false),
-          hasCover: TenantAdminFlagValue(false),
-          hasEvents: TenantAdminFlagValue(false),
+        capabilities: tenantAdminProfileTypeCapabilitiesFromRaw(
+          <String, TenantAdminProfileTypeCapabilityValue>{
+            'is_favoritable': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: false,
+            ),
+            'location_policy': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: 'disabled',
+            ),
+            'is_map_poi_enabled': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: false,
+            ),
+            'is_physical_host_enabled':
+                tenantAdminProfileTypeCapabilityValueFromRaw(
+                  value: false,
+                ),
+            'has_bio': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: false,
+            ),
+            'has_taxonomies': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: false,
+            ),
+            'has_avatar': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: false,
+            ),
+            'has_cover': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: false,
+            ),
+            'has_events': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: false,
+            ),
+          },
         ),
       ),
     );
@@ -414,14 +465,37 @@ void main() {
       type: 'venue',
       label: 'Venue',
       allowedTaxonomies: [],
-      capabilities: TenantAdminProfileTypeCapabilities(
-        isFavoritable: TenantAdminFlagValue(true),
-        isPoiEnabled: TenantAdminFlagValue(true),
-        hasBio: TenantAdminFlagValue(false),
-        hasTaxonomies: TenantAdminFlagValue(false),
-        hasAvatar: TenantAdminFlagValue(false),
-        hasCover: TenantAdminFlagValue(false),
-        hasEvents: TenantAdminFlagValue(false),
+      capabilities: tenantAdminProfileTypeCapabilitiesFromRaw(
+        <String, TenantAdminProfileTypeCapabilityValue>{
+          'is_favoritable': tenantAdminProfileTypeCapabilityValueFromRaw(
+            value: true,
+          ),
+          'location_policy': tenantAdminProfileTypeCapabilityValueFromRaw(
+            value: 'required',
+          ),
+          'is_map_poi_enabled': tenantAdminProfileTypeCapabilityValueFromRaw(
+            value: true,
+          ),
+          'is_physical_host_enabled':
+              tenantAdminProfileTypeCapabilityValueFromRaw(
+                value: true,
+              ),
+          'has_bio': tenantAdminProfileTypeCapabilityValueFromRaw(
+            value: false,
+          ),
+          'has_taxonomies': tenantAdminProfileTypeCapabilityValueFromRaw(
+            value: false,
+          ),
+          'has_avatar': tenantAdminProfileTypeCapabilityValueFromRaw(
+            value: false,
+          ),
+          'has_cover': tenantAdminProfileTypeCapabilityValueFromRaw(
+            value: false,
+          ),
+          'has_events': tenantAdminProfileTypeCapabilityValueFromRaw(
+            value: false,
+          ),
+        },
       ),
     );
 
@@ -434,14 +508,37 @@ void main() {
         type: 'venue',
         label: 'Venue',
         allowedTaxonomies: [],
-        capabilities: TenantAdminProfileTypeCapabilities(
-          isFavoritable: TenantAdminFlagValue(true),
-          isPoiEnabled: TenantAdminFlagValue(true),
-          hasBio: TenantAdminFlagValue(false),
-          hasTaxonomies: TenantAdminFlagValue(false),
-          hasAvatar: TenantAdminFlagValue(false),
-          hasCover: TenantAdminFlagValue(false),
-          hasEvents: TenantAdminFlagValue(false),
+        capabilities: tenantAdminProfileTypeCapabilitiesFromRaw(
+          <String, TenantAdminProfileTypeCapabilityValue>{
+            'is_favoritable': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: true,
+            ),
+            'location_policy': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: 'required',
+            ),
+            'is_map_poi_enabled': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: true,
+            ),
+            'is_physical_host_enabled':
+                tenantAdminProfileTypeCapabilityValueFromRaw(
+                  value: true,
+                ),
+            'has_bio': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: false,
+            ),
+            'has_taxonomies': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: false,
+            ),
+            'has_avatar': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: false,
+            ),
+            'has_cover': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: false,
+            ),
+            'has_events': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: false,
+            ),
+          },
         ),
       ),
     ]);
@@ -464,14 +561,37 @@ void main() {
         type: 'artist',
         label: 'Artist',
         allowedTaxonomies: [],
-        capabilities: TenantAdminProfileTypeCapabilities(
-          isFavoritable: TenantAdminFlagValue(true),
-          isPoiEnabled: TenantAdminFlagValue(false),
-          hasBio: TenantAdminFlagValue(true),
-          hasTaxonomies: TenantAdminFlagValue(false),
-          hasAvatar: TenantAdminFlagValue(true),
-          hasCover: TenantAdminFlagValue(true),
-          hasEvents: TenantAdminFlagValue(true),
+        capabilities: tenantAdminProfileTypeCapabilitiesFromRaw(
+          <String, TenantAdminProfileTypeCapabilityValue>{
+            'is_favoritable': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: true,
+            ),
+            'location_policy': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: 'disabled',
+            ),
+            'is_map_poi_enabled': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: false,
+            ),
+            'is_physical_host_enabled':
+                tenantAdminProfileTypeCapabilityValueFromRaw(
+                  value: false,
+                ),
+            'has_bio': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: true,
+            ),
+            'has_taxonomies': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: false,
+            ),
+            'has_avatar': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: true,
+            ),
+            'has_cover': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: true,
+            ),
+            'has_events': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: true,
+            ),
+          },
         ),
       ),
     ]);
@@ -489,14 +609,37 @@ void main() {
         type: 'venue',
         label: 'Venue',
         allowedTaxonomies: [],
-        capabilities: TenantAdminProfileTypeCapabilities(
-          isFavoritable: TenantAdminFlagValue(true),
-          isPoiEnabled: TenantAdminFlagValue(true),
-          hasBio: TenantAdminFlagValue(false),
-          hasTaxonomies: TenantAdminFlagValue(false),
-          hasAvatar: TenantAdminFlagValue(false),
-          hasCover: TenantAdminFlagValue(false),
-          hasEvents: TenantAdminFlagValue(false),
+        capabilities: tenantAdminProfileTypeCapabilitiesFromRaw(
+          <String, TenantAdminProfileTypeCapabilityValue>{
+            'is_favoritable': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: true,
+            ),
+            'location_policy': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: 'required',
+            ),
+            'is_map_poi_enabled': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: true,
+            ),
+            'is_physical_host_enabled':
+                tenantAdminProfileTypeCapabilityValueFromRaw(
+                  value: true,
+                ),
+            'has_bio': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: false,
+            ),
+            'has_taxonomies': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: false,
+            ),
+            'has_avatar': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: false,
+            ),
+            'has_cover': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: false,
+            ),
+            'has_events': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: false,
+            ),
+          },
         ),
       ),
     ];
@@ -554,14 +697,38 @@ void main() {
             type: 'type-$index',
             label: 'Type $index',
             allowedTaxonomies: index == 23 ? ['music_genre'] : [],
-            capabilities: TenantAdminProfileTypeCapabilities(
-              isFavoritable: TenantAdminFlagValue(false),
-              isPoiEnabled: TenantAdminFlagValue(false),
-              hasBio: TenantAdminFlagValue(false),
-              hasTaxonomies: TenantAdminFlagValue(index == 23),
-              hasAvatar: TenantAdminFlagValue(false),
-              hasCover: TenantAdminFlagValue(false),
-              hasEvents: TenantAdminFlagValue(false),
+            capabilities: tenantAdminProfileTypeCapabilitiesFromRaw(
+              <String, TenantAdminProfileTypeCapabilityValue>{
+                'is_favoritable': tenantAdminProfileTypeCapabilityValueFromRaw(
+                  value: false,
+                ),
+                'location_policy': tenantAdminProfileTypeCapabilityValueFromRaw(
+                  value: 'disabled',
+                ),
+                'is_map_poi_enabled':
+                    tenantAdminProfileTypeCapabilityValueFromRaw(
+                      value: false,
+                    ),
+                'is_physical_host_enabled':
+                    tenantAdminProfileTypeCapabilityValueFromRaw(
+                      value: false,
+                    ),
+                'has_bio': tenantAdminProfileTypeCapabilityValueFromRaw(
+                  value: false,
+                ),
+                'has_taxonomies': tenantAdminProfileTypeCapabilityValueFromRaw(
+                  value: (TenantAdminFlagValue(index == 23)).value,
+                ),
+                'has_avatar': tenantAdminProfileTypeCapabilityValueFromRaw(
+                  value: false,
+                ),
+                'has_cover': tenantAdminProfileTypeCapabilityValueFromRaw(
+                  value: false,
+                ),
+                'has_events': tenantAdminProfileTypeCapabilityValueFromRaw(
+                  value: false,
+                ),
+              },
             ),
           ),
         ),
@@ -615,15 +782,39 @@ void main() {
           type: 'artist',
           label: 'Artist',
           allowedTaxonomies: ['music_genre'],
-          capabilities: TenantAdminProfileTypeCapabilities(
-            isFavoritable: TenantAdminFlagValue(true),
-            isPoiEnabled: TenantAdminFlagValue(false),
-            hasBio: TenantAdminFlagValue(true),
-            hasTaxonomies: TenantAdminFlagValue(true),
-            hasAvatar: TenantAdminFlagValue(true),
-            hasCover: TenantAdminFlagValue(true),
-            hasEvents: TenantAdminFlagValue(true),
-          ),
+          capabilities: tenantAdminProfileTypeCapabilitiesFromRaw(<
+            String,
+            TenantAdminProfileTypeCapabilityValue
+          >{
+            'is_favoritable': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: true,
+            ),
+            'location_policy': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: 'disabled',
+            ),
+            'is_map_poi_enabled': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: false,
+            ),
+            'is_physical_host_enabled':
+                tenantAdminProfileTypeCapabilityValueFromRaw(
+                  value: false,
+                ),
+            'has_bio': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: true,
+            ),
+            'has_taxonomies': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: true,
+            ),
+            'has_avatar': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: true,
+            ),
+            'has_cover': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: true,
+            ),
+            'has_events': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: true,
+            ),
+          }),
         ),
       );
       controller.setAllowedTaxonomies(const []);
@@ -661,28 +852,77 @@ void main() {
   });
 
   test(
-    'disables reference location capability when poi is turned off',
+    'disabling location preserves configured dependent capabilities',
     () async {
       final repository = _FakeAccountProfilesRepository([]);
       final controller = TenantAdminProfileTypesController(
         repository: repository,
       );
-
-      controller.updateCapabilities(
-        isPoiEnabled: true,
-        isReferenceLocationEnabled: true,
+      controller.initForm(
+        _profileTypeWithCapabilities({
+          'location_policy': 'required',
+          'is_map_poi_enabled': true,
+          'is_physical_host_enabled': true,
+          'is_reference_location_enabled': true,
+        }),
       );
-      expect(controller.currentCapabilities.isReferenceLocationEnabled, isTrue);
 
-      controller.updateCapabilities(isPoiEnabled: false);
+      controller.updateCapability('location_policy', 'disabled');
 
-      expect(controller.currentCapabilities.isPoiEnabled, isFalse);
       expect(
-        controller.currentCapabilities.isReferenceLocationEnabled,
-        isFalse,
+        controller.currentCapabilities
+            .valueFor(_text('location_policy'))
+            ?.enumValue,
+        'disabled',
+      );
+      expect(controller.currentCapabilities.configuredIsMapPoiEnabled, isTrue);
+      expect(
+        controller.currentCapabilities
+            .valueFor(_text('is_physical_host_enabled'))
+            ?.booleanValue,
+        isTrue,
+      );
+      expect(
+        controller.currentCapabilities
+            .valueFor(_text('is_reference_location_enabled'))
+            ?.booleanValue,
+        isTrue,
       );
     },
   );
+
+  test('disabling Map POI preserves host and reference capabilities', () async {
+    final repository = _FakeAccountProfilesRepository([]);
+    final controller = TenantAdminProfileTypesController(
+      repository: repository,
+    );
+    controller.initForm(
+      _profileTypeWithCapabilities({
+        'location_policy': 'required',
+        'is_map_poi_enabled': true,
+        'is_physical_host_enabled': true,
+        'is_reference_location_enabled': true,
+      }),
+    );
+
+    controller.updateCapability('is_map_poi_enabled', false);
+
+    expect(controller.currentCapabilities.configuredIsMapPoiEnabled, isFalse);
+    expect(
+      _configuredEnabled(
+        controller.currentCapabilities,
+        'is_physical_host_enabled',
+      ),
+      isTrue,
+    );
+    expect(
+      _configuredEnabled(
+        controller.currentCapabilities,
+        'is_reference_location_enabled',
+      ),
+      isTrue,
+    );
+  });
 
   test(
     'keeps favoritable capability independent when public discovery is toggled',
@@ -691,23 +931,52 @@ void main() {
       final controller = TenantAdminProfileTypesController(
         repository: repository,
       );
-
-      controller.updateCapabilities(
-        isPubliclyDiscoverable: true,
-        isFavoritable: true,
+      controller.initForm(
+        _profileTypeWithCapabilities({
+          'is_publicly_discoverable': true,
+          'is_favoritable': true,
+        }),
       );
-      expect(controller.currentCapabilities.isPubliclyDiscoverable, isTrue);
-      expect(controller.currentCapabilities.isFavoritable, isTrue);
 
-      controller.updateCapabilities(isPubliclyDiscoverable: false);
+      expect(
+        _configuredEnabled(
+          controller.currentCapabilities,
+          'is_publicly_discoverable',
+        ),
+        isTrue,
+      );
+      expect(
+        _configuredEnabled(controller.currentCapabilities, 'is_favoritable'),
+        isTrue,
+      );
 
-      expect(controller.currentCapabilities.isPubliclyDiscoverable, isFalse);
-      expect(controller.currentCapabilities.isFavoritable, isTrue);
+      controller.updateCapability('is_publicly_discoverable', false);
 
-      controller.updateCapabilities(isPubliclyDiscoverable: true);
+      expect(
+        _configuredEnabled(
+          controller.currentCapabilities,
+          'is_publicly_discoverable',
+        ),
+        isFalse,
+      );
+      expect(
+        _configuredEnabled(controller.currentCapabilities, 'is_favoritable'),
+        isTrue,
+      );
 
-      expect(controller.currentCapabilities.isPubliclyDiscoverable, isTrue);
-      expect(controller.currentCapabilities.isFavoritable, isTrue);
+      controller.updateCapability('is_publicly_discoverable', true);
+
+      expect(
+        _configuredEnabled(
+          controller.currentCapabilities,
+          'is_publicly_discoverable',
+        ),
+        isTrue,
+      );
+      expect(
+        _configuredEnabled(controller.currentCapabilities, 'is_favoritable'),
+        isTrue,
+      );
     },
   );
 
@@ -724,30 +993,81 @@ void main() {
           type: 'artist',
           label: 'Artist',
           allowedTaxonomies: const [],
-          capabilities: TenantAdminProfileTypeCapabilities(
-            isFavoritable: TenantAdminFlagValue(true),
-            isPoiEnabled: TenantAdminFlagValue(false),
-            hasBio: TenantAdminFlagValue(true),
-            hasTaxonomies: TenantAdminFlagValue(true),
-            hasAvatar: TenantAdminFlagValue(true),
-            hasCover: TenantAdminFlagValue(true),
-            hasEvents: TenantAdminFlagValue(true),
-            hasContactChannels: TenantAdminFlagValue(true),
-          ),
+          capabilities: tenantAdminProfileTypeCapabilitiesFromRaw(<
+            String,
+            TenantAdminProfileTypeCapabilityValue
+          >{
+            'is_favoritable': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: true,
+            ),
+            'location_policy': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: 'disabled',
+            ),
+            'is_map_poi_enabled': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: false,
+            ),
+            'is_physical_host_enabled':
+                tenantAdminProfileTypeCapabilityValueFromRaw(
+                  value: false,
+                ),
+            'has_bio': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: true,
+            ),
+            'has_taxonomies': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: true,
+            ),
+            'has_avatar': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: true,
+            ),
+            'has_cover': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: true,
+            ),
+            'has_events': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: true,
+            ),
+            'has_contact_channels':
+                tenantAdminProfileTypeCapabilityValueFromRaw(
+                  value: true,
+                ),
+          }),
         ),
       );
 
-      expect(controller.currentCapabilities.hasContactChannels, isTrue);
-      expect(controller.currentCapabilities.isFavoritable, isTrue);
+      expect(
+        _configuredEnabled(
+          controller.currentCapabilities,
+          'has_contact_channels',
+        ),
+        isTrue,
+      );
+      expect(
+        _configuredEnabled(controller.currentCapabilities, 'is_favoritable'),
+        isTrue,
+      );
 
-      controller.updateCapabilities(hasContactChannels: false);
+      controller.updateCapability('has_contact_channels', false);
 
-      expect(controller.currentCapabilities.hasContactChannels, isFalse);
-      expect(controller.currentCapabilities.isFavoritable, isTrue);
+      expect(
+        _configuredEnabled(
+          controller.currentCapabilities,
+          'has_contact_channels',
+        ),
+        isFalse,
+      );
+      expect(
+        _configuredEnabled(controller.currentCapabilities, 'is_favoritable'),
+        isTrue,
+      );
 
-      controller.updateCapabilities(hasContactChannels: true);
+      controller.updateCapability('has_contact_channels', true);
 
-      expect(controller.currentCapabilities.hasContactChannels, isTrue);
+      expect(
+        _configuredEnabled(
+          controller.currentCapabilities,
+          'has_contact_channels',
+        ),
+        isTrue,
+      );
     },
   );
 
@@ -758,21 +1078,53 @@ void main() {
       final controller = TenantAdminProfileTypesController(
         repository: repository,
       );
-
-      controller.updateCapabilities(
-        isQueryable: true,
-        isPubliclyNavigable: true,
-        isPubliclyDiscoverable: true,
+      controller.initForm(
+        _profileTypeWithCapabilities({
+          'is_queryable': true,
+          'is_publicly_navigable': true,
+          'is_publicly_discoverable': true,
+        }),
       );
-      expect(controller.currentCapabilities.isQueryable, isTrue);
-      expect(controller.currentCapabilities.isPubliclyNavigable, isTrue);
-      expect(controller.currentCapabilities.isPubliclyDiscoverable, isTrue);
 
-      controller.updateCapabilities(isQueryable: false);
+      expect(
+        _configuredEnabled(controller.currentCapabilities, 'is_queryable'),
+        isTrue,
+      );
+      expect(
+        _configuredEnabled(
+          controller.currentCapabilities,
+          'is_publicly_navigable',
+        ),
+        isTrue,
+      );
+      expect(
+        _configuredEnabled(
+          controller.currentCapabilities,
+          'is_publicly_discoverable',
+        ),
+        isTrue,
+      );
 
-      expect(controller.currentCapabilities.isQueryable, isFalse);
-      expect(controller.currentCapabilities.isPubliclyDiscoverable, isTrue);
-      expect(controller.currentCapabilities.isPubliclyNavigable, isTrue);
+      controller.updateCapability('is_queryable', false);
+
+      expect(
+        _configuredEnabled(controller.currentCapabilities, 'is_queryable'),
+        isFalse,
+      );
+      expect(
+        _configuredEnabled(
+          controller.currentCapabilities,
+          'is_publicly_discoverable',
+        ),
+        isTrue,
+      );
+      expect(
+        _configuredEnabled(
+          controller.currentCapabilities,
+          'is_publicly_navigable',
+        ),
+        isTrue,
+      );
     },
   );
 
@@ -784,15 +1136,39 @@ void main() {
           type: 'artist',
           label: 'Artist',
           allowedTaxonomies: [],
-          capabilities: TenantAdminProfileTypeCapabilities(
-            isFavoritable: TenantAdminFlagValue(false),
-            isPoiEnabled: TenantAdminFlagValue(false),
-            hasBio: TenantAdminFlagValue(false),
-            hasTaxonomies: TenantAdminFlagValue(false),
-            hasAvatar: TenantAdminFlagValue(false),
-            hasCover: TenantAdminFlagValue(false),
-            hasEvents: TenantAdminFlagValue(false),
-          ),
+          capabilities: tenantAdminProfileTypeCapabilitiesFromRaw(<
+            String,
+            TenantAdminProfileTypeCapabilityValue
+          >{
+            'is_favoritable': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: false,
+            ),
+            'location_policy': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: 'disabled',
+            ),
+            'is_map_poi_enabled': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: false,
+            ),
+            'is_physical_host_enabled':
+                tenantAdminProfileTypeCapabilityValueFromRaw(
+                  value: false,
+                ),
+            'has_bio': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: false,
+            ),
+            'has_taxonomies': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: false,
+            ),
+            'has_avatar': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: false,
+            ),
+            'has_cover': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: false,
+            ),
+            'has_events': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: false,
+            ),
+          }),
         ),
       ]);
       final controller = TenantAdminProfileTypesController(
@@ -804,15 +1180,39 @@ void main() {
           type: 'artist',
           label: 'Artist',
           allowedTaxonomies: [],
-          capabilities: TenantAdminProfileTypeCapabilities(
-            isFavoritable: TenantAdminFlagValue(false),
-            isPoiEnabled: TenantAdminFlagValue(false),
-            hasBio: TenantAdminFlagValue(false),
-            hasTaxonomies: TenantAdminFlagValue(false),
-            hasAvatar: TenantAdminFlagValue(false),
-            hasCover: TenantAdminFlagValue(false),
-            hasEvents: TenantAdminFlagValue(false),
-          ),
+          capabilities: tenantAdminProfileTypeCapabilitiesFromRaw(<
+            String,
+            TenantAdminProfileTypeCapabilityValue
+          >{
+            'is_favoritable': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: false,
+            ),
+            'location_policy': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: 'disabled',
+            ),
+            'is_map_poi_enabled': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: false,
+            ),
+            'is_physical_host_enabled':
+                tenantAdminProfileTypeCapabilityValueFromRaw(
+                  value: false,
+                ),
+            'has_bio': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: false,
+            ),
+            'has_taxonomies': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: false,
+            ),
+            'has_avatar': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: false,
+            ),
+            'has_cover': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: false,
+            ),
+            'has_events': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: false,
+            ),
+          }),
         ),
       );
 
@@ -842,14 +1242,37 @@ void main() {
       type: 'venue',
       label: 'Venue',
       pluralLabel: 'Venues',
-      capabilities: TenantAdminProfileTypeCapabilities(
-        isFavoritable: TenantAdminFlagValue(true),
-        isPoiEnabled: TenantAdminFlagValue(false),
-        hasBio: TenantAdminFlagValue(false),
-        hasTaxonomies: TenantAdminFlagValue(true),
-        hasAvatar: TenantAdminFlagValue(false),
-        hasCover: TenantAdminFlagValue(false),
-        hasEvents: TenantAdminFlagValue(false),
+      capabilities: tenantAdminProfileTypeCapabilitiesFromRaw(
+        <String, TenantAdminProfileTypeCapabilityValue>{
+          'is_favoritable': tenantAdminProfileTypeCapabilityValueFromRaw(
+            value: true,
+          ),
+          'location_policy': tenantAdminProfileTypeCapabilityValueFromRaw(
+            value: 'disabled',
+          ),
+          'is_map_poi_enabled': tenantAdminProfileTypeCapabilityValueFromRaw(
+            value: false,
+          ),
+          'is_physical_host_enabled':
+              tenantAdminProfileTypeCapabilityValueFromRaw(
+                value: false,
+              ),
+          'has_bio': tenantAdminProfileTypeCapabilityValueFromRaw(
+            value: false,
+          ),
+          'has_taxonomies': tenantAdminProfileTypeCapabilityValueFromRaw(
+            value: true,
+          ),
+          'has_avatar': tenantAdminProfileTypeCapabilityValueFromRaw(
+            value: false,
+          ),
+          'has_cover': tenantAdminProfileTypeCapabilityValueFromRaw(
+            value: false,
+          ),
+          'has_events': tenantAdminProfileTypeCapabilityValueFromRaw(
+            value: false,
+          ),
+        },
       ),
     );
 
@@ -867,11 +1290,39 @@ void main() {
       repository: repository,
     );
 
-    final count = await controller.previewDisableProjectionCount('venue');
+    final capabilities = tenantAdminProfileTypeCapabilitiesFromRaw(
+      <String, TenantAdminProfileTypeCapabilityValue>{
+        'is_map_poi_enabled': tenantAdminProfileTypeCapabilityValueFromRaw(
+          value: false,
+        ),
+      },
+    );
+    final count = await controller.previewDisableProjectionCount(
+      'venue',
+      capabilities,
+    );
 
     expect(count, 67);
     expect(repository.lastProjectionImpactType, 'venue');
   });
+}
+
+TenantAdminProfileTypeDefinition _profileTypeWithCapabilities(
+  Map<String, Object> values,
+) {
+  return tenantAdminProfileTypeDefinitionFromRaw(
+    type: 'test_type',
+    label: 'Test type',
+    allowedTaxonomies: const <String>[],
+    capabilities: tenantAdminProfileTypeCapabilitiesFromRaw(
+      <String, TenantAdminProfileTypeCapabilityValue>{
+        for (final entry in values.entries)
+          entry.key: tenantAdminProfileTypeCapabilityValueFromRaw(
+            value: entry.value,
+          ),
+      },
+    ),
+  );
 }
 
 class _FakeTenantScope implements TenantAdminTenantScopeContract {
@@ -908,3 +1359,11 @@ class _FakeTenantScope implements TenantAdminTenantScopeContract {
     );
   }
 }
+
+TenantAdminRequiredTextValue _text(String value) =>
+    TenantAdminRequiredTextValue()..parse(value);
+
+bool _configuredEnabled(
+  TenantAdminProfileTypeCapabilities capabilities,
+  String key,
+) => capabilities.valueFor(_text(key))?.booleanValue == true;

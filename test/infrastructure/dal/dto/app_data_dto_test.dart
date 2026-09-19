@@ -22,7 +22,13 @@ void main() {
                 'color': '#FF8800',
                 'icon_color': '#101010',
               },
-              'capabilities': {'is_favoritable': true, 'is_poi_enabled': true},
+              'capabilities': {
+                'is_favoritable': _resolvedCapability(true),
+                'location_policy': _resolvedCapability('required'),
+                'is_map_poi_enabled': _resolvedCapability(true),
+                'is_physical_host_enabled': _resolvedCapability(true),
+                'is_reference_location_enabled': _resolvedCapability(true),
+              },
             },
           ],
         ),
@@ -49,7 +55,7 @@ void main() {
               'type': 'artist',
               'label': 'Artist',
               'poi_visual': {'image_source': 'cover'},
-              'capabilities': {'has_cover': true},
+              'capabilities': {'has_cover': _resolvedCapability(true)},
             },
           ],
         ),
@@ -83,7 +89,12 @@ void main() {
               },
               'type_asset_url':
                   'https://tenant.test/api/v1/media/account-profile-types/type-1/type_asset?v=123',
-              'capabilities': {'is_poi_enabled': true},
+              'capabilities': {
+                'location_policy': _resolvedCapability('required'),
+                'is_map_poi_enabled': _resolvedCapability(true),
+                'is_physical_host_enabled': _resolvedCapability(true),
+                'is_reference_location_enabled': _resolvedCapability(true),
+              },
             },
           ],
         ),
@@ -106,7 +117,7 @@ void main() {
       expect(definition.visual?.color, '#00897B');
     });
 
-    test('normalizes reference location capability in public registry', () {
+    test('keeps reference location independent in public registry', () {
       final appData = AppDataDTO.fromJson(
         _basePayload(
           profileTypes: [
@@ -114,16 +125,20 @@ void main() {
               'type': 'hotel',
               'label': 'Hotel',
               'capabilities': {
-                'is_poi_enabled': false,
-                'is_reference_location_enabled': true,
+                'location_policy': _resolvedCapability('disabled'),
+                'is_map_poi_enabled': _resolvedCapability(false),
+                'is_physical_host_enabled': _resolvedCapability(false),
+                'is_reference_location_enabled': _resolvedCapability(true),
               },
             },
             {
               'type': 'venue',
               'label': 'Venue',
               'capabilities': {
-                'is_poi_enabled': true,
-                'is_reference_location_enabled': true,
+                'location_policy': _resolvedCapability('required'),
+                'is_map_poi_enabled': _resolvedCapability(true),
+                'is_physical_host_enabled': _resolvedCapability(true),
+                'is_reference_location_enabled': _resolvedCapability(true),
               },
             },
           ],
@@ -138,7 +153,7 @@ void main() {
       );
 
       expect(hotel, isNotNull);
-      expect(hotel!.capabilities.isReferenceLocationEnabled, isFalse);
+      expect(hotel!.capabilities.isReferenceLocationEnabled, isTrue);
       expect(venue, isNotNull);
       expect(venue!.capabilities.isReferenceLocationEnabled, isTrue);
     });
@@ -150,12 +165,22 @@ void main() {
             {
               'type': 'enabled',
               'label': 'Enabled',
-              'capabilities': {'has_external_links': true},
+              'capabilities': {'has_external_links': _resolvedCapability(true)},
             },
             {
               'type': 'malformed',
               'label': 'Malformed',
               'capabilities': {'has_external_links': 'true'},
+            },
+            {
+              'type': 'dependency-disabled',
+              'label': 'Dependency disabled',
+              'capabilities': {
+                'has_external_links': {
+                  'configured': {'value': true, 'parameters': {}},
+                  'effective': {'value': false, 'parameters': {}},
+                },
+              },
             },
           ],
         ),
@@ -171,6 +196,13 @@ void main() {
       expect(
         appData.profileTypeRegistry
             .byType(ProfileTypeKeyValue('malformed'))!
+            .capabilities
+            .hasExternalLinks,
+        isFalse,
+      );
+      expect(
+        appData.profileTypeRegistry
+            .byType(ProfileTypeKeyValue('dependency-disabled'))!
             .capabilities
             .hasExternalLinks,
         isFalse,
@@ -382,6 +414,11 @@ void main() {
     );
   });
 }
+
+Map<String, dynamic> _resolvedCapability(Object value) => {
+  'configured': {'value': value, 'parameters': <String, dynamic>{}},
+  'effective': {'value': value, 'parameters': <String, dynamic>{}},
+};
 
 Map<String, dynamic> _basePayload({
   required List<Map<String, dynamic>> profileTypes,

@@ -1375,16 +1375,45 @@ void main() {
             isRequired: true,
           ),
         ],
-        capabilities: TenantAdminProfileTypeCapabilities(
-          isFavoritable: TenantAdminFlagValue(true),
-          isPoiEnabled: TenantAdminFlagValue(true),
-          isReferenceLocationEnabled: TenantAdminFlagValue(true),
-          hasBio: TenantAdminFlagValue(true),
-          hasTaxonomies: TenantAdminFlagValue(true),
-          hasAvatar: TenantAdminFlagValue(true),
-          hasCover: TenantAdminFlagValue(true),
-          hasEvents: TenantAdminFlagValue(true),
-          hasNestedProfileGroups: TenantAdminFlagValue(true),
+        capabilities: tenantAdminProfileTypeCapabilitiesFromRaw(
+          <String, TenantAdminProfileTypeCapabilityValue>{
+            'is_favoritable': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: true,
+            ),
+            'location_policy': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: 'required',
+            ),
+            'is_map_poi_enabled': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: true,
+            ),
+            'is_physical_host_enabled':
+                tenantAdminProfileTypeCapabilityValueFromRaw(
+                  value: true,
+                ),
+            'is_reference_location_enabled':
+                tenantAdminProfileTypeCapabilityValueFromRaw(
+                  value: true,
+                ),
+            'has_bio': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: true,
+            ),
+            'has_taxonomies': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: true,
+            ),
+            'has_avatar': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: true,
+            ),
+            'has_cover': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: true,
+            ),
+            'has_events': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: true,
+            ),
+            'has_nested_profile_groups':
+                tenantAdminProfileTypeCapabilityValueFromRaw(
+                  value: true,
+                ),
+          },
         ),
         visual: TenantAdminPoiVisual.icon(
           iconValue: TenantAdminRequiredTextValue()..parse('place'),
@@ -1393,7 +1422,10 @@ void main() {
       );
 
       final payload = adapter.lastRequest?.data as Map<String, dynamic>;
-      expect(payload['capabilities']['has_nested_profile_groups'], isTrue);
+      expect(
+        payload['capabilities']['has_nested_profile_groups'],
+        <String, dynamic>{'value': true, 'parameters': <String, int>{}},
+      );
       expect(payload['visual'], <String, dynamic>{
         'mode': 'icon',
         'icon': 'place',
@@ -1420,14 +1452,37 @@ void main() {
         defaultValue: '',
         isRequired: true,
       ),
-      capabilities: TenantAdminProfileTypeCapabilities(
-        isFavoritable: TenantAdminFlagValue(true),
-        isPoiEnabled: TenantAdminFlagValue(false),
-        hasBio: TenantAdminFlagValue(true),
-        hasTaxonomies: TenantAdminFlagValue(true),
-        hasAvatar: TenantAdminFlagValue(true),
-        hasCover: TenantAdminFlagValue(true),
-        hasEvents: TenantAdminFlagValue(true),
+      capabilities: tenantAdminProfileTypeCapabilitiesFromRaw(
+        <String, TenantAdminProfileTypeCapabilityValue>{
+          'is_favoritable': tenantAdminProfileTypeCapabilityValueFromRaw(
+            value: true,
+          ),
+          'location_policy': tenantAdminProfileTypeCapabilityValueFromRaw(
+            value: 'disabled',
+          ),
+          'is_map_poi_enabled': tenantAdminProfileTypeCapabilityValueFromRaw(
+            value: false,
+          ),
+          'is_physical_host_enabled':
+              tenantAdminProfileTypeCapabilityValueFromRaw(
+                value: false,
+              ),
+          'has_bio': tenantAdminProfileTypeCapabilityValueFromRaw(
+            value: true,
+          ),
+          'has_taxonomies': tenantAdminProfileTypeCapabilityValueFromRaw(
+            value: true,
+          ),
+          'has_avatar': tenantAdminProfileTypeCapabilityValueFromRaw(
+            value: true,
+          ),
+          'has_cover': tenantAdminProfileTypeCapabilityValueFromRaw(
+            value: true,
+          ),
+          'has_events': tenantAdminProfileTypeCapabilityValueFromRaw(
+            value: true,
+          ),
+        },
       ),
       visual: null,
     );
@@ -1457,15 +1512,41 @@ void main() {
           defaultValue: '',
           isRequired: true,
         ),
-        capabilities: TenantAdminProfileTypeCapabilities(
-          isFavoritable: TenantAdminFlagValue(true),
-          isPoiEnabled: TenantAdminFlagValue(true),
-          isReferenceLocationEnabled: TenantAdminFlagValue(true),
-          hasBio: TenantAdminFlagValue(true),
-          hasTaxonomies: TenantAdminFlagValue(true),
-          hasAvatar: TenantAdminFlagValue(true),
-          hasCover: TenantAdminFlagValue(true),
-          hasEvents: TenantAdminFlagValue(true),
+        capabilities: tenantAdminProfileTypeCapabilitiesFromRaw(
+          <String, TenantAdminProfileTypeCapabilityValue>{
+            'is_favoritable': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: true,
+            ),
+            'location_policy': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: 'required',
+            ),
+            'is_map_poi_enabled': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: true,
+            ),
+            'is_physical_host_enabled':
+                tenantAdminProfileTypeCapabilityValueFromRaw(
+                  value: true,
+                ),
+            'is_reference_location_enabled':
+                tenantAdminProfileTypeCapabilityValueFromRaw(
+                  value: true,
+                ),
+            'has_bio': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: true,
+            ),
+            'has_taxonomies': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: true,
+            ),
+            'has_avatar': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: true,
+            ),
+            'has_cover': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: true,
+            ),
+            'has_events': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: true,
+            ),
+          },
         ),
         visual: TenantAdminPoiVisual.image(
           imageSource: TenantAdminPoiVisualImageSource.typeAsset,
@@ -1496,21 +1577,24 @@ void main() {
       expect(
         formData.fields.any(
           (entry) =>
-              entry.key == 'capabilities[is_favoritable]' && entry.value == '1',
+              entry.key == 'capabilities[is_favoritable][value]' &&
+              entry.value == '1',
         ),
         isTrue,
       );
       expect(
         formData.fields.any(
           (entry) =>
-              entry.key == 'capabilities[is_poi_enabled]' && entry.value == '1',
+              entry.key == 'capabilities[is_map_poi_enabled][value]' &&
+              entry.value == '1',
         ),
         isTrue,
       );
       expect(
         formData.fields.any(
           (entry) =>
-              entry.key == 'capabilities[is_reference_location_enabled]' &&
+              entry.key ==
+                  'capabilities[is_reference_location_enabled][value]' &&
               entry.value == '1',
         ),
         isTrue,
@@ -1531,17 +1615,48 @@ void main() {
           defaultValue: '',
           isRequired: true,
         ),
-        capabilities: TenantAdminProfileTypeCapabilities(
-          isFavoritable: TenantAdminFlagValue(true),
-          isPoiEnabled: TenantAdminFlagValue(true),
-          isReferenceLocationEnabled: TenantAdminFlagValue(true),
-          hasBio: TenantAdminFlagValue(true),
-          hasTaxonomies: TenantAdminFlagValue(true),
-          hasAvatar: TenantAdminFlagValue(true),
-          hasCover: TenantAdminFlagValue(true),
-          hasEvents: TenantAdminFlagValue(true),
-          hasGallery: TenantAdminFlagValue(true),
-          hasNestedProfileGroups: TenantAdminFlagValue(true),
+        capabilities: tenantAdminProfileTypeCapabilitiesFromRaw(
+          <String, TenantAdminProfileTypeCapabilityValue>{
+            'is_favoritable': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: true,
+            ),
+            'location_policy': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: 'required',
+            ),
+            'is_map_poi_enabled': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: true,
+            ),
+            'is_physical_host_enabled':
+                tenantAdminProfileTypeCapabilityValueFromRaw(
+                  value: true,
+                ),
+            'is_reference_location_enabled':
+                tenantAdminProfileTypeCapabilityValueFromRaw(
+                  value: true,
+                ),
+            'has_bio': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: true,
+            ),
+            'has_taxonomies': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: true,
+            ),
+            'has_avatar': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: true,
+            ),
+            'has_cover': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: true,
+            ),
+            'has_events': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: true,
+            ),
+            'has_gallery': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: true,
+            ),
+            'has_nested_profile_groups':
+                tenantAdminProfileTypeCapabilityValueFromRaw(
+                  value: true,
+                ),
+          },
         ),
         visual: TenantAdminPoiVisual.image(
           imageSource: TenantAdminPoiVisualImageSource.typeAsset,
@@ -1572,14 +1687,7 @@ void main() {
       expect(
         formData.fields.any(
           (entry) =>
-              entry.key == 'capabilities[is_favoritable]' && entry.value == '1',
-        ),
-        isTrue,
-      );
-      expect(
-        formData.fields.any(
-          (entry) =>
-              entry.key == 'capabilities[is_reference_location_enabled]' &&
+              entry.key == 'capabilities[is_favoritable][value]' &&
               entry.value == '1',
         ),
         isTrue,
@@ -1587,14 +1695,24 @@ void main() {
       expect(
         formData.fields.any(
           (entry) =>
-              entry.key == 'capabilities[has_gallery]' && entry.value == '1',
+              entry.key ==
+                  'capabilities[is_reference_location_enabled][value]' &&
+              entry.value == '1',
         ),
         isTrue,
       );
       expect(
         formData.fields.any(
           (entry) =>
-              entry.key == 'capabilities[has_nested_profile_groups]' &&
+              entry.key == 'capabilities[has_gallery][value]' &&
+              entry.value == '1',
+        ),
+        isTrue,
+      );
+      expect(
+        formData.fields.any(
+          (entry) =>
+              entry.key == 'capabilities[has_nested_profile_groups][value]' &&
               entry.value == '1',
         ),
         isTrue,
@@ -1615,14 +1733,19 @@ void main() {
           defaultValue: '',
           isRequired: true,
         ),
+        capabilities: tenantAdminProfileTypeCapabilitiesFromRaw(
+          <String, TenantAdminProfileTypeCapabilityValue>{
+            'is_map_poi_enabled': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: false,
+            ),
+          },
+        ),
       );
 
       expect(count.value, 67);
       expect(
         adapter.lastRequest?.path,
-        contains(
-          '/admin/api/v1/account_profile_types/venue/map_poi_projection_impact',
-        ),
+        contains('/admin/api/v1/account_profile_types/venue/change_impact'),
       );
     },
   );
@@ -1811,10 +1934,10 @@ class _CaptureAdapter implements HttpClientAdapter {
         },
       );
     }
-    if (options.path.endsWith('/map_poi_projection_impact')) {
+    if (options.path.endsWith('/change_impact')) {
       return ResponseBody.fromString(
         jsonEncode({
-          'data': {'profile_type': 'venue', 'projection_count': 67},
+          'data': {'profile_type': 'venue', 'map_projection_count': 67},
         }),
         200,
         headers: {
@@ -1836,16 +1959,21 @@ class _CaptureAdapter implements HttpClientAdapter {
             },
             'allowed_taxonomies': <String>[],
             'capabilities': {
-              'is_favoritable': true,
-              'is_poi_enabled': true,
-              'is_reference_location_enabled': true,
-              'has_bio': true,
-              'has_taxonomies': true,
-              'has_avatar': true,
-              'has_cover': true,
-              'has_events': true,
-              'has_gallery': true,
-              'has_nested_profile_groups': true,
+              'is_favoritable': {'value': true, 'parameters': {}},
+              'location_policy': {'value': 'required', 'parameters': {}},
+              'is_map_poi_enabled': {'value': true, 'parameters': {}},
+              'is_physical_host_enabled': {'value': true, 'parameters': {}},
+              'is_reference_location_enabled': {
+                'value': true,
+                'parameters': {},
+              },
+              'has_bio': {'value': true, 'parameters': {}},
+              'has_taxonomies': {'value': true, 'parameters': {}},
+              'has_avatar': {'value': true, 'parameters': {}},
+              'has_cover': {'value': true, 'parameters': {}},
+              'has_events': {'value': true, 'parameters': {}},
+              'has_gallery': {'value': true, 'parameters': {}},
+              'has_nested_profile_groups': {'value': true, 'parameters': {}},
             },
           },
         }),
@@ -1950,13 +2078,16 @@ class _ProfileTypesRoutingAdapter implements HttpClientAdapter {
       },
       'allowed_taxonomies': const <String>[],
       'capabilities': const {
-        'is_favoritable': true,
-        'is_poi_enabled': false,
-        'has_bio': true,
-        'has_taxonomies': true,
-        'has_avatar': true,
-        'has_cover': true,
-        'has_events': false,
+        'is_favoritable': {'value': true, 'parameters': {}},
+        'location_policy': {'value': 'disabled', 'parameters': {}},
+        'is_map_poi_enabled': {'value': false, 'parameters': {}},
+        'is_physical_host_enabled': {'value': false, 'parameters': {}},
+        'is_reference_location_enabled': {'value': false, 'parameters': {}},
+        'has_bio': {'value': true, 'parameters': {}},
+        'has_taxonomies': {'value': true, 'parameters': {}},
+        'has_avatar': {'value': true, 'parameters': {}},
+        'has_cover': {'value': true, 'parameters': {}},
+        'has_events': {'value': false, 'parameters': {}},
       },
     };
   }
@@ -2140,7 +2271,28 @@ AppData _buildAppData() {
         'type': 'personal',
         'label': 'Personal',
         'allowed_taxonomies': [],
-        'capabilities': {'is_favoritable': false, 'is_poi_enabled': false},
+        'capabilities': {
+          'is_favoritable': {
+            'configured': {'value': false, 'parameters': {}},
+            'effective': {'value': false, 'parameters': {}},
+          },
+          'location_policy': {
+            'configured': {'value': 'disabled', 'parameters': {}},
+            'effective': {'value': 'disabled', 'parameters': {}},
+          },
+          'is_map_poi_enabled': {
+            'configured': {'value': false, 'parameters': {}},
+            'effective': {'value': false, 'parameters': {}},
+          },
+          'is_physical_host_enabled': {
+            'configured': {'value': false, 'parameters': {}},
+            'effective': {'value': false, 'parameters': {}},
+          },
+          'is_reference_location_enabled': {
+            'configured': {'value': false, 'parameters': {}},
+            'effective': {'value': false, 'parameters': {}},
+          },
+        },
       },
     ],
     'domains': ['https://tenant.test'],

@@ -108,6 +108,7 @@ abstract class TenantAdminAccountProfilesRepositoryContract
     TenantAdminAccountProfilesRepoString? slug,
     TenantAdminAccountProfilesRepoInt? aggregateRevision,
     TenantAdminLocation? location,
+    TenantAdminAccountProfilesRepoBool? includeLocation,
     TenantAdminTaxonomyTerms? taxonomyTerms,
     TenantAdminAccountProfilesRepoString? bio,
     TenantAdminAccountProfilesRepoString? avatarUrl,
@@ -401,6 +402,7 @@ abstract class TenantAdminAccountProfilesRepositoryContract
     TenantAdminAccountProfilesRepoString? pluralLabel,
     List<TenantAdminAccountProfilesRepoString>? allowedTaxonomies,
     TenantAdminProfileTypeCapabilities? capabilities,
+    TenantAdminAccountProfilesRepoInt? expectedCapabilityRevision,
   });
   Future<TenantAdminProfileTypeDefinition> updateProfileTypeWithVisual({
     required TenantAdminAccountProfilesRepoString type,
@@ -409,6 +411,7 @@ abstract class TenantAdminAccountProfilesRepositoryContract
     TenantAdminAccountProfilesRepoString? pluralLabel,
     List<TenantAdminAccountProfilesRepoString>? allowedTaxonomies,
     TenantAdminProfileTypeCapabilities? capabilities,
+    TenantAdminAccountProfilesRepoInt? expectedCapabilityRevision,
     TenantAdminPoiVisual? visual,
     TenantAdminMediaUpload? typeAssetUpload,
     TenantAdminAccountProfilesRepoBool? removeTypeAsset,
@@ -420,12 +423,14 @@ abstract class TenantAdminAccountProfilesRepositoryContract
       pluralLabel: pluralLabel,
       allowedTaxonomies: allowedTaxonomies,
       capabilities: capabilities,
+      expectedCapabilityRevision: expectedCapabilityRevision,
     );
   }
 
   Future<TenantAdminAccountProfilesRepoInt>
   fetchProfileTypeMapPoiProjectionImpact({
     required TenantAdminAccountProfilesRepoString type,
+    required TenantAdminProfileTypeCapabilities capabilities,
   }) async {
     return tenantAdminAccountProfilesRepoInt(0, defaultValue: 0);
   }
@@ -629,6 +634,7 @@ mixin TenantAdminProfileTypesPaginationMixin
     TenantAdminAccountProfilesRepoString? pluralLabel,
     List<TenantAdminAccountProfilesRepoString>? allowedTaxonomies,
     TenantAdminProfileTypeCapabilities? capabilities,
+    TenantAdminAccountProfilesRepoInt? expectedCapabilityRevision,
     TenantAdminPoiVisual? visual,
     TenantAdminMediaUpload? typeAssetUpload,
     TenantAdminAccountProfilesRepoBool? removeTypeAsset,
@@ -640,6 +646,7 @@ mixin TenantAdminProfileTypesPaginationMixin
       pluralLabel: pluralLabel,
       allowedTaxonomies: allowedTaxonomies,
       capabilities: capabilities,
+      expectedCapabilityRevision: expectedCapabilityRevision,
     );
   }
 
@@ -647,6 +654,7 @@ mixin TenantAdminProfileTypesPaginationMixin
   Future<TenantAdminAccountProfilesRepoInt>
   fetchProfileTypeMapPoiProjectionImpact({
     required TenantAdminAccountProfilesRepoString type,
+    required TenantAdminProfileTypeCapabilities capabilities,
   }) async {
     return tenantAdminAccountProfilesRepoInt(0, defaultValue: 0);
   }

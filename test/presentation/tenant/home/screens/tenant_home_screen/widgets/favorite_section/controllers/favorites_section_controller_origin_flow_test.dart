@@ -15,6 +15,7 @@ import 'package:belluga_now/domain/partners/profile_type_visual.dart';
 import 'package:belluga_now/domain/partners/value_objects/profile_type_key_value.dart';
 import 'package:belluga_now/domain/partners/value_objects/profile_type_label_value.dart';
 import 'package:belluga_now/domain/partners/value_objects/profile_type_flag_value.dart';
+import 'package:belluga_now/domain/partners/value_objects/profile_type_location_policy_value.dart';
 import 'package:belluga_now/domain/partners/value_objects/profile_type_visual_hex_color_value.dart';
 import 'package:belluga_now/domain/partners/value_objects/profile_type_visual_icon_value.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
@@ -128,7 +129,9 @@ void main() {
       expect(favoriteRepository.fetchFavoriteResumesPageCallCount, 3);
       expect(favoriteRepository.fetchFavoriteResumesCallCount, 1);
       expect(
-        controller.favoritesStreamValue.value?.map((item) => item.title).toList(),
+        controller.favoritesStreamValue.value
+            ?.map((item) => item.title)
+            .toList(),
         ['Fav 1', 'Fav 2'],
       );
       expect(controller.hasMoreFavoritesStreamValue.value, isFalse);
@@ -842,9 +845,8 @@ PagedFavoriteResumesResult _pagedFavoriteResumesResultFromRaw({
   return PagedFavoriteResumesResult(
     items: items,
     pinned: pinned,
-    hasMoreValue:
-        (DomainBooleanValue(defaultValue: false, isRequired: false)
-          ..parse(hasMore?.toString())),
+    hasMoreValue: (DomainBooleanValue(defaultValue: false, isRequired: false)
+      ..parse(hasMore?.toString())),
   );
 }
 
@@ -980,12 +982,18 @@ class _FakeAppData extends Fake implements AppData {
           capabilities: ProfileTypeCapabilities(
             isPubliclyDiscoverableValue: _flag(true),
             isFavoritableValue: _flag(true),
-            isPoiEnabledValue: _flag(false),
+            locationPolicyValue: ProfileTypeLocationPolicyValue('disabled'),
+            isMapPoiEnabledValue: _flag(false),
+            isReferenceLocationEnabledValue: _flag(false),
             hasBioValue: _flag(true),
             hasTaxonomiesValue: _flag(true),
             hasAvatarValue: _flag(true),
             hasCoverValue: _flag(true),
             hasEventsValue: _flag(true),
+            hasGalleryValue: _flag(false),
+            hasNestedProfileGroupsValue: _flag(false),
+            hasContactChannelsValue: _flag(false),
+            hasExternalLinksValue: _flag(false),
           ),
           visual: ProfileTypeVisual.icon(
             iconValue: ProfileTypeVisualIconValue()..parse('music_note'),

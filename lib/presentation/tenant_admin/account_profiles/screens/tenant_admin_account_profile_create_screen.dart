@@ -12,6 +12,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value_parsers.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
@@ -134,39 +135,62 @@ class _TenantAdminAccountProfileCreateScreenState
     return null;
   }
 
+  bool _allowsLocation(String? selectedType) {
+    final definition = _profileTypeDefinition(selectedType);
+    return definition?.capabilities.allowsLocation ?? false;
+  }
+
   bool _requiresLocation(String? selectedType) {
     final definition = _profileTypeDefinition(selectedType);
-    return definition?.capabilities.isPoiEnabled ?? false;
+    return definition?.capabilities.requiresLocation ?? false;
   }
 
   bool _hasBio(String? selectedType) {
     final definition = _profileTypeDefinition(selectedType);
-    return definition?.capabilities.hasBio ?? false;
+    return definition?.capabilities.isEnabled(
+          tenantAdminRequiredText('has_bio'),
+        ) ??
+        false;
   }
 
   bool _hasTaxonomies(String? selectedType) {
     final definition = _profileTypeDefinition(selectedType);
-    return definition?.capabilities.hasTaxonomies ?? false;
+    return definition?.capabilities.isEnabled(
+          tenantAdminRequiredText('has_taxonomies'),
+        ) ??
+        false;
   }
 
   bool _hasAvatar(String? selectedType) {
     final definition = _profileTypeDefinition(selectedType);
-    return definition?.capabilities.hasAvatar ?? false;
+    return definition?.capabilities.isEnabled(
+          tenantAdminRequiredText('has_avatar'),
+        ) ??
+        false;
   }
 
   bool _hasCover(String? selectedType) {
     final definition = _profileTypeDefinition(selectedType);
-    return definition?.capabilities.hasCover ?? false;
+    return definition?.capabilities.isEnabled(
+          tenantAdminRequiredText('has_cover'),
+        ) ??
+        false;
   }
 
   bool _hasNestedProfileGroups(String? selectedType) {
     final definition = _profileTypeDefinition(selectedType);
-    return definition?.capabilities.hasNestedProfileGroups ?? false;
+    return definition?.capabilities.isEnabled(
+          tenantAdminRequiredText('has_nested_profile_groups'),
+        ) ??
+        false;
   }
 
   bool _hasContactChannels(String? selectedType) {
     final definition = _profileTypeDefinition(selectedType);
-    return definition?.capabilities.hasContactChannels ?? false;
+    return definition?.capabilities.isEnabled(
+          tenantAdminRequiredText('has_contact_channels'),
+        ) ??
+        false;
   }
 
   List<String> _allowedTaxonomies(String? selectedType) {
@@ -206,7 +230,7 @@ class _TenantAdminAccountProfileCreateScreenState
     if (!_hasCover(selectedType)) {
       _controller.updateCreateCoverFile(null);
     }
-    if (!_requiresLocation(selectedType)) {
+    if (!_allowsLocation(selectedType)) {
       _controller.latitudeController.clear();
       _controller.longitudeController.clear();
     }
@@ -342,7 +366,7 @@ class _TenantAdminAccountProfileCreateScreenState
     final contactChannelDrafts = _controller.buildCreateContactChannelDrafts(
       capabilityEnabled: hasContactChannels,
     );
-    final location = _requiresLocation(state.selectedProfileType)
+    final location = _allowsLocation(state.selectedProfileType)
         ? _currentLocation()
         : null;
     final avatarUpload = _hasAvatar(state.selectedProfileType)
@@ -403,7 +427,7 @@ class _TenantAdminAccountProfileCreateScreenState
               streamValue: _controller.createStateStreamValue,
               builder: (context, state) {
                 _normalizeRouteParamIfNeeded();
-                final requiresLocation = _requiresLocation(
+                final allowsLocation = _allowsLocation(
                   state.selectedProfileType,
                 );
                 final hasMedia =
@@ -443,7 +467,7 @@ class _TenantAdminAccountProfileCreateScreenState
                             const SizedBox(height: 16),
                             _buildContactChannelsSection(context, state),
                           ],
-                          if (requiresLocation) ...[
+                          if (allowsLocation) ...[
                             const SizedBox(height: 16),
                             _buildLocationSection(context),
                           ],

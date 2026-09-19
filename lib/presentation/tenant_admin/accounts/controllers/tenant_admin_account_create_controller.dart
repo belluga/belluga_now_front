@@ -188,7 +188,8 @@ class TenantAdminAccountCreateController implements Disposable {
     }
 
     final requiresLocation =
-        _capabilitiesForProfileType(selectedProfileType)?.isPoiEnabled ?? false;
+        _capabilitiesForProfileType(selectedProfileType)?.requiresLocation ??
+        false;
     if (requiresLocation) {
       final locationMessages = <String>[];
       final latitudeText = latitudeController.text.trim();

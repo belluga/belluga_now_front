@@ -7,6 +7,7 @@ import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_pro
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_head_mutation_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_group_order_mutation_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_snapshot.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type_capabilities.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_label_mutation_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_count_value.dart';
@@ -188,15 +189,33 @@ class TenantAdminAccountProfilesResponseDecoder {
   }
 
   TenantAdminProfileTypeDTO decodeProfileTypeItem(Object? rawResponse) {
+    final definitions = _decodeCapabilityDefinitions(rawResponse);
+    final creationConfiguration = _decodeCapabilityCreationConfiguration(
+      rawResponse,
+      definitions,
+    );
     return TenantAdminProfileTypeDTO.fromJson(
       _envelopeDecoder.decodeItemMap(rawResponse, label: 'profile type'),
+      capabilityDefinitions: definitions,
+      capabilityCreationConfiguration: creationConfiguration,
     );
   }
 
   List<TenantAdminProfileTypeDTO> decodeProfileTypeList(Object? rawResponse) {
+    final definitions = _decodeCapabilityDefinitions(rawResponse);
+    final creationConfiguration = _decodeCapabilityCreationConfiguration(
+      rawResponse,
+      definitions,
+    );
     return _envelopeDecoder
         .decodeListMap(rawResponse, label: 'profile types')
-        .map(TenantAdminProfileTypeDTO.fromJson)
+        .map(
+          (item) => TenantAdminProfileTypeDTO.fromJson(
+            item,
+            capabilityDefinitions: definitions,
+            capabilityCreationConfiguration: creationConfiguration,
+          ),
+        )
         .toList(growable: false);
   }
 
@@ -205,11 +224,35 @@ class TenantAdminAccountProfilesResponseDecoder {
       rawResponse,
       label: 'profile type projection impact',
     );
-    final rawCount = item['projection_count'];
+    final rawCount = item['map_projection_count'];
     if (rawCount is num) {
       return rawCount.toInt();
     }
     return 0;
+  }
+
+  List<TenantAdminProfileTypeCapabilityDefinition> _decodeCapabilityDefinitions(
+    Object? rawResponse,
+  ) {
+    if (rawResponse is! Map) {
+      return const <TenantAdminProfileTypeCapabilityDefinition>[];
+    }
+    return tenantAdminCapabilityDefinitionsFromRaw(
+      rawResponse['capability_definitions'],
+    );
+  }
+
+  TenantAdminProfileTypeCapabilities _decodeCapabilityCreationConfiguration(
+    Object? rawResponse,
+    List<TenantAdminProfileTypeCapabilityDefinition> definitions,
+  ) {
+    if (rawResponse is! Map) {
+      return const TenantAdminProfileTypeCapabilities.empty();
+    }
+    return tenantAdminConfiguredCapabilitiesFromRaw(
+      rawResponse['capability_creation_configuration'],
+      definitions,
+    );
   }
 
   TenantAdminNestedProfileGroup? _decodeNestedProfileGroup(

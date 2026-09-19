@@ -19,6 +19,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value_parsers.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profiles_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/screens/tenant_admin_account_profile_group_members_screen.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_form_value_utils.dart';
@@ -129,49 +130,78 @@ class _TenantAdminAccountProfileEditScreenState
     return seen.values.toList(growable: false);
   }
 
+  bool _allowsLocation(String? selectedType) {
+    final definition = _selectedProfileTypeDefinition(selectedType);
+    return definition?.capabilities.allowsLocation ?? false;
+  }
+
   bool _requiresLocation(String? selectedType) {
     final definition = _selectedProfileTypeDefinition(selectedType);
-    return definition?.capabilities.isPoiEnabled ?? false;
+    return definition?.capabilities.requiresLocation ?? false;
   }
 
   bool _hasBio(String? selectedType) {
     final definition = _selectedProfileTypeDefinition(selectedType);
-    return definition?.capabilities.hasBio ?? false;
+    return definition?.capabilities.isEnabled(
+          tenantAdminRequiredText('has_bio'),
+        ) ??
+        false;
   }
 
   bool _hasTaxonomies(String? selectedType) {
     final definition = _selectedProfileTypeDefinition(selectedType);
-    return definition?.capabilities.hasTaxonomies ?? false;
+    return definition?.capabilities.isEnabled(
+          tenantAdminRequiredText('has_taxonomies'),
+        ) ??
+        false;
   }
 
   bool _hasAvatar(String? selectedType) {
     final definition = _selectedProfileTypeDefinition(selectedType);
-    return definition?.capabilities.hasAvatar ?? false;
+    return definition?.capabilities.isEnabled(
+          tenantAdminRequiredText('has_avatar'),
+        ) ??
+        false;
   }
 
   bool _hasCover(String? selectedType) {
     final definition = _selectedProfileTypeDefinition(selectedType);
-    return definition?.capabilities.hasCover ?? false;
+    return definition?.capabilities.isEnabled(
+          tenantAdminRequiredText('has_cover'),
+        ) ??
+        false;
   }
 
   bool _hasGallery(String? selectedType) {
     final definition = _selectedProfileTypeDefinition(selectedType);
-    return definition?.capabilities.hasGallery ?? false;
+    return definition?.capabilities.isEnabled(
+          tenantAdminRequiredText('has_gallery'),
+        ) ??
+        false;
   }
 
   bool _hasNestedProfileGroups(String? selectedType) {
     final definition = _selectedProfileTypeDefinition(selectedType);
-    return definition?.capabilities.hasNestedProfileGroups ?? false;
+    return definition?.capabilities.isEnabled(
+          tenantAdminRequiredText('has_nested_profile_groups'),
+        ) ??
+        false;
   }
 
   bool _hasContactChannels(String? selectedType) {
     final definition = _selectedProfileTypeDefinition(selectedType);
-    return definition?.capabilities.hasContactChannels ?? false;
+    return definition?.capabilities.isEnabled(
+          tenantAdminRequiredText('has_contact_channels'),
+        ) ??
+        false;
   }
 
   bool _hasExternalLinks(String? selectedType) {
     final definition = _selectedProfileTypeDefinition(selectedType);
-    return definition?.capabilities.hasExternalLinks ?? false;
+    return definition?.capabilities.isEnabled(
+          tenantAdminRequiredText('has_external_links'),
+        ) ??
+        false;
   }
 
   List<String> _allowedTaxonomies(String? selectedType) {
@@ -991,7 +1021,7 @@ class _TenantAdminAccountProfileEditScreenState
                               builder: (context, state) {
                                 _handleEditStateChange(state);
                                 _attemptTaxonomySync(profile: profile);
-                                final requiresLocation = _requiresLocation(
+                                final allowsLocation = _allowsLocation(
                                   state.selectedProfileType,
                                 );
                                 final hasMedia =
@@ -1124,9 +1154,15 @@ class _TenantAdminAccountProfileEditScreenState
                                               state,
                                             ),
                                           ],
-                                          if (requiresLocation) ...[
+                                          if (allowsLocation) ...[
                                             const SizedBox(height: 16),
                                             _buildLocationSection(context),
+                                          ] else if (profile?.location !=
+                                              null) ...[
+                                            const SizedBox(height: 16),
+                                            _buildDormantLocationSection(
+                                              profile!,
+                                            ),
                                           ],
                                           if (hasNestedProfileGroups) ...[
                                             const SizedBox(height: 16),
@@ -1394,9 +1430,11 @@ class _TenantAdminAccountProfileEditScreenState
                                                               selectedType,
                                                             )
                                                           : null,
-                                                      location: requiresLocation
+                                                      location: allowsLocation
                                                           ? _currentLocation()
                                                           : null,
+                                                      includeLocation:
+                                                          allowsLocation,
                                                       avatarUpload:
                                                           avatarUpload,
                                                       coverUpload: coverUpload,
@@ -1726,7 +1764,7 @@ class _TenantAdminAccountProfileEditScreenState
                     .toList(growable: false),
                 onChanged: (value) {
                   _controller.updateSelectedProfileType(value);
-                  if (!_requiresLocation(value)) {
+                  if (!_allowsLocation(value)) {
                     _controller.latitudeController.clear();
                     _controller.longitudeController.clear();
                   }
@@ -2581,6 +2619,36 @@ class _TenantAdminAccountProfileEditScreenState
             onPressed: _openMapPicker,
             icon: const Icon(Icons.map_outlined),
             label: const Text('Selecionar no mapa'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDormantLocationSection(TenantAdminAccountProfile profile) {
+    final location = profile.location!;
+    return TenantAdminFormSectionCard(
+      title: 'Localização inativa',
+      description:
+          'Este tipo não permite usar localização. As coordenadas existentes permanecem armazenadas, mas não são usadas no mapa, em referências ou como local de evento.',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '${location.latitude.toStringAsFixed(6)}, '
+            '${location.longitude.toStringAsFixed(6)}',
+          ),
+          const SizedBox(height: 8),
+          FilledButton.tonalIcon(
+            key: const ValueKey<String>('removeDormantProfileLocation'),
+            onPressed: () => _controller.submitRemoveProfileLocation(
+              accountProfileId: _currentAccountProfileIdForRequests(),
+              profileType:
+                  _controller.editStateStreamValue.value.selectedProfileType ??
+                  profile.profileType,
+            ),
+            icon: const Icon(Icons.location_off_outlined),
+            label: const Text('Remover localização armazenada'),
           ),
         ],
       ),

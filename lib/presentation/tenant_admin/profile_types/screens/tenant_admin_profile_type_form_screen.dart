@@ -10,6 +10,7 @@ import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_poi_disable_confirmation.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_slug_utils.dart';
 import 'package:belluga_now/presentation/tenant_admin/profile_types/controllers/tenant_admin_profile_types_controller.dart';
+import 'package:belluga_now/presentation/tenant_admin/profile_types/tenant_admin_capability_domain_presentation.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_canonical_image_upload_field.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_color_picker_field.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_error_banner.dart';
@@ -79,12 +80,22 @@ class _TenantAdminProfileTypeFormScreenState
   }
 
   Future<void> _save() async {
-    final messenger = ScaffoldMessenger.of(context);
     final form = _controller.formKey.currentState;
     if (form == null || !form.validate()) {
       return;
     }
+    if (!_controller.tryBeginFormSubmission()) {
+      return;
+    }
+    try {
+      await _saveOnce();
+    } finally {
+      _controller.finishFormSubmission();
+    }
+  }
 
+  Future<void> _saveOnce() async {
+    final messenger = ScaffoldMessenger.of(context);
     final capabilities = _controller.currentCapabilities;
     final allowedTaxonomies = _controller.selectedAllowedTaxonomies;
     final visual = _controller.buildCurrentVisual();
@@ -120,18 +131,19 @@ class _TenantAdminProfileTypeFormScreenState
 
     if (_isEdit) {
       final confirmed = await _confirmDisablePoiIfNeeded(
-        nextPoiEnabled: capabilities.isPoiEnabled,
+        nextPoiEnabled: capabilities.configuredIsMapPoiEnabled,
       );
       if (!confirmed) {
         return;
       }
-      _controller.submitUpdateType(
+      await _controller.submitUpdateType(
         type: widget.definition!.type,
         newType: _controller.typeController.text.trim(),
         label: _controller.labelController.text.trim(),
         pluralLabel: _controller.pluralLabelController.text.trim(),
         allowedTaxonomies: allowedTaxonomies,
         capabilities: capabilities,
+        expectedCapabilityRevision: widget.definition!.capabilityRevision,
         visual: visual,
         typeAssetUpload: typeAssetUpload,
         removeTypeAsset: _controller.isTypeAssetMarkedForRemoval,
@@ -140,7 +152,7 @@ class _TenantAdminProfileTypeFormScreenState
       return;
     }
 
-    _controller.submitCreateType(
+    await _controller.submitCreateType(
       type: _controller.typeController.text.trim(),
       label: _controller.labelController.text.trim(),
       pluralLabel: _controller.pluralLabelController.text.trim(),
@@ -159,7 +171,8 @@ class _TenantAdminProfileTypeFormScreenState
       return true;
     }
     final currentDefinition = widget.definition!;
-    final wasPoiEnabled = currentDefinition.capabilities.isPoiEnabled;
+    final wasPoiEnabled =
+        currentDefinition.capabilities.configuredIsMapPoiEnabled;
     if (!wasPoiEnabled || nextPoiEnabled) {
       return true;
     }
@@ -173,7 +186,10 @@ class _TenantAdminProfileTypeFormScreenState
       shouldConfirm: true,
       typeLabel: typeLabel,
       loadProjectionCount: () {
-        return _controller.previewDisableProjectionCount(typeValue);
+        return _controller.previewDisableProjectionCount(
+          typeValue,
+          _controller.currentCapabilities,
+        );
       },
     );
   }
@@ -275,197 +291,46 @@ class _TenantAdminProfileTypeFormScreenState
                         title: 'Capacidades',
                         description:
                             'Ative os recursos que o perfil deve disponibilizar.',
-                        child: StreamValueBuilder<TenantAdminProfileTypeCapabilities>(
-                          streamValue: _controller.capabilitiesStreamValue,
-                          builder: (context, capabilities) {
-                            return Column(
-                              children: [
-                                SwitchListTile(
-                                  contentPadding: EdgeInsets.zero,
-                                  title: const Text('Consultavel'),
-                                  subtitle: const Text(
-                                    'Permite listar, buscar e selecionar perfis deste tipo nas superfícies operacionais e públicas.',
-                                  ),
-                                  value: capabilities.isQueryable,
-                                  onChanged: (value) => _controller
-                                      .updateCapabilities(isQueryable: value),
-                                ),
-                                SwitchListTile(
-                                  contentPadding: EdgeInsets.zero,
-                                  title: const Text(
-                                    'Pagina publica habilitada',
-                                  ),
-                                  subtitle: const Text(
-                                    'Permite abrir a rota pública direta do perfil quando existir slug público.',
-                                  ),
-                                  value: capabilities.isPubliclyNavigable,
-                                  onChanged: (value) =>
-                                      _controller.updateCapabilities(
-                                        isPubliclyNavigable: value,
+                        child:
+                            StreamValueBuilder<
+                              TenantAdminProfileTypeCapabilities
+                            >(
+                              streamValue: _controller.capabilitiesStreamValue,
+                              builder: (context, capabilities) {
+                                return StreamValueBuilder<
+                                  List<
+                                    TenantAdminProfileTypeCapabilityDefinition
+                                  >
+                                >(
+                                  streamValue: _controller
+                                      .capabilityDefinitionsStreamValue,
+                                  builder: (context, definitions) => Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      ..._buildCapabilityGroups(
+                                        definitions,
+                                        capabilities,
                                       ),
-                                ),
-                                SwitchListTile(
-                                  contentPadding: EdgeInsets.zero,
-                                  title: const Text(
-                                    'Descoberta publica habilitada',
+                                      const SizedBox(height: 12),
+                                      _buildPoiVisualEditor(context),
+                                    ],
                                   ),
-                                  subtitle: const Text(
-                                    'Permite exibir perfis deste tipo nas superfícies públicas do tenant.',
-                                  ),
-                                  value: capabilities.isPubliclyDiscoverable,
-                                  onChanged: (value) =>
-                                      _controller.updateCapabilities(
-                                        isPubliclyDiscoverable: value,
-                                      ),
-                                ),
-                                SwitchListTile(
-                                  contentPadding: EdgeInsets.zero,
-                                  title: const Text('Convidavel'),
-                                  subtitle: const Text(
-                                    'Permite usar perfis deste tipo nos fluxos de convite.',
-                                  ),
-                                  value: capabilities.isInviteable,
-                                  onChanged: (value) => _controller
-                                      .updateCapabilities(isInviteable: value),
-                                ),
-                                SwitchListTile(
-                                  contentPadding: EdgeInsets.zero,
-                                  title: const Text('Favoritavel'),
-                                  subtitle: const Text(
-                                    'Permite que perfis deste tipo sejam adicionados aos favoritos.',
-                                  ),
-                                  value: capabilities.isFavoritable,
-                                  onChanged: (value) => _controller
-                                      .updateCapabilities(isFavoritable: value),
-                                ),
-                                SwitchListTile(
-                                  contentPadding: EdgeInsets.zero,
-                                  title: const Text('POI habilitado'),
-                                  subtitle: const Text(
-                                    'Requer localizacao no perfil',
-                                  ),
-                                  value: capabilities.isPoiEnabled,
-                                  onChanged: (value) => _controller
-                                      .updateCapabilities(isPoiEnabled: value),
-                                ),
-                                SwitchListTile(
-                                  contentPadding: EdgeInsets.zero,
-                                  title: const Text(
-                                    'Referencia fixa habilitada',
-                                  ),
-                                  subtitle: Text(
-                                    capabilities.isPoiEnabled
-                                        ? 'Permite usar perfis deste tipo como referencia fixa do usuario.'
-                                        : 'Requer POI habilitado.',
-                                  ),
-                                  value:
-                                      capabilities.isReferenceLocationEnabled,
-                                  onChanged: capabilities.isPoiEnabled
-                                      ? (value) =>
-                                            _controller.updateCapabilities(
-                                              isReferenceLocationEnabled: value,
-                                            )
-                                      : null,
-                                ),
-                                const SizedBox(height: 12),
-                                _buildPoiVisualEditor(context),
-                                const SizedBox(height: 8),
-                                SwitchListTile(
-                                  contentPadding: EdgeInsets.zero,
-                                  title: const Text('Bio habilitada'),
-                                  subtitle: const Text(
-                                    'Exibe campo de descricao no perfil',
-                                  ),
-                                  value: capabilities.hasBio,
-                                  onChanged: (value) => _controller
-                                      .updateCapabilities(hasBio: value),
-                                ),
-                                SwitchListTile(
-                                  contentPadding: EdgeInsets.zero,
-                                  title: const Text('Avatar habilitado'),
-                                  value: capabilities.hasAvatar,
-                                  onChanged: (value) => _controller
-                                      .updateCapabilities(hasAvatar: value),
-                                ),
-                                SwitchListTile(
-                                  contentPadding: EdgeInsets.zero,
-                                  title: const Text('Capa habilitada'),
-                                  value: capabilities.hasCover,
-                                  onChanged: (value) => _controller
-                                      .updateCapabilities(hasCover: value),
-                                ),
-                                SwitchListTile(
-                                  contentPadding: EdgeInsets.zero,
-                                  title: const Text('Agenda habilitada'),
-                                  subtitle: const Text(
-                                    'Mostra "Proximos Eventos"',
-                                  ),
-                                  value: capabilities.hasEvents,
-                                  onChanged: (value) => _controller
-                                      .updateCapabilities(hasEvents: value),
-                                ),
-                                SwitchListTile(
-                                  contentPadding: EdgeInsets.zero,
-                                  title: const Text('Galeria habilitada'),
-                                  subtitle: const Text(
-                                    'Permite configurar galerias de fotos agrupadas neste tipo.',
-                                  ),
-                                  value: capabilities.hasGallery,
-                                  onChanged: (value) => _controller
-                                      .updateCapabilities(hasGallery: value),
-                                ),
-                                SwitchListTile(
-                                  contentPadding: EdgeInsets.zero,
-                                  title: const Text(
-                                    'Abas de contas vinculadas',
-                                  ),
-                                  subtitle: const Text(
-                                    'Permite configurar grupos de perfis vinculados neste tipo.',
-                                  ),
-                                  value: capabilities.hasNestedProfileGroups,
-                                  onChanged: (value) =>
-                                      _controller.updateCapabilities(
-                                        hasNestedProfileGroups: value,
-                                      ),
-                                ),
-                                SwitchListTile(
-                                  contentPadding: EdgeInsets.zero,
-                                  title: const Text(
-                                    'Links externos habilitados',
-                                  ),
-                                  subtitle: const Text(
-                                    'Permite configurar links externos no perfil e exibir seus atalhos públicos.',
-                                  ),
-                                  value: capabilities.hasExternalLinks,
-                                  onChanged: (value) =>
-                                      _controller.updateCapabilities(
-                                        hasExternalLinks: value,
-                                      ),
-                                ),
-                                SwitchListTile(
-                                  contentPadding: EdgeInsets.zero,
-                                  title: const Text(
-                                    'Contato por canais habilitado',
-                                  ),
-                                  subtitle: const Text(
-                                    'Permite configurar contato por WhatsApp/e-mail no perfil e habilita Contato/bolha pública quando houver canais válidos.',
-                                  ),
-                                  value: capabilities.hasContactChannels,
-                                  onChanged: (value) =>
-                                      _controller.updateCapabilities(
-                                        hasContactChannels: value,
-                                      ),
-                                ),
-                              ],
-                            );
-                          },
-                        ),
+                                );
+                              },
+                            ),
                       ),
                       const SizedBox(height: 24),
-                      TenantAdminPrimaryFormAction(
-                        label: _isEdit ? 'Salvar alteracoes' : 'Criar tipo',
-                        icon: _isEdit ? Icons.save_outlined : Icons.add,
-                        onPressed: _save,
+                      StreamValueBuilder<bool>(
+                        streamValue: _controller.formSavingStreamValue,
+                        builder: (context, isSaving) =>
+                            TenantAdminPrimaryFormAction(
+                              label: _isEdit
+                                  ? 'Salvar alteracoes'
+                                  : 'Criar tipo',
+                              icon: _isEdit ? Icons.save_outlined : Icons.add,
+                              onPressed: isSaving ? null : _save,
+                            ),
                       ),
                     ],
                   ),
@@ -476,6 +341,74 @@ class _TenantAdminProfileTypeFormScreenState
         );
       },
     );
+  }
+
+  List<Widget> _buildCapabilityGroups(
+    List<TenantAdminProfileTypeCapabilityDefinition> definitions,
+    TenantAdminProfileTypeCapabilities capabilities,
+  ) {
+    final grouped =
+        <String, List<TenantAdminProfileTypeCapabilityDefinition>>{};
+    for (final definition in definitions) {
+      grouped.putIfAbsent(definition.domain, () => []).add(definition);
+    }
+    return [
+      for (final entry in grouped.entries) ...[
+        Text(
+          tenantAdminCapabilityDomainLabel(entry.key),
+          style: Theme.of(context).textTheme.titleSmall,
+        ),
+        const SizedBox(height: 4),
+        for (final definition in entry.value)
+          _buildCapabilityControl(definition, capabilities),
+        const SizedBox(height: 12),
+      ],
+    ];
+  }
+
+  Widget _buildCapabilityControl(
+    TenantAdminProfileTypeCapabilityDefinition definition,
+    TenantAdminProfileTypeCapabilities capabilities,
+  ) {
+    final current = capabilities.valueFor(definition.keyValue);
+    final title = tenantAdminCapabilityLabel(definition.key);
+    if (definition.isBoolean) {
+      return SwitchListTile(
+        key: ValueKey<String>('profileTypeCapability_${definition.key}'),
+        contentPadding: EdgeInsets.zero,
+        title: Text(title),
+        value: current?.booleanValue ?? false,
+        onChanged: (value) =>
+            _controller.updateCapability(definition.key, value),
+      );
+    }
+    if (definition.isEnum) {
+      final currentValue = current?.enumValue;
+      final allowedValues = definition.allowedValueObjects
+          .map((value) => value.value)
+          .toList(growable: false);
+      return DropdownButtonFormField<String>(
+        key: ValueKey<String>('profileTypeCapability_${definition.key}'),
+        initialValue: allowedValues.contains(currentValue)
+            ? currentValue
+            : definition.failClosedValue.enumValue,
+        decoration: InputDecoration(labelText: title),
+        items: allowedValues
+            .map(
+              (value) => DropdownMenuItem<String>(
+                value: value,
+                child: Text(tenantAdminCapabilityLabel(value)),
+              ),
+            )
+            .toList(growable: false),
+        onChanged: (value) {
+          if (value != null) {
+            _controller.updateCapability(definition.key, value);
+          }
+        },
+      );
+    }
+    return const SizedBox.shrink();
   }
 
   Widget _buildPoiVisualEditor(BuildContext context) {

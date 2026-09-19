@@ -52,7 +52,6 @@ import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/controllers/tenant_home_agenda_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/models/tenant_home_agenda_display_state.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/favorite_section/controllers/favorites_section_controller.dart';
-import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/invites_banner/controllers/invites_banner_builder_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/models/invite_filter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -358,7 +357,6 @@ void _registerTenantBootstrapDependencies({
   final mockController = MockTenantHomeController();
   final mockAgendaController = _TestTenantHomeAgendaController();
   final mockFavoritesController = _TestFavoritesSectionController();
-  final mockInvitesBannerController = MockInvitesBannerBuilderController();
   final mockAppData = MockAppData();
   final testScrollController = ScrollController();
 
@@ -384,9 +382,6 @@ void _registerTenantBootstrapDependencies({
   GetIt.I.registerSingleton<TenantHomeAgendaController>(mockAgendaController);
   GetIt.I.registerSingleton<FavoritesSectionController>(
     mockFavoritesController,
-  );
-  GetIt.I.registerSingleton<InvitesBannerBuilderController>(
-    mockInvitesBannerController,
   );
   GetIt.I.registerSingleton<MockAppData>(mockAppData);
 
@@ -416,13 +411,6 @@ void _registerTenantBootstrapDependencies({
       isPrimaryValue: FavoritePrimaryFlagValue()..parse('true'),
     ),
   );
-  when(
-    mockInvitesBannerController.pendingInvitesStreamValue,
-  ).thenReturn(StreamValue<List<InviteModel>>(defaultValue: const []));
-  when(
-    mockInvitesBannerController.isPendingInvitesDisplayReadyStreamValue,
-  ).thenReturn(StreamValue<bool>(defaultValue: false));
-
   when(mockController.appData).thenReturn(appData);
   when(mockController.init()).thenAnswer((_) async {});
   when(mockController.homeLocationStatusStreamValue).thenReturn(
@@ -437,6 +425,9 @@ void _registerTenantBootstrapDependencies({
   when(mockController.myEventsFilteredStreamValue).thenReturn(
     StreamValue<List<UpcomingOcurrenceResume>>(defaultValue: const []),
   );
+  when(
+    mockController.pendingInvitesStreamValue,
+  ).thenReturn(resolvedInvitesRepository.pendingInvitesStreamValue);
   when(mockController.scrollController).thenReturn(testScrollController);
 
   when(

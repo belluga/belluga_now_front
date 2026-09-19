@@ -4,6 +4,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/settings/tenant_admin_map_filter_source.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_count_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_trimmed_string_list_value.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -64,12 +65,12 @@ void main() {
           _accountType(
             type: 'restaurant',
             label: 'Restaurantes',
-            isPoiEnabled: true,
+            isMapPoiEnabled: true,
           ),
           _accountType(
             type: 'sponsor',
             label: 'Patrocinadores',
-            isPoiEnabled: false,
+            isMapPoiEnabled: false,
           ),
         ],
         eventTypes: const [],
@@ -97,21 +98,41 @@ TenantAdminEventType _eventType({required String name, required String slug}) {
 TenantAdminProfileTypeDefinition _accountType({
   required String type,
   required String label,
-  bool isPoiEnabled = true,
+  bool isMapPoiEnabled = true,
 }) {
   return TenantAdminProfileTypeDefinition(
     typeValue: _requiredText(type),
     labelValue: _requiredText(label),
     allowedTaxonomiesValue: TenantAdminTrimmedStringListValue(),
-    capabilities: TenantAdminProfileTypeCapabilities(
-      isFavoritable: TenantAdminFlagValue(true),
-      isPoiEnabled: TenantAdminFlagValue(isPoiEnabled),
-      hasBio: TenantAdminFlagValue(false),
-      hasTaxonomies: TenantAdminFlagValue(false),
-      hasAvatar: TenantAdminFlagValue(false),
-      hasCover: TenantAdminFlagValue(false),
-      hasEvents: TenantAdminFlagValue(false),
+    capabilities: tenantAdminProfileTypeCapabilitiesFromRaw(
+      <String, TenantAdminProfileTypeCapabilityValue>{
+        'is_favoritable': tenantAdminProfileTypeCapabilityValueFromRaw(
+          value: true,
+        ),
+        'location_policy': tenantAdminProfileTypeCapabilityValueFromRaw(
+          value: isMapPoiEnabled ? 'required' : 'disabled',
+        ),
+        'is_map_poi_enabled': tenantAdminProfileTypeCapabilityValueFromRaw(
+          value: (TenantAdminFlagValue(isMapPoiEnabled)).value,
+        ),
+        'has_bio': tenantAdminProfileTypeCapabilityValueFromRaw(
+          value: false,
+        ),
+        'has_taxonomies': tenantAdminProfileTypeCapabilityValueFromRaw(
+          value: false,
+        ),
+        'has_avatar': tenantAdminProfileTypeCapabilityValueFromRaw(
+          value: false,
+        ),
+        'has_cover': tenantAdminProfileTypeCapabilityValueFromRaw(
+          value: false,
+        ),
+        'has_events': tenantAdminProfileTypeCapabilityValueFromRaw(
+          value: false,
+        ),
+      },
     ),
+    capabilityRevisionValue: TenantAdminCountValue(),
   );
 }
 

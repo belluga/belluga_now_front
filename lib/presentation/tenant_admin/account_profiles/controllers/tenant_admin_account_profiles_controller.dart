@@ -22,6 +22,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gal
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_candidate_scope.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_candidate_selection_summary.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value_parsers.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_group_order_mutation_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_member_page.dart';
@@ -1897,6 +1898,7 @@ class TenantAdminAccountProfilesController implements Disposable {
     required String displayName,
     String? slug,
     required TenantAdminLocation? location,
+    bool includeLocation = false,
     required String? bio,
     required TenantAdminTaxonomyTerms? taxonomyTerms,
     required TenantAdminMediaUpload? avatarUpload,
@@ -1921,6 +1923,7 @@ class TenantAdminAccountProfilesController implements Disposable {
         displayName: displayName,
         slug: slug,
         location: location,
+        includeLocation: includeLocation,
         bio: bio,
         taxonomyTerms: taxonomyTerms,
         avatarUpload: avatarUpload,
@@ -1939,6 +1942,35 @@ class TenantAdminAccountProfilesController implements Disposable {
       updateEditProfile(updated, preserveGalleryState: true);
       editErrorMessageStreamValue.addValue(null);
       editSuccessMessageStreamValue.addValue('Perfil atualizado.');
+    } catch (error) {
+      if (_isDisposed) return;
+      editErrorMessageStreamValue.addValue(error.toString());
+    } finally {
+      if (!_isDisposed) {
+        editSubmittingStreamValue.addValue(false);
+      }
+    }
+  }
+
+  Future<void> submitRemoveProfileLocation({
+    required String accountProfileId,
+    required String profileType,
+  }) async {
+    if (editSubmittingStreamValue.value) return;
+    editSubmittingStreamValue.addValue(true);
+    try {
+      final updated = await updateProfile(
+        accountProfileId: accountProfileId,
+        profileType: profileType,
+        location: null,
+        includeLocation: true,
+      );
+      if (_isDisposed) return;
+      latitudeController.clear();
+      longitudeController.clear();
+      updateEditProfile(updated, preserveGalleryState: true);
+      editErrorMessageStreamValue.addValue(null);
+      editSuccessMessageStreamValue.addValue('Localização removida.');
     } catch (error) {
       if (_isDisposed) return;
       editErrorMessageStreamValue.addValue(error.toString());
@@ -2012,7 +2044,8 @@ class TenantAdminAccountProfilesController implements Disposable {
       final capabilities = _resolveProfileType(
         resolvedProfileType,
       )?.capabilities;
-      final resolvedBio = capabilities?.hasBio == true
+      final resolvedBio =
+          capabilities?.isEnabled(tenantAdminRequiredText('has_bio')) == true
           ? (bio ?? currentProfile?.bio ?? '')
           : null;
       final updated = await updateProfile(
@@ -3227,6 +3260,7 @@ class TenantAdminAccountProfilesController implements Disposable {
     String? displayName,
     String? slug,
     TenantAdminLocation? location,
+    bool includeLocation = false,
     TenantAdminTaxonomyTerms? taxonomyTerms,
     String? bio,
     String? avatarUrl,
@@ -3284,6 +3318,7 @@ class TenantAdminAccountProfilesController implements Disposable {
           : tenantAdminAccountProfilesRepoString(displayName),
       slug: slug == null ? null : tenantAdminAccountProfilesRepoString(slug),
       location: filtered.location,
+      includeLocation: tenantAdminAccountProfilesRepoBool(includeLocation),
       taxonomyTerms: taxonomyTerms == null ? null : filtered.taxonomyTerms,
       bio: filtered.bio == null
           ? null
@@ -3551,7 +3586,8 @@ class TenantAdminAccountProfilesController implements Disposable {
     }
     final capabilities = definition.capabilities;
     final allowedTaxonomies = definition.allowedTaxonomies.toSet();
-    final filteredTerms = capabilities.hasTaxonomies
+    final filteredTerms =
+        capabilities.isEnabled(tenantAdminRequiredText('has_taxonomies'))
         ? (() {
             final terms = TenantAdminTaxonomyTerms();
             for (final taxonomyTerm in taxonomyTerms) {
@@ -3563,13 +3599,24 @@ class TenantAdminAccountProfilesController implements Disposable {
           })()
         : const TenantAdminTaxonomyTerms.empty();
     return _CapabilityFilter(
-      location: capabilities.isPoiEnabled ? location : null,
+      location: capabilities.allowsLocation ? location : null,
       taxonomyTerms: filteredTerms,
-      bio: capabilities.hasBio ? bio : null,
-      avatarUrl: capabilities.hasAvatar ? avatarUrl : null,
-      coverUrl: capabilities.hasCover ? coverUrl : null,
-      avatarUpload: capabilities.hasAvatar ? avatarUpload : null,
-      coverUpload: capabilities.hasCover ? coverUpload : null,
+      bio: capabilities.isEnabled(tenantAdminRequiredText('has_bio'))
+          ? bio
+          : null,
+      avatarUrl: capabilities.isEnabled(tenantAdminRequiredText('has_avatar'))
+          ? avatarUrl
+          : null,
+      coverUrl: capabilities.isEnabled(tenantAdminRequiredText('has_cover'))
+          ? coverUrl
+          : null,
+      avatarUpload:
+          capabilities.isEnabled(tenantAdminRequiredText('has_avatar'))
+          ? avatarUpload
+          : null,
+      coverUpload: capabilities.isEnabled(tenantAdminRequiredText('has_cover'))
+          ? coverUpload
+          : null,
     );
   }
 

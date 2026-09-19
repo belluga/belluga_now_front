@@ -45,6 +45,26 @@ import 'package:stream_value/core/stream_value.dart';
 
 void main() {
   test(
+    'loadResolvedAccountProfile ignores completion after disposal',
+    () async {
+      final controller = AccountProfileDetailController(
+        accountProfilesRepository: _FakeAccountProfilesRepository(),
+      );
+      final profile = buildAccountProfileCompleteFromPrimitives(
+        id: '507f1f77bcf86cd799439011',
+        name: 'Cafe de la Musique',
+        slug: 'cafe-de-la-musique',
+        type: 'venue',
+      );
+
+      final pendingLoad = controller.loadResolvedAccountProfile(profile);
+      controller.onDispose();
+
+      await expectLater(pendingLoad, completes);
+    },
+  );
+
+  test(
     'loadResolvedAccountProfile exposes the typed agenda presentation',
     () async {
       final accountProfileRepository = _FakeAccountProfilesRepository();
@@ -769,11 +789,34 @@ Future<void> _registerReferenceAppData({
             'label': 'Restaurante',
             'allowed_taxonomies': [],
             'capabilities': {
-              'is_favoritable': true,
-              'is_poi_enabled': true,
-              'is_reference_location_enabled': referenceLocationEnabled,
-              'has_events': false,
-              'has_bio': false,
+              'is_favoritable': {
+                'configured': {'value': true, 'parameters': {}},
+                'effective': {'value': true, 'parameters': {}},
+              },
+              'location_policy': {
+                'configured': {'value': 'required', 'parameters': {}},
+                'effective': {'value': 'required', 'parameters': {}},
+              },
+              'is_map_poi_enabled': {
+                'configured': {'value': true, 'parameters': {}},
+                'effective': {'value': true, 'parameters': {}},
+              },
+              'is_physical_host_enabled': {
+                'configured': {'value': true, 'parameters': {}},
+                'effective': {'value': true, 'parameters': {}},
+              },
+              'is_reference_location_enabled': {
+                'configured': {'value': referenceLocationEnabled, 'parameters': {}},
+                'effective': {'value': referenceLocationEnabled, 'parameters': {}},
+              },
+              'has_events': {
+                'configured': {'value': false, 'parameters': {}},
+                'effective': {'value': false, 'parameters': {}},
+              },
+              'has_bio': {
+                'configured': {'value': false, 'parameters': {}},
+                'effective': {'value': false, 'parameters': {}},
+              },
             },
           },
         ],
@@ -819,11 +862,38 @@ Future<void> _registerGalleryAppData({
             'label': 'Artista',
             'allowed_taxonomies': [],
             'capabilities': {
-              'is_favoritable': true,
-              'is_poi_enabled': false,
-              'has_events': false,
-              'has_bio': hasBio,
-              'has_gallery': galleryEnabled,
+              'is_favoritable': {
+                'configured': {'value': true, 'parameters': {}},
+                'effective': {'value': true, 'parameters': {}},
+              },
+              'location_policy': {
+                'configured': {'value': 'disabled', 'parameters': {}},
+                'effective': {'value': 'disabled', 'parameters': {}},
+              },
+              'is_map_poi_enabled': {
+                'configured': {'value': false, 'parameters': {}},
+                'effective': {'value': false, 'parameters': {}},
+              },
+              'is_physical_host_enabled': {
+                'configured': {'value': false, 'parameters': {}},
+                'effective': {'value': false, 'parameters': {}},
+              },
+              'is_reference_location_enabled': {
+                'configured': {'value': false, 'parameters': {}},
+                'effective': {'value': false, 'parameters': {}},
+              },
+              'has_events': {
+                'configured': {'value': false, 'parameters': {}},
+                'effective': {'value': false, 'parameters': {}},
+              },
+              'has_bio': {
+                'configured': {'value': hasBio, 'parameters': {}},
+                'effective': {'value': hasBio, 'parameters': {}},
+              },
+              'has_gallery': {
+                'configured': {'value': galleryEnabled, 'parameters': {}},
+                'effective': {'value': galleryEnabled, 'parameters': {}},
+              },
             },
           },
         ],
@@ -866,11 +936,38 @@ Future<void> _registerContactAppData({required bool contactEnabled}) async {
             'label': 'Artista',
             'allowed_taxonomies': [],
             'capabilities': {
-              'is_favoritable': true,
-              'is_poi_enabled': false,
-              'has_events': false,
-              'has_bio': false,
-              'has_contact_channels': contactEnabled,
+              'is_favoritable': {
+                'configured': {'value': true, 'parameters': {}},
+                'effective': {'value': true, 'parameters': {}},
+              },
+              'location_policy': {
+                'configured': {'value': 'disabled', 'parameters': {}},
+                'effective': {'value': 'disabled', 'parameters': {}},
+              },
+              'is_map_poi_enabled': {
+                'configured': {'value': false, 'parameters': {}},
+                'effective': {'value': false, 'parameters': {}},
+              },
+              'is_physical_host_enabled': {
+                'configured': {'value': false, 'parameters': {}},
+                'effective': {'value': false, 'parameters': {}},
+              },
+              'is_reference_location_enabled': {
+                'configured': {'value': false, 'parameters': {}},
+                'effective': {'value': false, 'parameters': {}},
+              },
+              'has_events': {
+                'configured': {'value': false, 'parameters': {}},
+                'effective': {'value': false, 'parameters': {}},
+              },
+              'has_bio': {
+                'configured': {'value': false, 'parameters': {}},
+                'effective': {'value': false, 'parameters': {}},
+              },
+              'has_contact_channels': {
+                'configured': {'value': contactEnabled, 'parameters': {}},
+                'effective': {'value': contactEnabled, 'parameters': {}},
+              },
             },
           },
         ],

@@ -7,6 +7,7 @@ import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_location_repository_contract_bool_value.dart';
@@ -25,6 +26,7 @@ import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
+import 'package:mockito/mockito.dart';
 import 'package:stream_value/core/stream_value.dart';
 import 'package:value_object_pattern/domain/value_objects/mongo_id_value.dart';
 
@@ -179,57 +181,59 @@ void main() {
     controller.onDispose();
   });
 
-  test('home reloads my events after late authenticated identity hydration',
-      () async {
-    final tenantDefaultOrigin = _buildCoordinate(
-      latitude: -20.671339,
-      longitude: -40.495395,
-    );
-    final appData = _buildAppData(defaultOrigin: tenantDefaultOrigin);
-    final appDataRepository = _FakeAppDataRepository(appData);
-    final userLocationRepository = _FakeUserLocationRepository();
-    final backend = _CapturingScheduleBackend();
-    final authRepository = _FakeAuthRepository(false);
+  test(
+    'home reloads my events after late authenticated identity hydration',
+    () async {
+      final tenantDefaultOrigin = _buildCoordinate(
+        latitude: -20.671339,
+        longitude: -40.495395,
+      );
+      final appData = _buildAppData(defaultOrigin: tenantDefaultOrigin);
+      final appDataRepository = _FakeAppDataRepository(appData);
+      final userLocationRepository = _FakeUserLocationRepository();
+      final backend = _CapturingScheduleBackend();
+      final authRepository = _FakeAuthRepository(false);
 
-    GetIt.I.registerSingleton<AppData>(appData);
+      GetIt.I.registerSingleton<AppData>(appData);
 
-    final scheduleRepository = ScheduleRepository(backend: backend);
-    final userEventsRepository = UserEventsRepository(
-      scheduleRepository: scheduleRepository,
-      backend: _FakeUserEventsBackend(),
-      authRepository: authRepository,
-    );
-    await userEventsRepository.confirmEventAttendance(
-      userEventsRepoString(_CapturingScheduleBackend.eventId),
-      occurrenceId: userEventsRepoString(
-        _CapturingScheduleBackend.occurrenceId,
-      ),
-    );
+      final scheduleRepository = ScheduleRepository(backend: backend);
+      final userEventsRepository = UserEventsRepository(
+        scheduleRepository: scheduleRepository,
+        backend: _FakeUserEventsBackend(),
+        authRepository: authRepository,
+      );
+      await userEventsRepository.confirmEventAttendance(
+        userEventsRepoString(_CapturingScheduleBackend.eventId),
+        occurrenceId: userEventsRepoString(
+          _CapturingScheduleBackend.occurrenceId,
+        ),
+      );
 
-    final controller = _buildTenantHomeController(
-      userEventsRepository: userEventsRepository,
-      userLocationRepository: userLocationRepository,
-      appDataRepository: appDataRepository,
-      authRepository: authRepository,
-    );
+      final controller = _buildTenantHomeController(
+        userEventsRepository: userEventsRepository,
+        userLocationRepository: userLocationRepository,
+        appDataRepository: appDataRepository,
+        authRepository: authRepository,
+      );
 
-    await controller.init();
+      await controller.init();
 
-    expect(backend.requests, isEmpty);
-    expect(controller.myEventsFilteredStreamValue.value, isEmpty);
+      expect(backend.requests, isEmpty);
+      expect(controller.myEventsFilteredStreamValue.value, isEmpty);
 
-    authRepository.authenticate();
-    await Future<void>.delayed(Duration.zero);
+      authRepository.authenticate();
+      await Future<void>.delayed(Duration.zero);
 
-    expect(backend.requests, isNotEmpty);
-    expect(backend.requests.first.confirmedOnly, isTrue);
-    expect(
-      controller.myEventsFilteredStreamValue.value.map((event) => event.id),
-      contains(_CapturingScheduleBackend.eventId),
-    );
+      expect(backend.requests, isNotEmpty);
+      expect(backend.requests.first.confirmedOnly, isTrue);
+      expect(
+        controller.myEventsFilteredStreamValue.value.map((event) => event.id),
+        contains(_CapturingScheduleBackend.eventId),
+      );
 
-    controller.onDispose();
-  });
+      controller.onDispose();
+    },
+  );
 }
 
 TenantHomeController _buildTenantHomeController({
@@ -247,8 +251,12 @@ TenantHomeController _buildTenantHomeController({
       userLocationRepository: userLocationRepository,
     ),
     authRepository: authRepository,
+    invitesRepository: _MockInvitesRepository(),
   );
 }
+
+class _MockInvitesRepository extends Mock
+    implements InvitesRepositoryContract {}
 
 class _CapturingScheduleBackend implements ScheduleBackendContract {
   _CapturingScheduleBackend({this.hasMoreFirstPage = false});
@@ -430,10 +438,10 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
 
 class _FakeUser extends UserContract {
   _FakeUser({required String id})
-      : super(
-          uuidValue: MongoIDValue()..parse(id),
-          profile: UserProfileContract(),
-        );
+    : super(
+        uuidValue: MongoIDValue()..parse(id),
+        profile: UserProfileContract(),
+      );
 }
 
 class _AgendaRequestSample {
@@ -583,7 +591,28 @@ AppData _buildAppData({required CityCoordinate? defaultOrigin}) {
         'type': 'artist',
         'label': 'Artist',
         'allowed_taxonomies': [],
-        'capabilities': {'is_favoritable': true, 'is_poi_enabled': true},
+        'capabilities': {
+          'is_favoritable': {
+            'configured': {'value': true, 'parameters': {}},
+            'effective': {'value': true, 'parameters': {}},
+          },
+          'location_policy': {
+            'configured': {'value': 'required', 'parameters': {}},
+            'effective': {'value': 'required', 'parameters': {}},
+          },
+          'is_map_poi_enabled': {
+            'configured': {'value': true, 'parameters': {}},
+            'effective': {'value': true, 'parameters': {}},
+          },
+          'is_physical_host_enabled': {
+            'configured': {'value': true, 'parameters': {}},
+            'effective': {'value': true, 'parameters': {}},
+          },
+          'is_reference_location_enabled': {
+            'configured': {'value': true, 'parameters': {}},
+            'effective': {'value': true, 'parameters': {}},
+          },
+        },
       },
     ],
     'domains': const ['https://tenant.test'],

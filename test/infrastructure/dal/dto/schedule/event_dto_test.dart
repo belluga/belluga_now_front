@@ -1786,7 +1786,16 @@ AppData _buildAppData() {
           'type': 'artist',
           'label': 'Artist',
           'labels': {'singular': 'Artist', 'plural': 'Artists'},
-          'capabilities': {'has_events': true, 'is_favoritable': true},
+          'capabilities': {
+            'has_events': {
+              'configured': {'value': true, 'parameters': {}},
+              'effective': {'value': true, 'parameters': {}},
+            },
+            'is_favoritable': {
+              'configured': {'value': true, 'parameters': {}},
+              'effective': {'value': true, 'parameters': {}},
+            },
+          },
         },
       ],
       'theme_data_settings': const {

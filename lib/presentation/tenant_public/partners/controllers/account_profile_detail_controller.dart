@@ -121,6 +121,7 @@ class AccountProfileDetailController implements Disposable {
   StreamSubscription<Set<UserEventsRepositoryContractPrimString>>?
   _confirmedEventIdsSubscription;
   StreamSubscription<dynamic>? _pendingInvitesSubscription;
+  bool _isDisposed = false;
 
   final _detailStateStreamValue = StreamValue<AccountProfileDetailState>(
     defaultValue: AccountProfileDetailState.empty,
@@ -153,6 +154,9 @@ class AccountProfileDetailController implements Disposable {
   Future<void> loadResolvedAccountProfile(
     AccountProfileComplete accountProfile,
   ) async {
+    if (_isDisposed) {
+      return;
+    }
     if (_detailStateStreamValue.value.accountProfile?.id != accountProfile.id) {
       _releaseRetainedNestedGroupMembersPaths();
     }
@@ -172,11 +176,17 @@ class AccountProfileDetailController implements Disposable {
         accountProfile,
         capabilities: capabilities,
       );
+      if (_isDisposed) {
+        return;
+      }
       profileConfigStreamValue.addValue(
         _filterConfigToAvailableModules(rawConfig, moduleData),
       );
       moduleDataStreamValue.addValue(moduleData);
     } catch (_) {
+      if (_isDisposed) {
+        return;
+      }
       errorMessageStreamValue.addValue('Falha ao preparar o perfil');
       profileConfigStreamValue.addValue(
         _filterConfigToAvailableModules(rawConfig, const {}),
@@ -820,6 +830,7 @@ class AccountProfileDetailController implements Disposable {
 
   @override
   void onDispose() {
+    _isDisposed = true;
     _favoriteIdsSubscription?.cancel();
     _confirmedEventIdsSubscription?.cancel();
     _pendingInvitesSubscription?.cancel();

@@ -247,6 +247,7 @@ class TenantAdminAccountProfilesRepository
     TenantAdminAccountProfilesRepoString? slug,
     TenantAdminAccountProfilesRepoInt? aggregateRevision,
     TenantAdminLocation? location,
+    TenantAdminAccountProfilesRepoBool? includeLocation,
     TenantAdminTaxonomyTerms? taxonomyTerms,
     TenantAdminAccountProfilesRepoString? bio,
     TenantAdminAccountProfilesRepoString? avatarUrl,
@@ -269,6 +270,7 @@ class TenantAdminAccountProfilesRepository
         slug: slug?.value,
         aggregateRevision: aggregateRevision?.value,
         location: location,
+        includeLocation: includeLocation?.value ?? false,
         taxonomyTerms: taxonomyTerms,
         bio: bio?.value,
         avatarUrl: avatarUrl?.value,
@@ -1014,6 +1016,7 @@ class TenantAdminAccountProfilesRepository
     TenantAdminAccountProfilesRepoString? pluralLabel,
     List<TenantAdminAccountProfilesRepoString>? allowedTaxonomies,
     TenantAdminProfileTypeCapabilities? capabilities,
+    TenantAdminAccountProfilesRepoInt? expectedCapabilityRevision,
   }) async {
     try {
       final encodedType = Uri.encodeComponent(type.value);
@@ -1025,6 +1028,7 @@ class TenantAdminAccountProfilesRepository
             ?.map((entry) => entry.value)
             .toList(growable: false),
         capabilities: capabilities,
+        expectedCapabilityRevision: expectedCapabilityRevision?.value,
       );
       final response = await _dio.patch(
         '$_apiBaseUrl/v1/account_profile_types/$encodedType',
@@ -1046,6 +1050,7 @@ class TenantAdminAccountProfilesRepository
     TenantAdminAccountProfilesRepoString? pluralLabel,
     List<TenantAdminAccountProfilesRepoString>? allowedTaxonomies,
     TenantAdminProfileTypeCapabilities? capabilities,
+    TenantAdminAccountProfilesRepoInt? expectedCapabilityRevision,
     TenantAdminPoiVisual? visual,
     TenantAdminMediaUpload? typeAssetUpload,
     TenantAdminAccountProfilesRepoBool? removeTypeAsset,
@@ -1060,6 +1065,7 @@ class TenantAdminAccountProfilesRepository
             ?.map((entry) => entry.value)
             .toList(growable: false),
         capabilities: capabilities,
+        expectedCapabilityRevision: expectedCapabilityRevision?.value,
         visual: visual,
         includeVisual: true,
         removeTypeAsset: removeTypeAsset?.value,
@@ -1094,11 +1100,15 @@ class TenantAdminAccountProfilesRepository
   Future<TenantAdminAccountProfilesRepoInt>
   fetchProfileTypeMapPoiProjectionImpact({
     required TenantAdminAccountProfilesRepoString type,
+    required TenantAdminProfileTypeCapabilities capabilities,
   }) async {
     try {
       final encodedType = Uri.encodeComponent(type.value);
-      final response = await _dio.get(
-        '$_apiBaseUrl/v1/account_profile_types/$encodedType/map_poi_projection_impact',
+      final response = await _dio.post(
+        '$_apiBaseUrl/v1/account_profile_types/$encodedType/change_impact',
+        data: _requestEncoder.encodeProfileTypeChangeImpact(
+          capabilities: capabilities,
+        ),
         options: Options(headers: _buildHeaders()),
       );
       return tenantAdminAccountProfilesRepoInt(
