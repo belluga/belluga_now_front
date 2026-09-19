@@ -90,7 +90,7 @@ class _AccountProfileDetailScreenState
     _controller = RouteInstanceScope.read<AccountProfileDetailController>(
       context,
     );
-    unawaited(_controller.loadResolvedAccountProfile(widget.accountProfile));
+    _controller.loadResolvedAccountProfile(widget.accountProfile);
   }
 
   @override
@@ -108,7 +108,7 @@ class _AccountProfileDetailScreenState
     super.didUpdateWidget(oldWidget);
     if (oldWidget.accountProfile.id != widget.accountProfile.id ||
         oldWidget.accountProfile.slug != widget.accountProfile.slug) {
-      unawaited(_controller.loadResolvedAccountProfile(widget.accountProfile));
+      _controller.loadResolvedAccountProfile(widget.accountProfile);
     }
   }
 

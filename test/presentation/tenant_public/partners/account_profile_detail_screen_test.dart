@@ -3703,9 +3703,7 @@ class _LoadingAccountProfileDetailController
   }
 
   @override
-  Future<void> loadResolvedAccountProfile(
-    AccountProfileComplete accountProfile,
-  ) async {}
+  void loadResolvedAccountProfile(AccountProfileComplete accountProfile) {}
 }
 
 class _EmptyAccountProfileDetailController
@@ -3715,9 +3713,7 @@ class _EmptyAccountProfileDetailController
   });
 
   @override
-  Future<void> loadResolvedAccountProfile(
-    AccountProfileComplete accountProfile,
-  ) async {
+  void loadResolvedAccountProfile(AccountProfileComplete accountProfile) {
     detailStateStreamValue.addValue(AccountProfileDetailState.empty);
     profileConfigStreamValue.addValue(null);
   }
@@ -3730,9 +3726,7 @@ class _ErrorAccountProfileDetailController
   });
 
   @override
-  Future<void> loadResolvedAccountProfile(
-    AccountProfileComplete accountProfile,
-  ) async {
+  void loadResolvedAccountProfile(AccountProfileComplete accountProfile) {
     errorMessageStreamValue.addValue('Falha ao preparar o perfil');
   }
 }
@@ -3749,11 +3743,9 @@ class _TrackingAccountProfileDetailController
   bool disposed = false;
 
   @override
-  Future<void> loadResolvedAccountProfile(
-    AccountProfileComplete accountProfile,
-  ) {
+  void loadResolvedAccountProfile(AccountProfileComplete accountProfile) {
     loadedSlugs.add(accountProfile.slug);
-    return super.loadResolvedAccountProfile(accountProfile);
+    super.loadResolvedAccountProfile(accountProfile);
   }
 
   @override

@@ -121,8 +121,6 @@ class AccountProfileDetailController implements Disposable {
   StreamSubscription<Set<UserEventsRepositoryContractPrimString>>?
   _confirmedEventIdsSubscription;
   StreamSubscription<dynamic>? _pendingInvitesSubscription;
-  bool _isDisposed = false;
-
   final _detailStateStreamValue = StreamValue<AccountProfileDetailState>(
     defaultValue: AccountProfileDetailState.empty,
   );
@@ -151,12 +149,7 @@ class AccountProfileDetailController implements Disposable {
 
   bool get isAuthorized => _authRepository?.isAuthorized ?? false;
 
-  Future<void> loadResolvedAccountProfile(
-    AccountProfileComplete accountProfile,
-  ) async {
-    if (_isDisposed) {
-      return;
-    }
+  void loadResolvedAccountProfile(AccountProfileComplete accountProfile) {
     if (_detailStateStreamValue.value.accountProfile?.id != accountProfile.id) {
       _releaseRetainedNestedGroupMembersPaths();
     }
@@ -172,21 +165,15 @@ class AccountProfileDetailController implements Disposable {
       capabilities: capabilities,
     );
     try {
-      final moduleData = await _buildModuleData(
+      final moduleData = _buildModuleData(
         accountProfile,
         capabilities: capabilities,
       );
-      if (_isDisposed) {
-        return;
-      }
       profileConfigStreamValue.addValue(
         _filterConfigToAvailableModules(rawConfig, moduleData),
       );
       moduleDataStreamValue.addValue(moduleData);
     } catch (_) {
-      if (_isDisposed) {
-        return;
-      }
       errorMessageStreamValue.addValue('Falha ao preparar o perfil');
       profileConfigStreamValue.addValue(
         _filterConfigToAvailableModules(rawConfig, const {}),
@@ -654,10 +641,10 @@ class AccountProfileDetailController implements Disposable {
     return '${(distanceMeters / 1000).toStringAsFixed(1)} km';
   }
 
-  Future<Map<ProfileModuleId, Object?>> _buildModuleData(
+  Map<ProfileModuleId, Object?> _buildModuleData(
     AccountProfileComplete accountProfile, {
     ProfileTypeCapabilities? capabilities,
-  }) async {
+  }) {
     final modules = <ProfileModuleId, Object?>{};
     final richTextBlocks = _buildRichTextModuleData(
       accountProfile,
@@ -830,7 +817,6 @@ class AccountProfileDetailController implements Disposable {
 
   @override
   void onDispose() {
-    _isDisposed = true;
     _favoriteIdsSubscription?.cancel();
     _confirmedEventIdsSubscription?.cancel();
     _pendingInvitesSubscription?.cancel();

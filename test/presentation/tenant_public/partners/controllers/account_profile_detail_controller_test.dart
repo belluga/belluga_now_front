@@ -45,22 +45,30 @@ import 'package:stream_value/core/stream_value.dart';
 
 void main() {
   test(
-    'loadResolvedAccountProfile ignores completion after disposal',
-    () async {
+    'loadResolvedAccountProfile prepares content and config immediately',
+    () {
       final controller = AccountProfileDetailController(
         accountProfilesRepository: _FakeAccountProfilesRepository(),
       );
+      addTearDown(controller.onDispose);
       final profile = buildAccountProfileCompleteFromPrimitives(
         id: '507f1f77bcf86cd799439011',
-        name: 'Cafe de la Musique',
-        slug: 'cafe-de-la-musique',
-        type: 'venue',
+        name: 'Casa Marracini',
+        slug: 'casa-marracini',
+        type: 'restaurant',
+        locationLat: -20.7389,
+        locationLng: -40.8212,
       );
 
-      final pendingLoad = controller.loadResolvedAccountProfile(profile);
-      controller.onDispose();
+      controller.loadResolvedAccountProfile(profile);
 
-      await expectLater(pendingLoad, completes);
+      expect(controller.detailStateStreamValue.value.accountProfile, profile);
+      expect(
+        controller.moduleDataStreamValue.value[ProfileModuleId.locationInfo],
+        isA<PartnerLocationView>(),
+      );
+      expect(controller.profileConfigStreamValue.value, isNotNull);
+      expect(controller.profileConfigStreamValue.value!.partner, profile);
     },
   );
 
@@ -101,7 +109,7 @@ void main() {
         ],
       );
 
-      await controller.loadResolvedAccountProfile(profile);
+      controller.loadResolvedAccountProfile(profile);
 
       final config = controller.profileConfigStreamValue.value;
       final agendaData =
@@ -212,7 +220,7 @@ void main() {
         locationLng: -40.8212,
       );
 
-      await controller.loadResolvedAccountProfile(profile);
+      controller.loadResolvedAccountProfile(profile);
 
       final locationData =
           controller.moduleDataStreamValue.value[ProfileModuleId.locationInfo];
@@ -256,7 +264,7 @@ void main() {
         ],
       );
 
-      await controller.loadResolvedAccountProfile(profile);
+      controller.loadResolvedAccountProfile(profile);
 
       final config = controller.profileConfigStreamValue.value;
       final galleryData =
@@ -300,7 +308,7 @@ void main() {
         ],
       );
 
-      await controller.loadResolvedAccountProfile(profile);
+      controller.loadResolvedAccountProfile(profile);
 
       expect(
         controller.moduleDataStreamValue.value[ProfileModuleId.photoGallery],
@@ -325,7 +333,7 @@ void main() {
         galleryGroups: const [],
       );
 
-      await controller.loadResolvedAccountProfile(profile);
+      controller.loadResolvedAccountProfile(profile);
 
       final aboutTab = controller.profileConfigStreamValue.value?.tabs
           .firstWhere((tab) => tab.title.contains('Sobre'));
