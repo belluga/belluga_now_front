@@ -1375,6 +1375,199 @@ void main() {
   });
 
   testWidgets(
+    'metadata actions reach the repository with one nullable field at a time',
+    (tester) async {
+      final profilesRepository =
+          GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
+              as _FakeAccountProfilesRepository;
+      profilesRepository.profileTypesToReturn = [
+        _profileType(hasGallery: true, hasNestedProfileGroups: false),
+      ];
+      profilesRepository.profileToReturn = _profile(
+        id: 'route-profile',
+        galleryGroups: [_galleryGroup(title: 'Título salvo')],
+      );
+      profilesRepository.gallerySnapshotToReturn =
+          TenantAdminAccountProfileGallerySnapshot(
+            groups: [_galleryGroup(title: 'Título atualizado')],
+            capabilities: TenantAdminAccountProfileGalleryCapabilities(
+              maxGalleriesValue: TenantAdminCountValue(6),
+              maxItemsPerGalleryValue: TenantAdminCountValue(12),
+            ),
+          );
+
+      await _pumpScreen(
+        tester,
+        const TenantAdminAccountProfileEditScreen(
+          accountSlug: 'route-account',
+          accountProfileId: 'route-profile',
+        ),
+      );
+
+      final scrollable = find.byType(Scrollable).first;
+      final titleField = find.byKey(
+        const Key('tenantAdminGalleryItemTitle_item-1'),
+      );
+      await tester.scrollUntilVisible(titleField, 250, scrollable: scrollable);
+      await tester.enterText(titleField, 'Título atualizado');
+      await tester.pump();
+      await tester.tap(
+        find.byKey(const Key('tenantAdminGalleryItemSaveTitle_item-1')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(profilesRepository.updateGalleryItemCalls, 1);
+      expect(profilesRepository.lastGalleryItemId, 'item-1');
+      expect(profilesRepository.lastGalleryItemTitle, 'Título atualizado');
+      expect(profilesRepository.lastGalleryItemDescription, isNull);
+
+      final descriptionField = find.byKey(
+        const Key('tenantAdminGalleryItemDescription_item-1'),
+      );
+      await tester.enterText(descriptionField, 'Linha um\nLinha dois');
+      await tester.pump();
+      await tester.tap(
+        find.byKey(const Key('tenantAdminGalleryItemSaveDescription_item-1')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(profilesRepository.updateGalleryItemCalls, 2);
+      expect(profilesRepository.lastGalleryItemTitle, isNull);
+      expect(
+        profilesRepository.lastGalleryItemDescription,
+        'Linha um\nLinha dois',
+      );
+    },
+  );
+
+  testWidgets(
+    'metadata actions send null when both fields are cleared',
+    (tester) async {
+      final profilesRepository =
+          GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
+              as _FakeAccountProfilesRepository;
+      profilesRepository.profileTypesToReturn = [
+        _profileType(hasGallery: true, hasNestedProfileGroups: false),
+      ];
+      profilesRepository.profileToReturn = _profile(
+        id: 'route-profile',
+        galleryGroups: [
+          _galleryGroup(title: 'Título salvo', description: 'Descrição salva'),
+        ],
+      );
+      profilesRepository.gallerySnapshotToReturn =
+          TenantAdminAccountProfileGallerySnapshot(
+            groups: [_galleryGroup(title: null, description: 'Descrição salva')],
+            capabilities: TenantAdminAccountProfileGalleryCapabilities(
+              maxGalleriesValue: TenantAdminCountValue(6),
+              maxItemsPerGalleryValue: TenantAdminCountValue(12),
+            ),
+          );
+
+      await _pumpScreen(
+        tester,
+        const TenantAdminAccountProfileEditScreen(
+          accountSlug: 'route-account',
+          accountProfileId: 'route-profile',
+        ),
+      );
+
+      final scrollable = find.byType(Scrollable).first;
+      final titleField = find.byKey(
+        const Key('tenantAdminGalleryItemTitle_item-1'),
+      );
+      await tester.scrollUntilVisible(titleField, 250, scrollable: scrollable);
+      await tester.enterText(titleField, '');
+      await tester.pump();
+      await tester.tap(
+        find.byKey(const Key('tenantAdminGalleryItemSaveTitle_item-1')),
+      );
+      await tester.pumpAndSettle();
+      expect(profilesRepository.lastGalleryItemTitle, isNull);
+      expect(profilesRepository.lastGalleryItemDescription, isNull);
+
+      final descriptionField = find.byKey(
+        const Key('tenantAdminGalleryItemDescription_item-1'),
+      );
+      await tester.enterText(descriptionField, '');
+      await tester.pump();
+      await tester.tap(
+        find.byKey(const Key('tenantAdminGalleryItemSaveDescription_item-1')),
+      );
+      await tester.pumpAndSettle();
+      expect(profilesRepository.updateGalleryItemCalls, 2);
+      expect(profilesRepository.lastGalleryItemTitle, isNull);
+      expect(profilesRepository.lastGalleryItemDescription, isNull);
+    },
+  );
+
+  testWidgets(
+    'title save preserves an unrelated description draft',
+    (tester) async {
+      final profilesRepository =
+          GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
+              as _FakeAccountProfilesRepository;
+      profilesRepository.profileTypesToReturn = [
+        _profileType(hasGallery: true, hasNestedProfileGroups: false),
+      ];
+      profilesRepository.profileToReturn = _profile(
+        id: 'route-profile',
+        galleryGroups: [
+          _galleryGroup(title: 'Título salvo', description: 'Descrição salva'),
+        ],
+      );
+      profilesRepository.gallerySnapshotToReturn =
+          TenantAdminAccountProfileGallerySnapshot(
+            groups: [
+              _galleryGroup(title: 'Título novo', description: 'Descrição salva'),
+            ],
+            capabilities: TenantAdminAccountProfileGalleryCapabilities(
+              maxGalleriesValue: TenantAdminCountValue(6),
+              maxItemsPerGalleryValue: TenantAdminCountValue(12),
+            ),
+          );
+
+      await _pumpScreen(
+        tester,
+        const TenantAdminAccountProfileEditScreen(
+          accountSlug: 'route-account',
+          accountProfileId: 'route-profile',
+        ),
+      );
+      final scrollable = find.byType(Scrollable).first;
+      final titleField = find.byKey(
+        const Key('tenantAdminGalleryItemTitle_item-1'),
+      );
+      await tester.scrollUntilVisible(titleField, 250, scrollable: scrollable);
+      final descriptionField = find.byKey(
+        const Key('tenantAdminGalleryItemDescription_item-1'),
+      );
+      await tester.enterText(descriptionField, 'Descrição ainda em edição');
+      await tester.enterText(titleField, 'Título novo');
+      await tester.pump();
+      await tester.tap(
+        find.byKey(const Key('tenantAdminGalleryItemSaveTitle_item-1')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        tester
+            .widget<EditableText>(
+              find.descendant(
+                of: descriptionField,
+                matching: find.byType(EditableText),
+              ),
+            )
+            .controller
+            .text,
+        'Descrição ainda em edição',
+      );
+      expect(profilesRepository.lastGalleryItemTitle, 'Título novo');
+      expect(profilesRepository.lastGalleryItemDescription, isNull);
+    },
+  );
+
+  testWidgets(
     'gallery title failure keeps entered text and retries once from confirmed state',
     (tester) async {
       final profilesRepository =
@@ -1420,7 +1613,10 @@ void main() {
         scrollable: find.byType(Scrollable).first,
       );
       await tester.enterText(titleField, 'Título corrigido');
-      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pump();
+      await tester.tap(
+        find.byKey(const Key('tenantAdminGalleryItemSaveTitle_item-1')),
+      );
       await tester.pump();
       await tester.pump();
 
@@ -1462,7 +1658,9 @@ void main() {
       profilesRepository.updateGalleryItemError = null;
       await tester.tap(titleField);
       await tester.enterText(titleField, 'Título corrigido');
-      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.tap(
+        find.byKey(const Key('tenantAdminGalleryItemSaveTitle_item-1')),
+      );
       await tester.pumpAndSettle();
 
       expect(profilesRepository.updateGalleryItemCalls, 2);
@@ -2493,6 +2691,9 @@ class _FakeAccountProfilesRepository
   TenantAdminAccountProfileGallerySnapshot? gallerySnapshotToReturn;
   Object? updateGalleryItemError;
   int updateGalleryItemCalls = 0;
+  String? lastGalleryItemId;
+  String? lastGalleryItemTitle;
+  String? lastGalleryItemDescription;
   TenantAdminAccountProfile profileToReturn = _profile(id: 'default-profile');
   final List<TenantAdminAccountProfileMediaKind> mediaRequests =
       <TenantAdminAccountProfileMediaKind>[];
@@ -2815,6 +3016,9 @@ class _FakeAccountProfilesRepository
     TenantAdminAccountProfilesRepoString? youtubeUrl,
   }) async {
     updateGalleryItemCalls += 1;
+    lastGalleryItemId = itemId.value;
+    lastGalleryItemTitle = title?.nullableValue;
+    lastGalleryItemDescription = description?.nullableValue;
     if (updateGalleryItemError != null) throw updateGalleryItemError!;
     return gallerySnapshotToReturn!;
   }
@@ -3174,21 +3378,26 @@ TenantAdminAccountProfile _profile({
   );
 }
 
-TenantAdminAccountProfileGalleryGroup _galleryGroup({String? title}) {
+TenantAdminAccountProfileGalleryGroup _galleryGroup({
+  String? title,
+  String? description = 'Vista para o palco',
+}) {
   return TenantAdminAccountProfileGalleryGroup(
     groupIdValue: TenantAdminNestedProfileGroupTextValue('group-1'),
     subtitleValue: TenantAdminNestedProfileGroupTextValue('Ambiente'),
     orderValue: TenantAdminNestedProfileGroupOrderValue(0),
-    items: [_galleryItem(title: title)],
+    items: [_galleryItem(title: title, description: description)],
   );
 }
 
-TenantAdminAccountProfileGalleryItem _galleryItem({String? title}) {
+TenantAdminAccountProfileGalleryItem _galleryItem({
+  String? title,
+  String? description = 'Vista para o palco',
+}) {
   return TenantAdminAccountProfileGalleryItem(
     itemIdValue: TenantAdminNestedProfileGroupTextValue('item-1'),
     titleValue: TenantAdminOptionalTextValue()..parse(title),
-    descriptionValue: TenantAdminOptionalTextValue()
-      ..parse('Vista para o palco'),
+    descriptionValue: TenantAdminOptionalTextValue()..parse(description),
     orderValue: TenantAdminNestedProfileGroupOrderValue(0),
     imageUrlValue: TenantAdminOptionalUrlValue()
       ..parse('https://tenant.test/gallery/image.jpg'),
