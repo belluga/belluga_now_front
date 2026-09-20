@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:belluga_contact_channels/belluga_contact_channels.dart';
+import 'dart:typed_data';
 import 'package:belluga_now/domain/repositories/tenant_admin_account_profile_candidates_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/tenant_admin_account_profiles_repository_contract_values.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
@@ -27,6 +28,8 @@ import 'package:stream_value/core/stream_value.dart';
 export 'package:belluga_now/domain/repositories/value_objects/tenant_admin_account_profiles_repository_contract_values.dart';
 export 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
 export 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_taxonomy_terms_value.dart';
+
+enum TenantAdminAccountProfileMediaKind { avatar, cover }
 
 typedef TenantAdminAccountProfilesRepoString =
     TenantAdminAccountProfilesRepositoryContractTextValue;
@@ -79,6 +82,14 @@ abstract class TenantAdminAccountProfilesRepositoryContract
 
   Future<TenantAdminAccountProfile> fetchAccountProfile(
     TenantAdminAccountProfilesRepoString accountProfileId,
+  );
+
+  Future<Uint8List> fetchAccountProfileMedia({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required TenantAdminAccountProfileMediaKind kind,
+  }) => throw UnimplementedError(
+    'fetchAccountProfileMedia must be implemented by tenant-admin '
+    'account-profile repositories.',
   );
   Future<TenantAdminAccountProfile> createAccountProfile({
     required TenantAdminAccountProfilesRepoString accountId,

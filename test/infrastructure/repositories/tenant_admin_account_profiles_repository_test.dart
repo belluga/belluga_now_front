@@ -1247,6 +1247,38 @@ void main() {
   );
 
   test(
+    'fetches protected profile media by id and finite kind with auth headers',
+    () async {
+      final adapter = _CaptureAdapter(
+        bytesResponse: Uint8List.fromList([1, 2, 3]),
+      );
+      final repository = TenantAdminAccountProfilesRepository(
+        dio: Dio()..httpClientAdapter = adapter,
+      );
+
+      final bytes = await repository.fetchAccountProfileMedia(
+        accountProfileId: tenantAdminAccountProfilesRepoString(
+          'profile-1',
+          defaultValue: '',
+          isRequired: true,
+        ),
+        kind: TenantAdminAccountProfileMediaKind.avatar,
+      );
+
+      expect(bytes, Uint8List.fromList([1, 2, 3]));
+      expect(
+        adapter.lastRequest?.path,
+        'https://tenant.test/admin/api/v1/account_profiles/profile-1/media/avatar',
+      );
+      expect(
+        adapter.lastRequest?.headers['Authorization'],
+        'Bearer test-token',
+      );
+      expect(adapter.lastRequest?.responseType, ResponseType.bytes);
+    },
+  );
+
+  test(
     'updateAccountProfile sends explicit remove avatar/cover flags',
     () async {
       final adapter = _CaptureAdapter();
@@ -1907,11 +1939,16 @@ class _StubTenantScope implements TenantAdminTenantScopeContract {
 }
 
 class _CaptureAdapter implements HttpClientAdapter {
-  _CaptureAdapter({this.responseBody, this.statusCode = 200});
+  _CaptureAdapter({
+    this.responseBody,
+    this.bytesResponse,
+    this.statusCode = 200,
+  });
 
   RequestOptions? lastRequest;
   final List<RequestOptions> requests = <RequestOptions>[];
   final Object? responseBody;
+  final Uint8List? bytesResponse;
   final int statusCode;
 
   @override
@@ -1925,6 +1962,15 @@ class _CaptureAdapter implements HttpClientAdapter {
   ) async {
     lastRequest = options;
     requests.add(options);
+    if (bytesResponse != null) {
+      return ResponseBody.fromBytes(
+        bytesResponse!,
+        statusCode,
+        headers: {
+          Headers.contentTypeHeader: ['image/png'],
+        },
+      );
+    }
     if (responseBody != null) {
       return ResponseBody.fromString(
         jsonEncode(responseBody),

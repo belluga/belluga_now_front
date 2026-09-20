@@ -832,6 +832,61 @@ class TenantAdminAccountProfilesController implements Disposable {
     );
   }
 
+  Future<void> _loadEditMedia(
+    TenantAdminAccountProfile profile, {
+    required int generation,
+  }) async {
+    Future<(Uint8List?, bool)> read(
+      String? adminUrl,
+      TenantAdminAccountProfileMediaKind kind,
+    ) async {
+      if (adminUrl?.trim().isEmpty ?? true) return (null, false);
+      try {
+        return (
+          await _profilesRepository.fetchAccountProfileMedia(
+            accountProfileId: tenantAdminAccountProfilesRepoString(
+              profile.id,
+              defaultValue: '',
+              isRequired: true,
+            ),
+            kind: kind,
+          ),
+          false,
+        );
+      } catch (_) {
+        return (null, true);
+      }
+    }
+
+    final media = await Future.wait<(Uint8List?, bool)>([
+      read(profile.adminAvatarUrl, TenantAdminAccountProfileMediaKind.avatar),
+      read(profile.adminCoverUrl, TenantAdminAccountProfileMediaKind.cover),
+    ]);
+    if (generation != _editProfileGeneration ||
+        !identical(_loadedEditProfileSnapshot, profile) ||
+        accountProfileStreamValue.value?.id != profile.id) {
+      return;
+    }
+    final state = editStateStreamValue.value;
+    final publishAvatar = state.avatarFile == null && !_removeAvatarOnSubmit;
+    final publishCover = state.coverFile == null && !_removeCoverOnSubmit;
+    if (!publishAvatar && !publishCover) return;
+    _updateEditState(
+      state.copyWith(
+        avatarRemoteBytes: publishAvatar
+            ? media[0].$1
+            : state.avatarRemoteBytes,
+        coverRemoteBytes: publishCover ? media[1].$1 : state.coverRemoteBytes,
+        avatarRemoteLoadFailed: publishAvatar
+            ? media[0].$2
+            : state.avatarRemoteLoadFailed,
+        coverRemoteLoadFailed: publishCover
+            ? media[1].$2
+            : state.coverRemoteLoadFailed,
+      ),
+    );
+  }
+
   Future<TenantAdminNestedGroupMemberPage> fetchEditNestedGroupMembersPage({
     required String accountProfileId,
     required String groupId,
@@ -1481,6 +1536,7 @@ class TenantAdminAccountProfilesController implements Disposable {
       _syncSelectedContactSourcesForMode(profile.contactMode);
       _removeAvatarOnSubmit = false;
       _removeCoverOnSubmit = false;
+      unawaited(_loadEditMedia(profile, generation: _editProfileGeneration));
     } catch (error) {
       if (_isDisposed) return;
       editLoadErrorStreamValue.addValue(error.toString());
@@ -1688,18 +1744,15 @@ class TenantAdminAccountProfilesController implements Disposable {
     _syncSelectedContactSourcesForMode(profile.contactMode);
     _removeAvatarOnSubmit = false;
     _removeCoverOnSubmit = false;
+    unawaited(_loadEditMedia(profile, generation: _editProfileGeneration));
   }
 
   void updateAvatarFile(XFile? file) {
     _updateEditState(
       editStateStreamValue.value.copyWith(
         avatarFile: file,
-        avatarRemoteUrl: file == null
-            ? editStateStreamValue.value.avatarRemoteUrl
-            : null,
-        avatarRemoteReady: false,
-        avatarRemoteError: false,
-        avatarPreloadUrl: null,
+        avatarRemoteBytes: null,
+        avatarRemoteLoadFailed: false,
       ),
     );
     if (file != null) {
@@ -1711,12 +1764,8 @@ class TenantAdminAccountProfilesController implements Disposable {
     _updateEditState(
       editStateStreamValue.value.copyWith(
         coverFile: file,
-        coverRemoteUrl: file == null
-            ? editStateStreamValue.value.coverRemoteUrl
-            : null,
-        coverRemoteReady: false,
-        coverRemoteError: false,
-        coverPreloadUrl: null,
+        coverRemoteBytes: null,
+        coverRemoteLoadFailed: false,
       ),
     );
     if (file != null) {
@@ -1732,61 +1781,23 @@ class TenantAdminAccountProfilesController implements Disposable {
     _updateEditState(editStateStreamValue.value.copyWith(coverBusy: isBusy));
   }
 
-  void updateAvatarRemoteUrl(String? url) {
-    final trimmed = url?.trim();
-    final normalized = trimmed == null || trimmed.isEmpty ? null : trimmed;
-    _updateEditState(
-      editStateStreamValue.value.copyWith(
-        avatarRemoteUrl: normalized,
-        avatarFile: null,
-        avatarRemoteReady: false,
-        avatarRemoteError: false,
-        avatarPreloadUrl: null,
-      ),
-    );
-    if (normalized != null) {
-      _removeAvatarOnSubmit = false;
-    }
-  }
-
-  void updateCoverRemoteUrl(String? url) {
-    final trimmed = url?.trim();
-    final normalized = trimmed == null || trimmed.isEmpty ? null : trimmed;
-    _updateEditState(
-      editStateStreamValue.value.copyWith(
-        coverRemoteUrl: normalized,
-        coverFile: null,
-        coverRemoteReady: false,
-        coverRemoteError: false,
-        coverPreloadUrl: null,
-      ),
-    );
-    if (normalized != null) {
-      _removeCoverOnSubmit = false;
-    }
-  }
-
   void clearAvatarSelection({bool markForRemoval = false}) {
     updateAvatarFile(null);
-    updateAvatarRemoteUrl(null);
     if (!markForRemoval) {
       _removeAvatarOnSubmit = false;
       return;
     }
-    final hasPersistedAvatar =
-        accountProfileStreamValue.value?.avatarUrl?.trim().isNotEmpty ?? false;
+    final hasPersistedAvatar = hasStoredEditAvatar;
     _removeAvatarOnSubmit = hasPersistedAvatar;
   }
 
   void clearCoverSelection({bool markForRemoval = false}) {
     updateCoverFile(null);
-    updateCoverRemoteUrl(null);
     if (!markForRemoval) {
       _removeCoverOnSubmit = false;
       return;
     }
-    final hasPersistedCover =
-        accountProfileStreamValue.value?.coverUrl?.trim().isNotEmpty ?? false;
+    final hasPersistedCover = hasStoredEditCover;
     _removeCoverOnSubmit = hasPersistedCover;
   }
 
@@ -1854,42 +1865,6 @@ class TenantAdminAccountProfilesController implements Disposable {
 
   void reportCreateErrorMessage(String message) {
     createErrorMessageStreamValue.addValue(message);
-  }
-
-  void markAvatarRemoteReady(bool ready) {
-    _updateEditState(
-      editStateStreamValue.value.copyWith(
-        avatarRemoteReady: ready,
-        avatarRemoteError: ready
-            ? false
-            : editStateStreamValue.value.avatarRemoteError,
-        avatarFile: ready ? null : editStateStreamValue.value.avatarFile,
-      ),
-    );
-  }
-
-  void markCoverRemoteReady(bool ready) {
-    _updateEditState(
-      editStateStreamValue.value.copyWith(
-        coverRemoteReady: ready,
-        coverRemoteError: ready
-            ? false
-            : editStateStreamValue.value.coverRemoteError,
-        coverFile: ready ? null : editStateStreamValue.value.coverFile,
-      ),
-    );
-  }
-
-  void updateAvatarRemoteError(bool hasError) {
-    _updateEditState(
-      editStateStreamValue.value.copyWith(avatarRemoteError: hasError),
-    );
-  }
-
-  void updateCoverRemoteError(bool hasError) {
-    _updateEditState(
-      editStateStreamValue.value.copyWith(coverRemoteError: hasError),
-    );
   }
 
   Future<void> submitUpdateProfile({
@@ -2138,6 +2113,13 @@ class TenantAdminAccountProfilesController implements Disposable {
       slugValue: profile.slugValue,
       avatarUrlValue: profile.avatarUrlValue,
       coverUrlValue: profile.coverUrlValue,
+      visibilityValue: profile.visibilityValue,
+      isActiveValue: profile.isActiveValue,
+      deletedAtValue: profile.deletedAtValue,
+      parentAccountPublicationStatusValue:
+          profile.parentAccountPublicationStatusValue,
+      adminAvatarUrlValue: profile.adminAvatarUrlValue,
+      adminCoverUrlValue: profile.adminCoverUrlValue,
       bioValue: profile.bioValue,
       location: profile.location,
       taxonomyTerms: profile.taxonomyTerms,
@@ -2201,20 +2183,23 @@ class TenantAdminAccountProfilesController implements Disposable {
         caseSensitive: false,
       ).hasMatch(value);
 
-  void updateAvatarPreloadUrl(String? url) {
-    _updateEditState(
-      editStateStreamValue.value.copyWith(avatarPreloadUrl: url),
-    );
+  bool get hasStoredEditAvatar {
+    final profile =
+        _loadedEditProfileSnapshot ?? accountProfileStreamValue.value;
+    return profile?.adminAvatarUrl?.trim().isNotEmpty ?? false;
   }
 
-  void updateCoverPreloadUrl(String? url) {
-    _updateEditState(editStateStreamValue.value.copyWith(coverPreloadUrl: url));
+  bool get hasStoredEditCover {
+    final profile =
+        _loadedEditProfileSnapshot ?? accountProfileStreamValue.value;
+    return profile?.adminCoverUrl?.trim().isNotEmpty ?? false;
   }
 
   void resetEditState() {
     if (_isDisposed) {
       return;
     }
+    _editProfileGeneration += 1;
     _loadedEditProfileSnapshot = null;
     final externalLinkDraft = _externalLinkDraft;
     if (externalLinkDraft != null) {

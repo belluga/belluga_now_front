@@ -30,6 +30,12 @@ class TenantAdminAccountProfileDTO {
     this.slug,
     this.avatarUrl,
     this.coverUrl,
+    this.visibility,
+    this.isActive,
+    this.deletedAt,
+    this.parentAccountPublicationStatus,
+    this.adminAvatarUrl,
+    this.adminCoverUrl,
     this.bio,
     this.locationLat,
     this.locationLng,
@@ -60,6 +66,12 @@ class TenantAdminAccountProfileDTO {
   final String? slug;
   final String? avatarUrl;
   final String? coverUrl;
+  final String? visibility;
+  final bool? isActive;
+  final String? deletedAt;
+  final String? parentAccountPublicationStatus;
+  final String? adminAvatarUrl;
+  final String? adminCoverUrl;
   final String? bio;
   final double? locationLat;
   final double? locationLng;
@@ -147,6 +159,13 @@ class TenantAdminAccountProfileDTO {
       slug: json['slug']?.toString(),
       avatarUrl: json['avatar_url']?.toString(),
       coverUrl: json['cover_url']?.toString(),
+      visibility: json['visibility']?.toString(),
+      isActive: json['is_active'] is bool ? json['is_active'] as bool : null,
+      deletedAt: json['deleted_at']?.toString(),
+      parentAccountPublicationStatus: json['parent_account_publication_status']
+          ?.toString(),
+      adminAvatarUrl: json['admin_avatar_url']?.toString(),
+      adminCoverUrl: json['admin_cover_url']?.toString(),
       bio: json['bio']?.toString(),
       locationLat: lat,
       locationLng: lng,
@@ -208,6 +227,12 @@ class TenantAdminAccountProfileDTO {
       slug: slug,
       avatarUrl: avatarUrl,
       coverUrl: coverUrl,
+      visibility: visibility,
+      isActive: isActive,
+      deletedAt: deletedAt,
+      parentAccountPublicationStatus: parentAccountPublicationStatus,
+      adminAvatarUrl: adminAvatarUrl,
+      adminCoverUrl: adminCoverUrl,
       bio: bio,
       location: location,
       taxonomyTerms: taxonomy,

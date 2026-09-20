@@ -1,4 +1,5 @@
 import 'package:belluga_form_validation/belluga_form_validation.dart';
+import 'dart:typed_data';
 import 'package:belluga_contact_channels/belluga_contact_channels.dart';
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
@@ -176,6 +177,25 @@ class TenantAdminAccountProfilesRepository
       return dto.toDomain();
     } on DioException catch (error) {
       throw _wrapError(error, 'load account profile');
+    }
+  }
+
+  @override
+  Future<Uint8List> fetchAccountProfileMedia({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required TenantAdminAccountProfileMediaKind kind,
+  }) async {
+    try {
+      final response = await _dio.get<List<int>>(
+        '$_apiBaseUrl/v1/account_profiles/${accountProfileId.value}/media/${kind.name}',
+        options: Options(
+          headers: _buildHeaders(),
+          responseType: ResponseType.bytes,
+        ),
+      );
+      return Uint8List.fromList(response.data ?? const <int>[]);
+    } on DioException catch (error) {
+      throw _wrapError(error, 'load account profile ${kind.name} media');
     }
   }
 
