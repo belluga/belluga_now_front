@@ -154,6 +154,14 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                                     final showFilterPanel =
                                         showDiscoveryHeader &&
                                         hasCanonicalFilters;
+                                    final hasTaxonomyGroups =
+                                        showFilterPanel &&
+                                        hasDiscoveryFilterTaxonomyGroups(
+                                          catalog: catalog,
+                                          selection: filterSelection,
+                                          policy:
+                                              _controller.discoveryFilterPolicy,
+                                        );
                                     final showDefaultSections =
                                         showSections && filterSelection.isEmpty;
                                     final emptyLabel = showDefaultSections
@@ -175,15 +183,22 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                                               child: SizeReportingWidget(
                                                 onSizeChanged:
                                                     _updateFilterPanelExtent,
-                                                child:
-                                                    _buildCanonicalDiscoveryFilters(
-                                                      context,
-                                                      catalog: catalog,
-                                                      selection:
-                                                          filterSelection,
-                                                      autoRevealSelectedChips:
-                                                          false,
-                                                    ),
+                                                child: _buildCanonicalDiscoveryFilters(
+                                                  context,
+                                                  catalog: catalog,
+                                                  selection: filterSelection,
+                                                  compact: true,
+                                                  isTaxonomyPanelExpanded:
+                                                      _controller
+                                                          .isDiscoveryFilterPanelVisibleStreamValue
+                                                          .value,
+                                                  onTaxonomyPanelToggled: () =>
+                                                      _toggleTaxonomyPanel(
+                                                        hasTaxonomyGroups,
+                                                      ),
+                                                  autoRevealSelectedChips:
+                                                      false,
+                                                ),
                                               ),
                                             ),
                                           ),
@@ -261,12 +276,41 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                                             pinned: true,
                                             delegate: _DiscoveryStickyPanelDelegate(
                                               extent: _filterPanelExtent,
-                                              child:
-                                                  _buildCanonicalDiscoveryFilters(
-                                                    context,
-                                                    catalog: catalog,
-                                                    selection: filterSelection,
-                                                  ),
+                                              child: StreamValueBuilder<bool>(
+                                                streamValue: _controller
+                                                    .isDiscoveryFilterPanelVisibleStreamValue,
+                                                builder: (context, isVisible) =>
+                                                    _buildCanonicalDiscoveryFilters(
+                                                      context,
+                                                      catalog: catalog,
+                                                      selection:
+                                                          filterSelection,
+                                                      compact: true,
+                                                      isTaxonomyPanelExpanded:
+                                                          isVisible,
+                                                      onTaxonomyPanelToggled: () =>
+                                                          _toggleTaxonomyPanel(
+                                                            hasTaxonomyGroups,
+                                                          ),
+                                                    ),
+                                              ),
+                                            ),
+                                          ),
+                                        if (showFilterPanel)
+                                          SliverToBoxAdapter(
+                                            child: StreamValueBuilder<bool>(
+                                              streamValue: _controller
+                                                  .isDiscoveryFilterPanelVisibleStreamValue,
+                                              builder: (context, isVisible) =>
+                                                  hasTaxonomyGroups && isVisible
+                                                  ? _buildCanonicalDiscoveryFilters(
+                                                      context,
+                                                      catalog: catalog,
+                                                      selection:
+                                                          filterSelection,
+                                                      compact: false,
+                                                    )
+                                                  : const SizedBox.shrink(),
                                             ),
                                           ),
                                         SliverToBoxAdapter(
@@ -473,6 +517,9 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
     BuildContext context, {
     required DiscoveryFilterCatalog catalog,
     required DiscoveryFilterSelection selection,
+    bool compact = false,
+    bool isTaxonomyPanelExpanded = false,
+    VoidCallback? onTaxonomyPanelToggled,
     bool autoRevealSelectedChips = true,
   }) {
     return StreamValueBuilder<bool>(
@@ -490,6 +537,11 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                   catalog: catalog,
                   selection: selection,
                   policy: _controller.discoveryFilterPolicy,
+                  showPrimary: compact,
+                  showTaxonomyGroups: !compact,
+                  showCompactControls: compact,
+                  isTaxonomyPanelExpanded: isTaxonomyPanelExpanded,
+                  onTaxonomyPanelToggled: onTaxonomyPanelToggled,
                   isLoading: isRefreshing || isCatalogLoading,
                   autoRevealSelectedChips: autoRevealSelectedChips,
                   iconBuilder: buildDiscoveryFilterVisualIcon,
@@ -513,6 +565,26 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
     setState(() {
       _filterPanelExtent = nextExtent;
     });
+  }
+
+  void _toggleTaxonomyPanel(bool hasTaxonomyGroups) {
+    if (!hasTaxonomyGroups) return;
+    if (_controller.isDiscoveryFilterPanelVisibleStreamValue.value) {
+      _controller.closeDiscoveryFilterPanel();
+      return;
+    }
+    _controller.openDiscoveryFilterPanelForReveal();
+    if (_controller.scrollController.hasClients) {
+      _controller.scrollController
+          .animateTo(
+            0,
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOut,
+          )
+          .whenComplete(_controller.completeDiscoveryFilterPanelReveal);
+    } else {
+      _controller.completeDiscoveryFilterPanelReveal();
+    }
   }
 }
 

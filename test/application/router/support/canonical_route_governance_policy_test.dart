@@ -75,115 +75,120 @@ void main() {
       },
     );
 
-    testWidgets(
-      '${testCase.description} pops when prior history exists',
-      (tester) async {
-        final router = _RecordingRootStackRouter(
-          currentPath: testCase.currentPath,
-          canPopResult: true,
-        );
-        var exitRequests = 0;
-        late RouteBackPolicy policy;
+    testWidgets('${testCase.description} pops when prior history exists', (
+      tester,
+    ) async {
+      final router = _RecordingRootStackRouter(
+        currentPath: testCase.currentPath,
+        canPopResult: true,
+      );
+      var exitRequests = 0;
+      late RouteBackPolicy policy;
 
-        await tester.pumpWidget(
-          _buildPolicyHarness(
+      await tester.pumpWidget(
+        _buildPolicyHarness(
+          router: router,
+          routeData: _buildRouteData(
             router: router,
-            routeData: _buildRouteData(
-              router: router,
-              routeName: testCase.routeName,
-              fullPath: testCase.fullPath,
-              meta: canonicalRouteMeta(family: testCase.family),
-              pageRouteInfo: testCase.pageRouteInfo,
-              queryParams: testCase.queryParams,
-            ),
-            requestExit: () => exitRequests += 1,
-            onPolicyReady: (value) => policy = value,
+            routeName: testCase.routeName,
+            fullPath: testCase.fullPath,
+            meta: canonicalRouteMeta(family: testCase.family),
+            pageRouteInfo: testCase.pageRouteInfo,
+            queryParams: testCase.queryParams,
           ),
-        );
+          requestExit: () => exitRequests += 1,
+          onPolicyReady: (value) => policy = value,
+        ),
+      );
 
-        policy.handleBack();
-        await tester.pump();
+      policy.handleBack();
+      await tester.pump();
 
-        expect(router.canPopCallCount, 1);
-        expect(router.popCallCount, 1);
-        expect(exitRequests, 0);
-        expect(router.replacedRoute, isNull);
-        expect(router.replaceAllRoutes, isEmpty);
-      },
-    );
+      expect(router.canPopCallCount, 1);
+      expect(router.popCallCount, 1);
+      expect(exitRequests, 0);
+      expect(router.replacedRoute, isNull);
+      expect(router.replaceAllRoutes, isEmpty);
+    });
   }
 
   testWidgets(
-      'discovery visible back uses canonical Home fallback instead of stale managed browser history',
-      (tester) async {
-    late _RecordingNavigationHistory navigationHistory;
-    final router = _RecordingRootStackRouter(
-      currentPath: '/descobrir',
-      canPopResult: false,
-      navigationHistoryBuilder: (router) {
-        navigationHistory = _RecordingNavigationHistory(
-          router: router,
-          canNavigateBackValue: true,
-        );
-        return navigationHistory;
-      },
-    );
-    late RouteBackPolicy policy;
+    'discovery visible back uses canonical Home fallback instead of stale managed browser history',
+    (tester) async {
+      late _RecordingNavigationHistory navigationHistory;
+      final router = _RecordingRootStackRouter(
+        currentPath: '/descobrir',
+        canPopResult: false,
+        navigationHistoryBuilder: (router) {
+          navigationHistory = _RecordingNavigationHistory(
+            router: router,
+            canNavigateBackValue: true,
+          );
+          return navigationHistory;
+        },
+      );
+      late RouteBackPolicy policy;
 
-    await tester.pumpWidget(
-      _buildPolicyHarness(
-        router: router,
-        routeData: _buildRouteData(
+      await tester.pumpWidget(
+        _buildPolicyHarness(
           router: router,
-          routeName: DiscoveryRoute.name,
-          fullPath: '/descobrir',
-          meta: canonicalRouteMeta(family: CanonicalRouteFamily.discoveryRoot),
-          pageRouteInfo: const DiscoveryRoute(),
+          routeData: _buildRouteData(
+            router: router,
+            routeName: DiscoveryRoute.name,
+            fullPath: '/descobrir',
+            meta: canonicalRouteMeta(
+              family: CanonicalRouteFamily.discoveryRoot,
+            ),
+            pageRouteInfo: const DiscoveryRoute(),
+          ),
+          onPolicyReady: (value) => policy = value,
         ),
-        onPolicyReady: (value) => policy = value,
-      ),
-    );
+      );
 
-    policy.handleBack();
-    await tester.pump();
+      policy.handleBack();
+      await tester.pump();
 
-    expect(router.canPopCallCount, 1);
-    expect(router.popCallCount, 0);
-    expect(navigationHistory.backCallCount, 0);
-    expect(router.replaceAllRoutes, hasLength(1));
-    expect(
-        router.replaceAllRoutes.single.single.routeName, TenantHomeRoute.name);
-  });
+      expect(router.canPopCallCount, 1);
+      expect(router.popCallCount, 0);
+      expect(navigationHistory.backCallCount, 0);
+      expect(router.replaceAllRoutes, hasLength(1));
+      expect(
+        router.replaceAllRoutes.single.single.routeName,
+        TenantHomeRoute.name,
+      );
+    },
+  );
 
   testWidgets(
-      'explicit route data policy resolves the active child route even when the ambient shell route is unclassified',
-      (tester) async {
-    final router = _RecordingRootStackRouter(
-      currentPath: '/admin/events/criar',
-      canPopResult: false,
-    );
-    final childRouteData = _buildRouteData(
-      router: router,
-      routeName: TenantAdminEventCreateRoute.name,
-      fullPath: '/admin/events/criar',
-      meta: canonicalRouteMeta(
-        family: CanonicalRouteFamily.tenantAdminEventsInternal,
-      ),
-      pageRouteInfo: const TenantAdminEventCreateRoute(),
-    );
+    'explicit route data policy resolves the active child route even when the ambient shell route is unclassified',
+    (tester) async {
+      final router = _RecordingRootStackRouter(
+        currentPath: '/admin/events/criar',
+        canPopResult: false,
+      );
+      final childRouteData = _buildRouteData(
+        router: router,
+        routeName: TenantAdminEventCreateRoute.name,
+        fullPath: '/admin/events/criar',
+        meta: canonicalRouteMeta(
+          family: CanonicalRouteFamily.tenantAdminEventsInternal,
+        ),
+        pageRouteInfo: const TenantAdminEventCreateRoute(),
+      );
 
-    final policy = buildCanonicalRouteBackPolicyForRouteData(
-      routeData: childRouteData,
-    );
+      final policy = buildCanonicalRouteBackPolicyForRouteData(
+        routeData: childRouteData,
+      );
 
-    policy.handleBack();
-    await tester.pump();
+      policy.handleBack();
+      await tester.pump();
 
-    expect(router.canPopCallCount, 1);
-    expect(router.popCallCount, 0);
-    expect(router.replacedRoute?.routeName, TenantAdminEventsRoute.name);
-    expect(router.replaceAllRoutes, isEmpty);
-  });
+      expect(router.canPopCallCount, 1);
+      expect(router.popCallCount, 0);
+      expect(router.replacedRoute?.routeName, TenantAdminEventsRoute.name);
+      expect(router.replaceAllRoutes, isEmpty);
+    },
+  );
 
   testWidgets('missing canonical route meta fails fast', (tester) async {
     final router = _RecordingRootStackRouter(
@@ -265,11 +270,7 @@ RouteData _buildRouteData({
   );
 }
 
-enum _NoHistoryBehavior {
-  replaceAll,
-  replace,
-  requestExit,
-}
+enum _NoHistoryBehavior { replaceAll, replace, requestExit }
 
 final class _PolicyCase {
   const _PolicyCase({
@@ -335,16 +336,6 @@ final List<_PolicyCase> _policyCases = <_PolicyCase>[
     noHistoryBehavior: _NoHistoryBehavior.replaceAll,
     expectedRouteName: DiscoveryRoute.name,
   ),
-  _PolicyCase(
-    description: 'static asset detail',
-    family: CanonicalRouteFamily.staticAssetDetail,
-    routeName: StaticAssetDetailRoute.name,
-    fullPath: '/locais/praia-das-virtudes',
-    currentPath: '/locais/praia-das-virtudes',
-    pageRouteInfo: StaticAssetDetailRoute(assetRef: 'praia-das-virtudes'),
-    noHistoryBehavior: _NoHistoryBehavior.replaceAll,
-    expectedRouteName: DiscoveryRoute.name,
-  ),
   const _PolicyCase(
     description: 'profile root',
     family: CanonicalRouteFamily.profileRoot,
@@ -394,10 +385,7 @@ final List<_PolicyCase> _policyCases = <_PolicyCase>[
     pageRouteInfo: PoiDetailsRoute(poi: 'pier-9', stack: 'agenda'),
     noHistoryBehavior: _NoHistoryBehavior.replaceAll,
     expectedRouteName: CityMapRoute.name,
-    queryParams: <String, dynamic>{
-      'poi': 'pier-9',
-      'stack': 'agenda',
-    },
+    queryParams: <String, dynamic>{'poi': 'pier-9', 'stack': 'agenda'},
   ),
   const _PolicyCase(
     description: 'invite flow',
@@ -517,8 +505,9 @@ final List<_PolicyCase> _policyCases = <_PolicyCase>[
     routeName: AccountWorkspaceCreateEventRoute.name,
     fullPath: '/workspace/account-alpha/eventos/criar',
     currentPath: '/workspace/account-alpha/eventos/criar',
-    pageRouteInfo:
-        AccountWorkspaceCreateEventRoute(accountSlug: 'account-alpha'),
+    pageRouteInfo: AccountWorkspaceCreateEventRoute(
+      accountSlug: 'account-alpha',
+    ),
     noHistoryBehavior: _NoHistoryBehavior.replaceAll,
     expectedRouteName: AccountWorkspaceHomeRoute.name,
   ),
@@ -573,24 +562,24 @@ final List<_PolicyCase> _policyCases = <_PolicyCase>[
     expectedRouteName: TenantAdminAccountsListRoute.name,
   ),
   const _PolicyCase(
-    description: 'tenant admin assets root',
-    family: CanonicalRouteFamily.tenantAdminAssetsRoot,
-    routeName: TenantAdminStaticAssetsListRoute.name,
-    fullPath: '/admin/assets',
-    currentPath: '/admin/assets',
-    pageRouteInfo: TenantAdminStaticAssetsListRoute(),
+    description: 'tenant admin taxonomies root',
+    family: CanonicalRouteFamily.tenantAdminTaxonomiesRoot,
+    routeName: TenantAdminTaxonomiesListRoute.name,
+    fullPath: '/admin/taxonomies',
+    currentPath: '/admin/taxonomies',
+    pageRouteInfo: TenantAdminTaxonomiesListRoute(),
     noHistoryBehavior: _NoHistoryBehavior.replace,
     expectedRouteName: TenantAdminDashboardRoute.name,
   ),
-  const _PolicyCase(
-    description: 'tenant admin assets internal',
-    family: CanonicalRouteFamily.tenantAdminAssetsInternal,
-    routeName: TenantAdminStaticAssetCreateRoute.name,
-    fullPath: '/admin/assets/criar',
-    currentPath: '/admin/assets/criar',
-    pageRouteInfo: TenantAdminStaticAssetCreateRoute(),
+  _PolicyCase(
+    description: 'tenant admin taxonomies internal',
+    family: CanonicalRouteFamily.tenantAdminTaxonomiesInternal,
+    routeName: TenantAdminTaxonomyEditRoute.name,
+    fullPath: '/admin/taxonomies/taxonomy-1/edit',
+    currentPath: '/admin/taxonomies/taxonomy-1/edit',
+    pageRouteInfo: TenantAdminTaxonomyEditRoute(taxonomyId: 'taxonomy-1'),
     noHistoryBehavior: _NoHistoryBehavior.replace,
-    expectedRouteName: TenantAdminStaticAssetsListRoute.name,
+    expectedRouteName: TenantAdminTaxonomiesListRoute.name,
   ),
   const _PolicyCase(
     description: 'tenant admin settings root',
@@ -619,7 +608,7 @@ class _RecordingRootStackRouter extends Fake implements RootStackRouter {
     required this.currentPath,
     required this.canPopResult,
     _RecordingNavigationHistory Function(StackRouter router)?
-        navigationHistoryBuilder,
+    navigationHistoryBuilder,
   }) {
     _navigationHistory = navigationHistoryBuilder?.call(this);
   }
@@ -647,9 +636,8 @@ class _RecordingRootStackRouter extends Fake implements RootStackRouter {
     if (history != null) {
       return history;
     }
-    return super.noSuchMethod(
-      Invocation.getter(#navigationHistory),
-    ) as auto_route_history.NavigationHistory;
+    return super.noSuchMethod(Invocation.getter(#navigationHistory))
+        as auto_route_history.NavigationHistory;
   }
 
   @override

@@ -28,7 +28,6 @@ class TenantAdminDiscoveryFilterSurfaceDefinition {
     allowedSources: <TenantAdminMapFilterSource>[
       TenantAdminMapFilterSource.event,
       TenantAdminMapFilterSource.accountProfile,
-      TenantAdminMapFilterSource.staticAsset,
     ],
     supportsMarkerOverride: true,
   );

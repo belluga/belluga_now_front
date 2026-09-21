@@ -1,4 +1,5 @@
 import 'package:belluga_form_validation/belluga_form_validation.dart';
+import 'dart:typed_data';
 import 'package:belluga_contact_channels/belluga_contact_channels.dart';
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
@@ -180,6 +181,25 @@ class TenantAdminAccountProfilesRepository
   }
 
   @override
+  Future<Uint8List> fetchAccountProfileMedia({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required TenantAdminAccountProfileMediaKind kind,
+  }) async {
+    try {
+      final response = await _dio.get<List<int>>(
+        '$_apiBaseUrl/v1/account_profiles/${accountProfileId.value}/media/${kind.name}',
+        options: Options(
+          headers: _buildHeaders(),
+          responseType: ResponseType.bytes,
+        ),
+      );
+      return Uint8List.fromList(response.data ?? const <int>[]);
+    } on DioException catch (error) {
+      throw _wrapError(error, 'load account profile ${kind.name} media');
+    }
+  }
+
+  @override
   Future<TenantAdminAccountProfile> createAccountProfile({
     required TenantAdminAccountProfilesRepoString accountId,
     required TenantAdminAccountProfilesRepoString profileType,
@@ -247,6 +267,7 @@ class TenantAdminAccountProfilesRepository
     TenantAdminAccountProfilesRepoString? slug,
     TenantAdminAccountProfilesRepoInt? aggregateRevision,
     TenantAdminLocation? location,
+    TenantAdminAccountProfilesRepoBool? includeLocation,
     TenantAdminTaxonomyTerms? taxonomyTerms,
     TenantAdminAccountProfilesRepoString? bio,
     TenantAdminAccountProfilesRepoString? avatarUrl,
@@ -269,6 +290,7 @@ class TenantAdminAccountProfilesRepository
         slug: slug?.value,
         aggregateRevision: aggregateRevision?.value,
         location: location,
+        includeLocation: includeLocation?.value ?? false,
         taxonomyTerms: taxonomyTerms,
         bio: bio?.value,
         avatarUrl: avatarUrl?.value,
@@ -921,9 +943,12 @@ class TenantAdminAccountProfilesRepository
         queryParameters: {'page': page.value, 'page_size': pageSize.value},
         options: Options(headers: _buildHeaders()),
       );
-      final dtos = _responseDecoder.decodeProfileTypeList(response.data);
+      final catalog = _responseDecoder.decodeProfileTypeCatalog(response.data);
+      publishProfileTypeCatalogMetadata(catalog.metadata);
       return tenantAdminPagedResultFromRaw(
-        items: dtos.map((dto) => dto.toDomain()).toList(growable: false),
+        items: catalog.items
+            .map((dto) => dto.toDomain())
+            .toList(growable: false),
         hasMore: tenantAdminResolveHasMore(
           rawResponse: response.data,
           requestedPage: page.value,
@@ -1014,6 +1039,7 @@ class TenantAdminAccountProfilesRepository
     TenantAdminAccountProfilesRepoString? pluralLabel,
     List<TenantAdminAccountProfilesRepoString>? allowedTaxonomies,
     TenantAdminProfileTypeCapabilities? capabilities,
+    TenantAdminAccountProfilesRepoInt? expectedCapabilityRevision,
   }) async {
     try {
       final encodedType = Uri.encodeComponent(type.value);
@@ -1025,6 +1051,7 @@ class TenantAdminAccountProfilesRepository
             ?.map((entry) => entry.value)
             .toList(growable: false),
         capabilities: capabilities,
+        expectedCapabilityRevision: expectedCapabilityRevision?.value,
       );
       final response = await _dio.patch(
         '$_apiBaseUrl/v1/account_profile_types/$encodedType',
@@ -1046,6 +1073,7 @@ class TenantAdminAccountProfilesRepository
     TenantAdminAccountProfilesRepoString? pluralLabel,
     List<TenantAdminAccountProfilesRepoString>? allowedTaxonomies,
     TenantAdminProfileTypeCapabilities? capabilities,
+    TenantAdminAccountProfilesRepoInt? expectedCapabilityRevision,
     TenantAdminPoiVisual? visual,
     TenantAdminMediaUpload? typeAssetUpload,
     TenantAdminAccountProfilesRepoBool? removeTypeAsset,
@@ -1060,6 +1088,7 @@ class TenantAdminAccountProfilesRepository
             ?.map((entry) => entry.value)
             .toList(growable: false),
         capabilities: capabilities,
+        expectedCapabilityRevision: expectedCapabilityRevision?.value,
         visual: visual,
         includeVisual: true,
         removeTypeAsset: removeTypeAsset?.value,
@@ -1094,11 +1123,15 @@ class TenantAdminAccountProfilesRepository
   Future<TenantAdminAccountProfilesRepoInt>
   fetchProfileTypeMapPoiProjectionImpact({
     required TenantAdminAccountProfilesRepoString type,
+    required TenantAdminProfileTypeCapabilities capabilities,
   }) async {
     try {
       final encodedType = Uri.encodeComponent(type.value);
-      final response = await _dio.get(
-        '$_apiBaseUrl/v1/account_profile_types/$encodedType/map_poi_projection_impact',
+      final response = await _dio.post(
+        '$_apiBaseUrl/v1/account_profile_types/$encodedType/change_impact',
+        data: _requestEncoder.encodeProfileTypeChangeImpact(
+          capabilities: capabilities,
+        ),
         options: Options(headers: _buildHeaders()),
       );
       return tenantAdminAccountProfilesRepoInt(

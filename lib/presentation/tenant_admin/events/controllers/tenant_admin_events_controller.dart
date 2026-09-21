@@ -568,6 +568,7 @@ class TenantAdminEventsController implements Disposable {
   TenantAdminEventAccountProfileCandidateType? _accountProfilePickerType;
   String? _relatedAccountProfileSelectedType;
   List<String> _initialEventTypeAllowedTaxonomies = const <String>[];
+  bool _hasExplicitEventTypeAllowedTaxonomyDraft = false;
 
   String? get relatedAccountProfileSelectedType =>
       _relatedAccountProfileSelectedType;
@@ -2441,6 +2442,7 @@ class TenantAdminEventsController implements Disposable {
           .toSet()
           .toList(growable: false),
     );
+    _hasExplicitEventTypeAllowedTaxonomyDraft = false;
     eventTypeNameController.text = existingType?.name ?? '';
     eventTypeSlugController.text = existingType?.slug ?? '';
     eventTypeDescriptionController.text = existingType?.description ?? '';
@@ -2509,6 +2511,21 @@ class TenantAdminEventsController implements Disposable {
     } else {
       next.add(slug);
     }
+    _hasExplicitEventTypeAllowedTaxonomyDraft = true;
+    _setEventTypeAllowedTaxonomies(next);
+  }
+
+  void moveEventTypeAllowedTaxonomy(int fromIndex, int toIndex) {
+    final next = <String>[...eventTypeAllowedTaxonomiesStreamValue.value];
+    if (fromIndex < 0 ||
+        fromIndex >= next.length ||
+        toIndex < 0 ||
+        toIndex >= next.length) {
+      return;
+    }
+    final moved = next.removeAt(fromIndex);
+    next.insert(toIndex, moved);
+    _hasExplicitEventTypeAllowedTaxonomyDraft = true;
     _setEventTypeAllowedTaxonomies(next);
   }
 
@@ -2736,6 +2753,15 @@ class TenantAdminEventsController implements Disposable {
     taxonomyLoadingStreamValue.addValue(true);
     try {
       await _taxonomiesRepository.loadAllTaxonomies();
+      if (_isDisposed) {
+        return;
+      }
+      final catalogError =
+          _taxonomiesRepository.taxonomiesErrorStreamValue.value?.value;
+      if (catalogError != null) {
+        taxonomyErrorStreamValue.addValue(catalogError);
+        return;
+      }
       final taxonomies =
           _taxonomiesRepository.taxonomiesStreamValue.value ??
           const <TenantAdminTaxonomyDefinition>[];
@@ -2746,9 +2772,6 @@ class TenantAdminEventsController implements Disposable {
         (left, right) =>
             left.name.toLowerCase().compareTo(right.name.toLowerCase()),
       );
-      if (_isDisposed) {
-        return;
-      }
       taxonomiesStreamValue.addValue(filtered);
       _reconcileEventTypeAllowedTaxonomies();
       _taxonomyTermsCacheBySlug.clear();
@@ -2762,7 +2785,6 @@ class TenantAdminEventsController implements Disposable {
         return;
       }
       taxonomiesStreamValue.addValue(const []);
-      eventTypeAllowedTaxonomiesStreamValue.addValue(const []);
       taxonomyErrorStreamValue.addValue(error.toString());
     } finally {
       if (!_isDisposed) {
@@ -3989,6 +4011,7 @@ class TenantAdminEventsController implements Disposable {
     taxonomyLoadingStreamValue.addValue(false);
     taxonomyErrorStreamValue.addValue(null);
     _initialEventTypeAllowedTaxonomies = const <String>[];
+    _hasExplicitEventTypeAllowedTaxonomyDraft = false;
     eventTypeAllowedTaxonomiesStreamValue.addValue(const []);
     eventTypeCatalogStreamValue.addValue(const []);
     venueCandidatesStreamValue.addValue(const []);
@@ -4611,7 +4634,8 @@ class TenantAdminEventsController implements Disposable {
 
   void _reconcileEventTypeAllowedTaxonomies() {
     if (eventTypeAllowedTaxonomiesStreamValue.value.isEmpty &&
-        _initialEventTypeAllowedTaxonomies.isNotEmpty) {
+        _initialEventTypeAllowedTaxonomies.isNotEmpty &&
+        !_hasExplicitEventTypeAllowedTaxonomyDraft) {
       _setEventTypeAllowedTaxonomies(_initialEventTypeAllowedTaxonomies);
     }
     _sanitizeEventTypeAllowedTaxonomies();
@@ -4969,6 +4993,7 @@ extension on TenantAdminEventsController {
     taxonomyLoadingStreamValue.addValue(false);
     taxonomyErrorStreamValue.addValue(null);
     _initialEventTypeAllowedTaxonomies = const <String>[];
+    _hasExplicitEventTypeAllowedTaxonomyDraft = false;
     eventTypeAllowedTaxonomiesStreamValue.addValue(const []);
   }
 

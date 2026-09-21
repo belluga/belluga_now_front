@@ -15,6 +15,17 @@ typedef DiscoveryFilterIconBuilder = Widget Function(
   Color foregroundColor,
 );
 
+bool hasDiscoveryFilterTaxonomyGroups({
+  required DiscoveryFilterCatalog catalog,
+  required DiscoveryFilterSelection selection,
+  required DiscoveryFilterPolicy policy,
+}) =>
+    _resolveDiscoveryFilterTaxonomyGroups(
+      catalog: catalog,
+      selection: selection,
+      policy: policy,
+    ).isNotEmpty;
+
 class DiscoveryFilterBar extends StatelessWidget {
   const DiscoveryFilterBar({
     super.key,
@@ -25,6 +36,11 @@ class DiscoveryFilterBar extends StatelessWidget {
     this.isLoading = false,
     this.iconBuilder,
     this.autoRevealSelectedChips = true,
+    this.showPrimary = true,
+    this.showTaxonomyGroups = true,
+    this.showCompactControls = false,
+    this.isTaxonomyPanelExpanded = false,
+    this.onTaxonomyPanelToggled,
   });
 
   final DiscoveryFilterCatalog catalog;
@@ -39,21 +55,43 @@ class DiscoveryFilterBar extends StatelessWidget {
 
   /// Measurement-only copies of the bar opt out of post-frame reveal work.
   final bool autoRevealSelectedChips;
+  final bool showPrimary;
+  final bool showTaxonomyGroups;
+  final bool showCompactControls;
+  final bool isTaxonomyPanelExpanded;
+  final VoidCallback? onTaxonomyPanelToggled;
 
   @override
   Widget build(BuildContext context) {
     final filters = catalog.filters.where((item) => item.isValid).toList(
           growable: false,
         );
-    final taxonomyGroups = _resolveTaxonomyGroups(filters);
+    final taxonomyGroups = _resolveDiscoveryFilterTaxonomyGroups(
+      catalog: catalog,
+      selection: selection,
+      policy: policy,
+      filters: filters,
+    );
     const taxonomyAreaKey = ValueKey<String>('discoveryFilterTaxonomyArea');
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildPrimaryRow(context, filters),
-        if (taxonomyGroups.isNotEmpty) ...[
+        if (showPrimary) _buildPrimaryRow(context, filters),
+        if (showCompactControls) ...[
+          const SizedBox(height: 8),
+          _CompactFilterControls(
+            activeCount: selection.activeCount,
+            hasTaxonomyGroups: taxonomyGroups.isNotEmpty,
+            isExpanded: isTaxonomyPanelExpanded,
+            onToggle: onTaxonomyPanelToggled,
+            onClear: selection.isEmpty
+                ? null
+                : () => onSelectionChanged(const DiscoveryFilterSelection()),
+          ),
+        ],
+        if (showTaxonomyGroups && taxonomyGroups.isNotEmpty) ...[
           KeyedSubtree(
             key: taxonomyAreaKey,
             child: Column(
@@ -180,54 +218,59 @@ class DiscoveryFilterBar extends StatelessWidget {
       ),
     );
   }
+}
 
-  List<_ResolvedTaxonomyGroup> _resolveTaxonomyGroups(
-    List<DiscoveryFilterCatalogItem> filters,
-  ) {
-    final selectedFilters = filters
-        .where((item) => selection.primaryKeys.contains(item.key))
-        .toList(growable: false);
-    if (selectedFilters.isEmpty) {
-      return const <_ResolvedTaxonomyGroup>[];
-    }
-
-    final orderedKeys = <String>[];
-    final configs = <String, DiscoveryFilterTaxonomyConfig>{};
-    for (final item in selectedFilters) {
-      for (final entry in item.taxonomyConfigs.entries) {
-        configs[entry.key] = entry.value;
-      }
-      for (final taxonomyKey in resolveDiscoveryFilterAllowedTaxonomyKeys(
-        catalog: catalog,
-        selection: DiscoveryFilterSelection(primaryKeys: <String>{item.key}),
-      )) {
-        if (!orderedKeys.contains(taxonomyKey)) {
-          orderedKeys.add(taxonomyKey);
-        }
-      }
-    }
-
-    final groups = <_ResolvedTaxonomyGroup>[];
-    for (final taxonomyKey in orderedKeys) {
-      final option = catalog.taxonomyOptionsByKey[taxonomyKey];
-      if (option == null || option.terms.isEmpty) {
-        continue;
-      }
-      groups.add(
-        _ResolvedTaxonomyGroup(
-          option: option,
-          config: configs[taxonomyKey] ??
-              DiscoveryFilterTaxonomyConfig(
-                taxonomyKey: taxonomyKey,
-                selectionMode: policy.taxonomySelectionMode,
-              ),
-          layoutMode: policy.taxonomyLayoutMode,
-        ),
-      );
-    }
-
-    return groups;
+List<_ResolvedTaxonomyGroup> _resolveDiscoveryFilterTaxonomyGroups({
+  required DiscoveryFilterCatalog catalog,
+  required DiscoveryFilterSelection selection,
+  required DiscoveryFilterPolicy policy,
+  List<DiscoveryFilterCatalogItem>? filters,
+}) {
+  final validFilters = filters ??
+      catalog.filters.where((item) => item.isValid).toList(growable: false);
+  final selectedFilters = validFilters
+      .where((item) => selection.primaryKeys.contains(item.key))
+      .toList(growable: false);
+  if (selectedFilters.isEmpty) {
+    return const <_ResolvedTaxonomyGroup>[];
   }
+
+  final orderedKeys = <String>[];
+  final configs = <String, DiscoveryFilterTaxonomyConfig>{};
+  for (final item in selectedFilters) {
+    for (final entry in item.taxonomyConfigs.entries) {
+      configs[entry.key] = entry.value;
+    }
+    for (final taxonomyKey in resolveDiscoveryFilterAllowedTaxonomyKeys(
+      catalog: catalog,
+      selection: DiscoveryFilterSelection(primaryKeys: <String>{item.key}),
+    )) {
+      if (!orderedKeys.contains(taxonomyKey)) {
+        orderedKeys.add(taxonomyKey);
+      }
+    }
+  }
+
+  final groups = <_ResolvedTaxonomyGroup>[];
+  for (final taxonomyKey in orderedKeys) {
+    final option = catalog.taxonomyOptionsByKey[taxonomyKey];
+    if (option == null || option.terms.isEmpty) {
+      continue;
+    }
+    groups.add(
+      _ResolvedTaxonomyGroup(
+        option: option,
+        config: configs[taxonomyKey] ??
+            DiscoveryFilterTaxonomyConfig(
+              taxonomyKey: taxonomyKey,
+              selectionMode: policy.taxonomySelectionMode,
+            ),
+        layoutMode: policy.taxonomyLayoutMode,
+      ),
+    );
+  }
+
+  return groups;
 }
 
 class _PrimaryFilterChip extends StatelessWidget {
@@ -350,6 +393,58 @@ class _PrimaryFilterChip extends StatelessWidget {
   }
 }
 
+class _CompactFilterControls extends StatelessWidget {
+  const _CompactFilterControls({
+    required this.activeCount,
+    required this.hasTaxonomyGroups,
+    required this.isExpanded,
+    required this.onToggle,
+    required this.onClear,
+  });
+
+  final int activeCount;
+  final bool hasTaxonomyGroups;
+  final bool isExpanded;
+  final VoidCallback? onToggle;
+  final VoidCallback? onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        if (hasTaxonomyGroups)
+          MergeSemantics(
+            child: Semantics(
+              expanded: isExpanded,
+              child: OutlinedButton.icon(
+                key: const ValueKey<String>('discoveryFilterPanelToggle'),
+                onPressed: onToggle,
+                icon: Icon(
+                  isExpanded
+                      ? Icons.expand_less_rounded
+                      : Icons.expand_more_rounded,
+                ),
+                label: Text('Filtros ($activeCount)'),
+              ),
+            ),
+          )
+        else
+          Semantics(
+            key: const ValueKey<String>('discoveryFilterActiveCount'),
+            label: 'Filtros ativos: $activeCount',
+            child: Text('Filtros ($activeCount)'),
+          ),
+        const Spacer(),
+        TextButton(
+          key: const ValueKey<String>('discoveryFilterClear'),
+          onPressed: onClear,
+          child: const Text('Limpar'),
+        ),
+      ],
+    );
+  }
+}
+
 class _HorizontalRevealRow extends StatefulWidget {
   const _HorizontalRevealRow({
     super.key,
@@ -393,9 +488,8 @@ class _HorizontalRevealRowState extends State<_HorizontalRevealRow> {
     );
     // Consume a row interaction only when its expected selection publication
     // arrives. Loading/catalog rebuilds can happen before that publication.
-    final pendingSelection = catalogLayoutChanged
-        ? null
-        : _pendingSuppressionSelection;
+    final pendingSelection =
+        catalogLayoutChanged ? null : _pendingSuppressionSelection;
     if (catalogLayoutChanged) {
       _pendingSuppressionSelection = null;
     }

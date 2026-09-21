@@ -1,20 +1,73 @@
 import 'package:belluga_now/domain/map/projections/city_poi_visual.dart';
+import 'package:belluga_now/domain/map/city_poi_category.dart';
 import 'package:belluga_now/infrastructure/dal/dto/map/city_poi_dto.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('CityPoiDTO visual snapshot', () {
+    test('rejects a missing source family', () {
+      for (final refType in <String?>[null, '']) {
+        expect(
+          () => CityPoiDTO.fromJson({
+            'id': 'missing-source',
+            'ref_type': ?refType,
+            'name': 'Missing source',
+            'location': {'lat': -20.0, 'lng': -40.0},
+          }),
+          throwsA(isA<FormatException>()),
+        );
+      }
+    });
+
+    test('normalizes source families without owning their catalog', () {
+      final account = CityPoiDTO.fromJson({
+        'id': 'profile-1',
+        'ref_type': ' Account_Profile ',
+        'name': 'Profile',
+        'location': {'lat': -20.0, 'lng': -40.0},
+      });
+      final futureSource = CityPoiDTO.fromJson({
+        'id': 'future-1',
+        'ref_type': 'FUTURE_FAMILY',
+        'name': 'Future source',
+        'location': {'lat': -20.0, 'lng': -40.0},
+      });
+
+      expect(account.refType, 'account_profile');
+      expect(futureSource.refType, 'future_family');
+    });
+
+    test(
+      'direct construction requires a source identity without owning its catalog',
+      () {
+        CityPoiDTO build(String refType) => CityPoiDTO(
+          id: 'poi-1',
+          name: 'POI',
+          description: 'Description',
+          address: 'Address',
+          category: CityPoiCategory.attraction,
+          latitude: -20,
+          longitude: -40,
+          refType: refType,
+          refId: 'ref-1',
+        );
+
+        expect(() => build(''), throwsArgumentError);
+
+        expect(build(' Account_Profile ').refType, 'account_profile');
+        expect(build('FUTURE_FAMILY').refType, 'future_family');
+      },
+    );
+
     test('parses icon visual snapshot into domain model', () {
       final dto = CityPoiDTO.fromJson({
         'id': 'poi-1',
+        'ref_type': 'account_profile',
         'name': 'Restaurant',
         'description': 'Great food',
         'address': 'Main avenue',
         'category': 'restaurant',
-        'location': {
-          'lat': -20.0,
-          'lng': -40.0,
-        },
+        'location': {'lat': -20.0, 'lng': -40.0},
         'visual': {
           'mode': 'icon',
           'icon': 'restaurant',
@@ -36,14 +89,12 @@ void main() {
     test('parses image visual snapshot into domain model', () {
       final dto = CityPoiDTO.fromJson({
         'id': 'poi-1',
+        'ref_type': 'account_profile',
         'name': 'Museum',
         'description': 'Culture',
         'address': 'Square',
         'category': 'culture',
-        'location': {
-          'lat': -20.0,
-          'lng': -40.0,
-        },
+        'location': {'lat': -20.0, 'lng': -40.0},
         'visual': {
           'mode': 'image',
           'image_uri': 'https://tenant.test/media/poi-1.png',
@@ -62,19 +113,13 @@ void main() {
     test('ignores malformed visual snapshot', () {
       final dto = CityPoiDTO.fromJson({
         'id': 'poi-1',
+        'ref_type': 'account_profile',
         'name': 'Beach',
         'description': 'Sun',
         'address': 'Coast',
         'category': 'beach',
-        'location': {
-          'lat': -20.0,
-          'lng': -40.0,
-        },
-        'visual': {
-          'mode': 'icon',
-          'icon': 'beach',
-          'color': 'blue',
-        },
+        'location': {'lat': -20.0, 'lng': -40.0},
+        'visual': {'mode': 'icon', 'icon': 'beach', 'color': 'blue'},
       });
 
       final model = dto.toDomain();
@@ -85,14 +130,12 @@ void main() {
     test('parses wrapped icon visual values from transport payload', () {
       final dto = CityPoiDTO.fromJson({
         'id': 'poi-1',
+        'ref_type': 'account_profile',
         'name': 'Restaurant',
         'description': 'Great food',
         'address': 'Main avenue',
         'category': 'restaurant',
-        'location': {
-          'lat': -20.0,
-          'lng': -40.0,
-        },
+        'location': {'lat': -20.0, 'lng': -40.0},
         'visual': {
           'mode': {'value': 'icon'},
           'icon': {'value': 'restaurant'},
@@ -114,14 +157,12 @@ void main() {
     test('parses explicit icon_color from transport payload', () {
       final dto = CityPoiDTO.fromJson({
         'id': 'poi-1',
+        'ref_type': 'account_profile',
         'name': 'Restaurant',
         'description': 'Great food',
         'address': 'Main avenue',
         'category': 'restaurant',
-        'location': {
-          'lat': -20.0,
-          'lng': -40.0,
-        },
+        'location': {'lat': -20.0, 'lng': -40.0},
         'visual': {
           'mode': {'value': 'icon'},
           'icon': {'value': 'restaurant'},
@@ -144,14 +185,12 @@ void main() {
     test('parses wrapped image visual values from transport payload', () {
       final dto = CityPoiDTO.fromJson({
         'id': 'poi-1',
+        'ref_type': 'account_profile',
         'name': 'Museum',
         'description': 'Culture',
         'address': 'Square',
         'category': 'culture',
-        'location': {
-          'lat': -20.0,
-          'lng': -40.0,
-        },
+        'location': {'lat': -20.0, 'lng': -40.0},
         'visual': {
           'mode': {'value': 'image'},
           'image_uri': {'value': 'https://tenant.test/media/poi-1.png'},
@@ -170,14 +209,12 @@ void main() {
     test('parses legacy icon visual payload without explicit mode', () {
       final dto = CityPoiDTO.fromJson({
         'id': 'poi-legacy-1',
+        'ref_type': 'account_profile',
         'name': 'Restaurante',
         'description': 'Descricao',
         'address': 'Endereco',
         'category': 'restaurant',
-        'location': {
-          'lat': -20.0,
-          'lng': -40.0,
-        },
+        'location': {'lat': -20.0, 'lng': -40.0},
         'poi_visual': {
           'icon': 'restaurant',
           'color': 'eb2528',
@@ -199,14 +236,12 @@ void main() {
     test('parses icon visual payload when color arrives with alpha suffix', () {
       final dto = CityPoiDTO.fromJson({
         'id': 'poi-legacy-2',
+        'ref_type': 'account_profile',
         'name': 'Restaurante',
         'description': 'Descricao',
         'address': 'Endereco',
         'category': 'restaurant',
-        'location': {
-          'lat': -20.0,
-          'lng': -40.0,
-        },
+        'location': {'lat': -20.0, 'lng': -40.0},
         'visual': {
           'mode': 'icon',
           'icon': 'restaurant',
@@ -234,10 +269,7 @@ void main() {
         'address': 'Carvoeiro',
         'category': 'event',
         'ref_type': 'event',
-        'location': {
-          'lat': -20.0,
-          'lng': -40.0,
-        },
+        'location': {'lat': -20.0, 'lng': -40.0},
         'is_happening_now': true,
         'time_start': '2026-04-07T10:00:00Z',
         'time_end': '2026-04-07T22:00:00Z',
@@ -246,10 +278,14 @@ void main() {
       final model = dto.toDomain();
 
       expect(model.isHappeningNow, isTrue);
-      expect(model.timeStart?.toUtc().toIso8601String(),
-          '2026-04-07T10:00:00.000Z');
       expect(
-          model.timeEnd?.toUtc().toIso8601String(), '2026-04-07T22:00:00.000Z');
+        model.timeStart?.toUtc().toIso8601String(),
+        '2026-04-07T10:00:00.000Z',
+      );
+      expect(
+        model.timeEnd?.toUtc().toIso8601String(),
+        '2026-04-07T22:00:00.000Z',
+      );
     });
   });
 }

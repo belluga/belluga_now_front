@@ -3,22 +3,17 @@ import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_token
 
 enum TenantAdminMapFilterSource {
   accountProfile,
-  staticAsset,
   event;
 
   TenantAdminTokenValue get apiValueValue => switch (this) {
         TenantAdminMapFilterSource.accountProfile =>
           TenantAdminTokenValue('account_profile'),
-        TenantAdminMapFilterSource.staticAsset =>
-          TenantAdminTokenValue('static_asset'),
         TenantAdminMapFilterSource.event => TenantAdminTokenValue('event'),
       };
 
   TenantAdminTokenValue get labelValue => switch (this) {
         TenantAdminMapFilterSource.accountProfile =>
           TenantAdminTokenValue('Conta'),
-        TenantAdminMapFilterSource.staticAsset =>
-          TenantAdminTokenValue('Asset'),
         TenantAdminMapFilterSource.event => TenantAdminTokenValue('Evento'),
       };
 

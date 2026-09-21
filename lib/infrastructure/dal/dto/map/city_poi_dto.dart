@@ -28,7 +28,7 @@ import 'package:belluga_now/domain/value_objects/asset_path_value.dart';
 import 'package:belluga_now/infrastructure/dal/dto/map/city_poi_visual_dto.dart';
 
 class CityPoiDTO {
-  const CityPoiDTO({
+  CityPoiDTO({
     required this.id,
     required this.name,
     required this.description,
@@ -42,8 +42,8 @@ class CityPoiDTO {
     this.movementRadiusMeters,
     this.tags = const <String>[],
     this.priority = 10,
-    this.refType = 'static',
-    this.refId = '',
+    required String refType,
+    required String refId,
     this.refSlug,
     this.refPath,
     this.stackKey = '',
@@ -55,7 +55,8 @@ class CityPoiDTO {
     this.updatedAt,
     this.distanceMeters,
     this.visual,
-  });
+  }) : refType = _normalizeDirectRefType(refType),
+       refId = _normalizeDirectRefId(refId);
 
   final String id;
   final String name;
@@ -111,11 +112,16 @@ class CityPoiDTO {
     final latitudeRaw = json['latitude'] ?? json['lat'] ?? locationRaw?['lat'];
     final longitudeRaw =
         json['longitude'] ?? json['lng'] ?? json['lon'] ?? locationRaw?['lng'];
-    final refType = (json['ref_type'] ?? '').toString().trim();
+    final refType = (json['ref_type'] ?? '').toString().trim().toLowerCase();
+    if (refType.isEmpty) {
+      throw const FormatException(
+        'Map POI ref_type must identify a source family.',
+      );
+    }
     final refId = (json['ref_id'] ?? json['id'] ?? '').toString().trim();
     final poiId = (json['id'] ?? '').toString().trim().isNotEmpty
         ? (json['id'] ?? '').toString().trim()
-        : '${refType.isEmpty ? 'poi' : refType}_${refId.isEmpty ? 'unknown' : refId}';
+        : '${refType}_$refId';
     final title = (json['name'] ?? json['title'] ?? '').toString().trim();
     final subtitle =
         (json['subtitle'] ?? json['description'] ?? json['address'] ?? '')
@@ -128,13 +134,15 @@ class CityPoiDTO {
     final updatedAt = _parseDateTime(json['updated_at'] ?? updatedAtRaw);
     final timeStart = _parseDateTime(json['time_start']);
     final timeEnd = _parseDateTime(json['time_end']);
-    final visual =
-        CityPoiVisualDTO.tryFromJson(json['visual'] ?? json['poi_visual']);
-    final rawCategoryLabel = (json['category_label'] ??
-            json['type_label'] ??
-            json['profile_type_label'])
-        ?.toString()
-        .trim();
+    final visual = CityPoiVisualDTO.tryFromJson(
+      json['visual'] ?? json['poi_visual'],
+    );
+    final rawCategoryLabel =
+        (json['category_label'] ??
+                json['type_label'] ??
+                json['profile_type_label'])
+            ?.toString()
+            .trim();
 
     return CityPoiDTO(
       id: poiId,
@@ -154,21 +162,21 @@ class CityPoiDTO {
       assetPath: json['asset_path'] as String?,
       isDynamic:
           json['is_dynamic'] as bool? ?? refType.toLowerCase() == 'event',
-      movementRadiusMeters:
-          (json['movement_radius_meters'] as num?)?.toDouble(),
+      movementRadiusMeters: (json['movement_radius_meters'] as num?)
+          ?.toDouble(),
       tags: (json['tags'] as List<dynamic>? ?? const [])
           .map((e) => e.toString())
           .toList(growable: false),
       priority: (json['priority'] as num?)?.toInt() ?? 10,
-      refType: refType.isEmpty ? 'static' : refType,
+      refType: refType,
       refId: refId,
       refSlug: json['ref_slug']?.toString(),
       refPath: json['ref_path']?.toString(),
       stackKey: json['stack_key']?.toString() ?? '',
       stackCount: (json['stack_count'] as num?)?.toInt() ?? 1,
-      items: _normalizeMapList(json['items'])
-          .map(CityPoiDTO.fromJson)
-          .toList(growable: false),
+      items: _normalizeMapList(
+        json['items'],
+      ).map(CityPoiDTO.fromJson).toList(growable: false),
       isHappeningNow: json['is_happening_now'] as bool? ?? false,
       timeStart: timeStart,
       timeEnd: timeEnd,
@@ -197,11 +205,13 @@ class CityPoiDTO {
 
     if (includeItems) {
       topPayload['items'] = _normalizeMapList(stackJson['items'])
-          .map((item) => <String, dynamic>{
-                ...item,
-                'stack_key': stackKey,
-                'stack_count': stackCount,
-              })
+          .map(
+            (item) => <String, dynamic>{
+              ...item,
+              'stack_key': stackKey,
+              'stack_count': stackCount,
+            },
+          )
           .toList(growable: false);
     }
 
@@ -269,16 +279,19 @@ class CityPoiDTO {
         ..parse(movementRadiusMeters!.toString());
     }
 
-    final tagValues =
-        tags.map((tag) => PoiTagValue()..parse(tag)).toList(growable: false);
-    final stackItems =
-        items.map((item) => item.toDomain()).toList(growable: false);
+    final tagValues = tags
+        .map((tag) => PoiTagValue()..parse(tag))
+        .toList(growable: false);
+    final stackItems = items
+        .map((item) => item.toDomain())
+        .toList(growable: false);
     final stackItemCollection = CityPoiStackItems();
     for (final item in stackItems) {
       stackItemCollection.add(item);
     }
-    final resolvedStackKey =
-        stackKey.trim().isNotEmpty ? stackKey.trim() : '$refType:$refId';
+    final resolvedStackKey = stackKey.trim().isNotEmpty
+        ? stackKey.trim()
+        : '$refType:$refId';
     final isDynamicValue = PoiBooleanValue()..parse(isDynamic.toString());
     final refTypeValue = PoiReferenceTypeValue()..parse(refType.trim());
     final refIdValue = PoiReferenceIdValue()..parse(refId.trim());
@@ -358,9 +371,31 @@ class CityPoiDTO {
     if (raw is! Map) {
       return null;
     }
-    return raw.map(
-      (key, value) => MapEntry(key.toString(), value),
-    );
+    return raw.map((key, value) => MapEntry(key.toString(), value));
+  }
+
+  static String _normalizeDirectRefType(String value) {
+    final normalized = value.trim().toLowerCase();
+    if (normalized.isEmpty) {
+      throw ArgumentError.value(
+        value,
+        'refType',
+        'Map POI source identity requires a reference type.',
+      );
+    }
+    return normalized;
+  }
+
+  static String _normalizeDirectRefId(String value) {
+    final normalized = value.trim();
+    if (normalized.isEmpty) {
+      throw ArgumentError.value(
+        value,
+        'refId',
+        'Map POI source identity requires a reference id.',
+      );
+    }
+    return normalized;
   }
 
   static List<Map<String, dynamic>> _normalizeMapList(Object? raw) {

@@ -1,6 +1,7 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
+import 'package:belluga_now/presentation/tenant_admin/profile_types/tenant_admin_capability_domain_presentation.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_confirmation_dialog.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_empty_state.dart';
 import 'package:belluga_now/presentation/tenant_admin/profile_types/controllers/tenant_admin_profile_types_controller.dart';
@@ -180,20 +181,9 @@ class _TenantAdminProfileTypesListScreenState
         }
         final type = loadedTypes[index];
         final subtitle = [
-          if (type.capabilities.isQueryable) 'Consultável',
-          if (type.capabilities.isPubliclyNavigable) 'Página pública',
-          if (type.capabilities.isPubliclyDiscoverable) 'Descoberta pública',
-          if (type.capabilities.isPoiEnabled) 'POI habilitado',
-          if (type.capabilities.isFavoritable) 'Favoritavel',
-          if (type.capabilities.hasBio) 'Bio',
-          if (type.capabilities.hasTaxonomies) 'Taxonomias',
-          if (type.capabilities.hasAvatar) 'Avatar',
-          if (type.capabilities.hasCover) 'Capa',
-          if (type.capabilities.hasEvents) 'Agenda',
-          if (type.capabilities.hasGallery) 'Galeria',
-          if (type.capabilities.hasNestedProfileGroups) 'Abas vinculadas',
-          if (type.capabilities.hasContactChannels) 'Contato por canais',
-          if (type.capabilities.hasExternalLinks) 'Links externos',
+          ...type.capabilities.entries
+              .where((entry) => entry.effective?.booleanValue == true)
+              .map((entry) => tenantAdminCapabilityLabel(entry.key)),
           if (type.allowedTaxonomies.isNotEmpty)
             'Taxonomias: ${type.allowedTaxonomies.join(', ')}',
         ].join(' • ');

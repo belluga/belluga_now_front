@@ -65,9 +65,9 @@ class _TenantAdminAccountCreateScreenState
     return null;
   }
 
-  bool _requiresLocation(String? selectedType) {
+  bool _allowsLocation(String? selectedType) {
     final definition = _profileTypeDefinition(selectedType);
-    return definition?.capabilities.isPoiEnabled ?? false;
+    return definition?.capabilities.allowsLocation ?? false;
   }
 
   Future<void> _openMapPicker() async {
@@ -161,7 +161,7 @@ class _TenantAdminAccountCreateScreenState
       streamValue: _controller.createStateStreamValue,
       builder: (context, draft) {
         final state = draft;
-        final requiresLocation = _requiresLocation(state.selectedProfileType);
+        final allowsLocation = _allowsLocation(state.selectedProfileType);
         return TenantAdminFormScaffold(
           closePolicy: buildTenantAdminCurrentRouteBackPolicy(context),
           title: 'Criar Conta',
@@ -185,7 +185,7 @@ class _TenantAdminAccountCreateScreenState
                     ),
                   ),
                   _buildAccountSection(context, state),
-                  if (requiresLocation) ...[
+                  if (allowsLocation) ...[
                     const SizedBox(height: 16),
                     _buildLocationSection(context),
                   ],
@@ -284,7 +284,7 @@ class _TenantAdminAccountCreateScreenState
                                               .updateCreateSelectedProfileType(
                                                 value,
                                               );
-                                          if (!_requiresLocation(value)) {
+                                          if (!_allowsLocation(value)) {
                                             _controller.latitudeController
                                                 .clear();
                                             _controller.longitudeController

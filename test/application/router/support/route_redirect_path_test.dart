@@ -115,6 +115,17 @@ void main() {
     expect(result, '/parceiro/casa-marracini');
   });
 
+  test(
+    'resolveWebPromotionDismissPath rejects retired Static detail paths',
+    () {
+      final result = resolveWebPromotionDismissPath(
+        redirectPath: '/static/retired-asset',
+      );
+
+      expect(result, '/');
+    },
+  );
+
   test('resolveWebPromotionPath preserves map poi query intent', () {
     final result = resolveWebPromotionPath(
       redirectPath: '/mapa/poi?poi=event:evt-1&stack=stack-1&extra=ignored',

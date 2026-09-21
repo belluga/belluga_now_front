@@ -70,8 +70,6 @@ import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_
     as _i35;
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/favorite_section/controllers/favorites_section_controller.dart'
     as _i34;
-import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/invites_banner/controllers/invites_banner_builder_controller.dart'
-    as _i37;
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/models/invite_filter.dart'
     as _i33;
 import 'package:flutter/material.dart' as _i3;
@@ -564,6 +562,20 @@ class MockTenantHomeController extends _i1.Mock
               Invocation.getter(#myEventsFilteredStreamValue),
             ),
           ) as _i2.StreamValue<List<_i28.UpcomingOcurrenceResume>>);
+
+  @override
+  _i2.StreamValue<List<_i38.InviteModel>> get pendingInvitesStreamValue =>
+      (super.noSuchMethod(
+        Invocation.getter(#pendingInvitesStreamValue),
+        returnValue: _FakeStreamValue_0<List<_i38.InviteModel>>(
+          this,
+          Invocation.getter(#pendingInvitesStreamValue),
+        ),
+        returnValueForMissingStub: _FakeStreamValue_0<List<_i38.InviteModel>>(
+          this,
+          Invocation.getter(#pendingInvitesStreamValue),
+        ),
+      ) as _i2.StreamValue<List<_i38.InviteModel>>);
 
   @override
   _i3.ScrollController get scrollController => (super.noSuchMethod(
@@ -1089,47 +1101,6 @@ class MockFavoritesSectionController extends _i1.Mock
         ),
         returnValueForMissingStub: null,
       );
-}
-
-/// A class which mocks [InvitesBannerBuilderController].
-///
-/// See the documentation for Mockito's code generation for more information.
-class MockInvitesBannerBuilderController extends _i1.Mock
-    implements _i37.InvitesBannerBuilderController {
-  @override
-  _i2.StreamValue<List<_i38.InviteModel>> get pendingInvitesStreamValue =>
-      (super.noSuchMethod(
-        Invocation.getter(#pendingInvitesStreamValue),
-        returnValue: _FakeStreamValue_0<List<_i38.InviteModel>>(
-          this,
-          Invocation.getter(#pendingInvitesStreamValue),
-        ),
-        returnValueForMissingStub: _FakeStreamValue_0<List<_i38.InviteModel>>(
-          this,
-          Invocation.getter(#pendingInvitesStreamValue),
-        ),
-      ) as _i2.StreamValue<List<_i38.InviteModel>>);
-
-  @override
-  _i2.StreamValue<bool> get isPendingInvitesDisplayReadyStreamValue =>
-      (super.noSuchMethod(
-        Invocation.getter(#isPendingInvitesDisplayReadyStreamValue),
-        returnValue: _FakeStreamValue_0<bool>(
-          this,
-          Invocation.getter(#isPendingInvitesDisplayReadyStreamValue),
-        ),
-        returnValueForMissingStub: _FakeStreamValue_0<bool>(
-          this,
-          Invocation.getter(#isPendingInvitesDisplayReadyStreamValue),
-        ),
-      ) as _i2.StreamValue<bool>);
-
-  @override
-  bool get hasPendingInvites => (super.noSuchMethod(
-        Invocation.getter(#hasPendingInvites),
-        returnValue: false,
-        returnValueForMissingStub: false,
-      ) as bool);
 }
 
 /// A class which mocks [StackRouter].

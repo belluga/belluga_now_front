@@ -31,7 +31,7 @@ import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_se
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/models/invite_filter.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/models/tenant_home_agenda_display_state.dart';
 import 'package:event_tracker_handler/event_tracker_handler.dart';
-import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
+import 'package:flutter/foundation.dart' show debugPrint, kIsWeb, setEquals;
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart' show Disposable, GetIt;
 import 'package:stream_value/core/stream_value.dart';
@@ -258,6 +258,27 @@ class TenantHomeAgendaController extends Object
     _persistedDiscoveryFilterSelectionSnapshot =
         discoveryFilterSelectionSnapshot(selection);
     unawaited(_refresh(preserveCurrentResults: true));
+  }
+
+  @override
+  void setDiscoveryFilterSelection(DiscoveryFilterSelection selection) {
+    final previousPrimaryKeys =
+        discoveryFilterSelectionStreamValue.value.primaryKeys;
+    final repaired = repairPublicDiscoveryFilterSelection(selection);
+    super.setDiscoveryFilterSelection(repaired);
+    if (setEquals(previousPrimaryKeys, repaired.primaryKeys)) {
+      return;
+    }
+    if (repaired.primaryKeys.isEmpty ||
+        !hasDiscoveryFilterTaxonomyGroups(
+          catalog: discoveryFilterCatalogStreamValue.value,
+          selection: repaired,
+          policy: discoveryFilterPolicy,
+        )) {
+      closeDiscoveryFilterPanel();
+      return;
+    }
+    openDiscoveryFilterPanelForReveal();
   }
 
   void _ifAlive(VoidCallback writer) {

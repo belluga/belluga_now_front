@@ -341,7 +341,7 @@ bool _isAllowedPublicPromotionContinuationPath(String normalizedPath) {
   }
 
   final prefix = segments.first;
-  return prefix == 'parceiro' || prefix == 'static';
+  return prefix == 'parceiro';
 }
 
 bool _isExternalPromotionRedirectUri(Uri uri, String raw) {

@@ -11,17 +11,11 @@ void main() {
     });
 
     test('removes accents before slug generation', () {
-      expect(
-        tenantAdminSlugify('Música São João'),
-        'musica-sao-joao',
-      );
+      expect(tenantAdminSlugify('Música São João'), 'musica-sao-joao');
     });
 
     test('keeps manual separators without duplication', () {
-      expect(
-        tenantAdminSlugify('static___asset---type'),
-        'static-asset-type',
-      );
+      expect(tenantAdminSlugify('place___kind---type'), 'place-kind-type');
     });
   });
 }

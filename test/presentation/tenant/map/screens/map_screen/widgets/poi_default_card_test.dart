@@ -20,34 +20,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('account profile card shows avatar next to the title',
-      (tester) async {
+  testWidgets('account profile card shows avatar next to the title', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
           body: PoiDefaultCard(
             poi: _buildAccountProfilePoi(),
-            colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-            onPrimaryAction: () {},
-            secondaryAction: null,
-            onRoute: () {},
-          ),
-        ),
-      ),
-    );
-
-    expect(
-        find.byKey(const ValueKey<String>('poi-card-avatar')), findsOneWidget);
-    expect(find.text('Casa Marracini'), findsOneWidget);
-  });
-
-  testWidgets('partner alias card also shows avatar next to the title',
-      (tester) async {
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: PoiDefaultCard(
-            poi: _buildAccountProfilePoi(refType: 'partner'),
             colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
             onPrimaryAction: () {},
             secondaryAction: null,
@@ -65,70 +45,73 @@ void main() {
   });
 
   testWidgets(
-      'hydrated account profile card renders cover in hero and avatar in title',
-      (tester) async {
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: PoiDefaultCard(
-            poi: _buildAccountProfilePoi(
-              avatarUrl: 'https://tenant.test/media/casa-avatar.png',
-              coverUrl: 'https://tenant.test/media/casa-cover.png',
+    'hydrated account profile card renders cover in hero and avatar in title',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: PoiDefaultCard(
+              poi: _buildAccountProfilePoi(
+                avatarUrl: 'https://tenant.test/media/casa-avatar.png',
+                coverUrl: 'https://tenant.test/media/casa-cover.png',
+              ),
+              colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+              onPrimaryAction: () {},
+              secondaryAction: null,
+              onRoute: () {},
             ),
-            colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-            onPrimaryAction: () {},
-            secondaryAction: null,
-            onRoute: () {},
           ),
         ),
-      ),
-    );
+      );
 
-    expect(
-      find.byWidgetPredicate(
-        (widget) =>
-            widget is BellugaNetworkImage &&
-            widget.url == 'https://tenant.test/media/casa-cover.png',
-      ),
-      findsOneWidget,
-    );
-    expect(
-      find.byWidgetPredicate(
-        (widget) =>
-            widget is BellugaNetworkImage &&
-            widget.url == 'https://tenant.test/media/casa-avatar.png',
-      ),
-      findsOneWidget,
-    );
-  });
+      expect(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is BellugaNetworkImage &&
+              widget.url == 'https://tenant.test/media/casa-cover.png',
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is BellugaNetworkImage &&
+              widget.url == 'https://tenant.test/media/casa-avatar.png',
+        ),
+        findsOneWidget,
+      );
+    },
+  );
 
   testWidgets(
-      'cards with remote cover use branded hero placeholder instead of generic gray image placeholder',
-      (tester) async {
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: PoiDefaultCard(
-            poi: _buildStaticPoiWithRemoteCover(),
-            colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-            onPrimaryAction: () {},
-            secondaryAction: null,
-            onRoute: () {},
+    'cards with remote cover use branded hero placeholder instead of generic gray image placeholder',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: PoiDefaultCard(
+              poi: _buildAccountProfilePoiWithRemoteCover(),
+              colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+              onPrimaryAction: () {},
+              secondaryAction: null,
+              onRoute: () {},
+            ),
           ),
         ),
-      ),
-    );
-    await tester.pump();
+      );
+      await tester.pump();
 
-    expect(find.byIcon(Icons.image_outlined), findsNothing);
-    expect(
-      find.byKey(const ValueKey<String>('poi-card-hero-backdrop')),
-      findsOneWidget,
-    );
-  });
+      expect(find.byIcon(Icons.image_outlined), findsNothing);
+      expect(
+        find.byKey(const ValueKey<String>('poi-card-hero-backdrop')),
+        findsOneWidget,
+      );
+    },
+  );
 
-  testWidgets('account profile card shows reference point action and tap',
-      (tester) async {
+  testWidgets('account profile card shows reference point action and tap', (
+    tester,
+  ) async {
     var tapCount = 0;
     await tester.pumpWidget(
       MaterialApp(
@@ -157,8 +140,9 @@ void main() {
     expect(tapCount, 1);
   });
 
-  testWidgets('account profile card shows current reference point state',
-      (tester) async {
+  testWidgets('account profile card shows current reference point state', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
@@ -178,8 +162,10 @@ void main() {
     );
 
     expect(find.text('Ponto de referência'), findsOneWidget);
-    expect(find.byKey(const Key('poiCardCurrentReferencePointButton')),
-        findsOneWidget);
+    expect(
+      find.byKey(const Key('poiCardCurrentReferencePointButton')),
+      findsOneWidget,
+    );
   });
 }
 
@@ -199,8 +185,9 @@ CityPoiModel _buildAccountProfilePoi({
   final latitude = LatitudeValue()..parse('-20.0');
   final longitude = LongitudeValue()..parse('-40.0');
   final imageUriValue = PoiFilterImageUriValue()..parse(avatarUrl);
-  final coverImageUriValue =
-      coverUrl == null ? null : (PoiFilterImageUriValue()..parse(coverUrl));
+  final coverImageUriValue = coverUrl == null
+      ? null
+      : (PoiFilterImageUriValue()..parse(coverUrl));
 
   return CityPoiModel(
     idValue: idValue,
@@ -217,21 +204,19 @@ CityPoiModel _buildAccountProfilePoi({
     refIdValue: refIdValue,
     stackItems: CityPoiStackItems(),
     coverImageUriValue: coverImageUriValue,
-    visual: CityPoiVisual.image(
-      imageUriValue: imageUriValue,
-    ),
+    visual: CityPoiVisual.image(imageUriValue: imageUriValue),
   );
 }
 
-CityPoiModel _buildStaticPoiWithRemoteCover() {
-  final idValue = CityPoiIdValue()..parse('poi-static-1');
+CityPoiModel _buildAccountProfilePoiWithRemoteCover() {
+  final idValue = CityPoiIdValue()..parse('poi-account-1');
   final nameValue = CityPoiNameValue()..parse('Praia das Castanheiras');
   final descriptionValue = CityPoiDescriptionValue()
     ..parse('Praia urbana com quiosques.');
   final addressValue = CityPoiAddressValue()..parse('Centro');
   final priorityValue = PoiPriorityValue()..parse('1');
-  final refTypeValue = PoiReferenceTypeValue()..parse('static');
-  final refIdValue = PoiReferenceIdValue()..parse('static-1');
+  final refTypeValue = PoiReferenceTypeValue()..parse('account_profile');
+  final refIdValue = PoiReferenceIdValue()..parse('account-1');
   final latitude = LatitudeValue()..parse('-20.0');
   final longitude = LongitudeValue()..parse('-40.0');
   final imageUriValue = PoiFilterImageUriValue()

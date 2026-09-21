@@ -22,7 +22,6 @@ class RouteScopedDetailControllerGetItForbiddenRule extends DartLintRule {
   static const _coveredControllerTypeNames = <String>{
     'AccountProfileDetailController',
     'ImmersiveEventDetailController',
-    'StaticAssetDetailController',
   };
 
   @override
@@ -68,16 +67,10 @@ class RouteScopedDetailControllerGetItForbiddenRule extends DartLintRule {
           '/lib/presentation/tenant_public/partners/account_profile_detail_screen.dart',
         ) ||
         path.endsWith(
-          '/lib/presentation/tenant_public/static_assets/static_asset_detail_screen.dart',
-        ) ||
-        path.endsWith(
           '/lib/presentation/tenant_public/schedule/screens/immersive_event_detail/immersive_event_detail_screen.dart',
         ) ||
         path.endsWith(
           'lib/presentation/tenant_public/partners/account_profile_detail_screen.dart',
-        ) ||
-        path.endsWith(
-          'lib/presentation/tenant_public/static_assets/static_asset_detail_screen.dart',
         ) ||
         path.endsWith(
           'lib/presentation/tenant_public/schedule/screens/immersive_event_detail/immersive_event_detail_screen.dart',

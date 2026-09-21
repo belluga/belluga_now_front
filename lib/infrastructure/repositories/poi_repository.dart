@@ -16,9 +16,7 @@ import 'package:belluga_now/domain/repositories/account_profiles_repository_cont
 import 'package:belluga_now/domain/repositories/city_map_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/poi_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
-import 'package:belluga_now/domain/repositories/static_assets_repository_contract.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
-import 'package:belluga_now/domain/static_assets/public_static_asset_model.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:flutter/foundation.dart';
 import 'package:get_it/get_it.dart';
@@ -29,16 +27,13 @@ class PoiRepository implements PoiRepositoryContract {
     CityMapRepositoryContract? dataSource,
     AccountProfilesRepositoryContract? accountProfilesRepository,
     ScheduleRepositoryContract? scheduleRepository,
-    StaticAssetsRepositoryContract? staticAssetsRepository,
   }) : _dataSource = dataSource ?? GetIt.I.get<CityMapRepositoryContract>(),
        _accountProfilesRepositoryOverride = accountProfilesRepository,
-       _scheduleRepositoryOverride = scheduleRepository,
-       _staticAssetsRepositoryOverride = staticAssetsRepository;
+       _scheduleRepositoryOverride = scheduleRepository;
 
   final CityMapRepositoryContract _dataSource;
   final AccountProfilesRepositoryContract? _accountProfilesRepositoryOverride;
   final ScheduleRepositoryContract? _scheduleRepositoryOverride;
-  final StaticAssetsRepositoryContract? _staticAssetsRepositoryOverride;
 
   AccountProfilesRepositoryContract? get _accountProfilesRepository =>
       _accountProfilesRepositoryOverride ??
@@ -47,10 +42,6 @@ class PoiRepository implements PoiRepositoryContract {
   ScheduleRepositoryContract? get _scheduleRepository =>
       _scheduleRepositoryOverride ??
       _resolveOptionalRepository<ScheduleRepositoryContract>();
-
-  StaticAssetsRepositoryContract? get _staticAssetsRepository =>
-      _staticAssetsRepositoryOverride ??
-      _resolveOptionalRepository<StaticAssetsRepositoryContract>();
 
   final allPoisStreamValue = StreamValue<List<CityPoiModel>?>(
     defaultValue: null,
@@ -84,8 +75,6 @@ class PoiRepository implements PoiRepositoryContract {
   final Map<String, AccountProfileComplete> _hydratedAccountProfilesByPoiId =
       <String, AccountProfileComplete>{};
   final Map<String, EventModel> _hydratedEventsByPoiId = <String, EventModel>{};
-  final Map<String, PublicStaticAssetModel> _hydratedStaticAssetsByPoiId =
-      <String, PublicStaticAssetModel>{};
 
   @override
   Future<List<CityPoiModel>> fetchPoints(PoiQuery query) async {
@@ -243,11 +232,6 @@ class PoiRepository implements PoiRepositoryContract {
     return _hydratedEventsByPoiId[poi.id];
   }
 
-  @override
-  PublicStaticAssetModel? hydratedStaticAssetForPoi(CityPoiModel poi) {
-    return _hydratedStaticAssetsByPoiId[poi.id];
-  }
-
   void _setAllPois(List<CityPoiModel> pois) {
     final snapshot = List<CityPoiModel>.unmodifiable(pois);
     allPoisStreamValue.addValue(snapshot);
@@ -263,13 +247,12 @@ class PoiRepository implements PoiRepositoryContract {
   }
 
   bool _supportsPoiHydration(CityPoiModel poi) {
-    return _isPartnerPoi(poi) || _isEventPoi(poi) || _isStaticPoi(poi);
+    return _isPartnerPoi(poi) || _isEventPoi(poi);
   }
 
   bool _isPoiHydrated(CityPoiModel poi) {
     return _hydratedAccountProfilesByPoiId.containsKey(poi.id) ||
-        _hydratedEventsByPoiId.containsKey(poi.id) ||
-        _hydratedStaticAssetsByPoiId.containsKey(poi.id);
+        _hydratedEventsByPoiId.containsKey(poi.id);
   }
 
   Future<void> _hydratePoi(CityPoiModel poi) async {
@@ -311,26 +294,6 @@ class PoiRepository implements PoiRepositoryContract {
         _bumpPoiHydrationRevision();
         return;
       }
-
-      if (_isStaticPoi(poi)) {
-        final assetRef = _resolveStaticAssetRef(poi);
-        final repository = _staticAssetsRepository;
-        if (assetRef == null || repository == null) {
-          return;
-        }
-        final asset = await repository.getStaticAssetByRef(
-          StaticAssetRepoText.fromRaw(
-            assetRef,
-            defaultValue: assetRef,
-            isRequired: true,
-          ),
-        );
-        if (asset == null) {
-          return;
-        }
-        _hydratedStaticAssetsByPoiId[poi.id] = asset;
-        _bumpPoiHydrationRevision();
-      }
     } catch (error) {
       debugPrint('Failed to hydrate poi ${poi.id}: $error');
     }
@@ -353,13 +316,6 @@ class PoiRepository implements PoiRepositoryContract {
     return poi.refType.trim().toLowerCase() == 'event';
   }
 
-  bool _isStaticPoi(CityPoiModel poi) {
-    final refType = poi.refType.trim().toLowerCase();
-    return refType == 'static' ||
-        refType == 'static_asset' ||
-        refType == 'asset';
-  }
-
   String? _resolvePoiSlug(CityPoiModel poi) {
     final refSlug = poi.refSlug?.trim();
     if (refSlug != null && refSlug.isNotEmpty) {
@@ -380,18 +336,6 @@ class PoiRepository implements PoiRepositoryContract {
       return null;
     }
     return segments.last;
-  }
-
-  String? _resolveStaticAssetRef(CityPoiModel poi) {
-    final refSlug = poi.refSlug?.trim();
-    if (refSlug != null && refSlug.isNotEmpty) {
-      return refSlug;
-    }
-    final refId = poi.refId.trim();
-    if (refId.isNotEmpty) {
-      return refId;
-    }
-    return _resolvePoiSlug(poi);
   }
 
   T? _resolveOptionalRepository<T extends Object>() {

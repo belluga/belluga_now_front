@@ -13,7 +13,6 @@ import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/models/tenant_home_agenda_display_state.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/my_events_carousel_card.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/favorite_section/controllers/favorites_section_controller.dart';
-import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/invites_banner/controllers/invites_banner_builder_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/widgets/section_header.dart';
 import 'package:belluga_now/domain/upcoming_ocurrence/projections/upcoming_ocurrence_resume.dart';
 import 'package:belluga_now/domain/favorite/projections/favorite_resume.dart';
@@ -50,7 +49,6 @@ import 'package:belluga_now/testing/invite_model_factory.dart';
   MockSpec<TenantHomeController>(),
   MockSpec<TenantHomeAgendaController>(),
   MockSpec<FavoritesSectionController>(),
-  MockSpec<InvitesBannerBuilderController>(),
   MockSpec<StackRouter>(),
   MockSpec<AppDataRepository>(),
   MockSpec<AppData>(),
@@ -292,7 +290,6 @@ void main() {
   late MockTenantHomeController mockController;
   late _TestTenantHomeAgendaController mockAgendaController;
   late MockFavoritesSectionController mockFavoritesController;
-  late MockInvitesBannerBuilderController mockInvitesBannerController;
   late MockAppDataRepository mockAppDataRepository;
   late MockAppData mockAppData;
   late ScrollController testScrollController;
@@ -306,7 +303,6 @@ void main() {
     await GetIt.I.reset();
     mockAgendaController = _TestTenantHomeAgendaController();
     mockFavoritesController = _TestFavoritesSectionController();
-    mockInvitesBannerController = MockInvitesBannerBuilderController();
     mockAppDataRepository = MockAppDataRepository();
     mockAppData = MockAppData();
     testScrollController = ScrollController();
@@ -316,9 +312,6 @@ void main() {
     GetIt.I.registerSingleton<TenantHomeAgendaController>(mockAgendaController);
     GetIt.I.registerSingleton<FavoritesSectionController>(
       mockFavoritesController,
-    );
-    GetIt.I.registerSingleton<InvitesBannerBuilderController>(
-      mockInvitesBannerController,
     );
     GetIt.I.registerSingleton<AppDataRepository>(mockAppDataRepository);
     GetIt.I.registerSingleton<AppData>(mockAppData);
@@ -370,15 +363,6 @@ void main() {
             isPrimaryValue: FavoritePrimaryFlagValue()..parse('true'),
           ),
         );
-    mockito
-        .when(mockInvitesBannerController.pendingInvitesStreamValue)
-        .thenReturn(StreamValue<List<InviteModel>>(defaultValue: const []));
-    mockito
-        .when(
-          mockInvitesBannerController.isPendingInvitesDisplayReadyStreamValue,
-        )
-        .thenReturn(StreamValue<bool>(defaultValue: false));
-
     // Stub Home Controller
     mockito
         .when(mockController.homeLocationStatusStreamValue)
@@ -396,6 +380,9 @@ void main() {
         .thenReturn(
           StreamValue<List<UpcomingOcurrenceResume>>(defaultValue: []),
         );
+    mockito
+        .when(mockController.pendingInvitesStreamValue)
+        .thenReturn(StreamValue<List<InviteModel>>(defaultValue: const []));
     mockito
         .when(mockController.scrollController)
         .thenReturn(testScrollController);
@@ -860,13 +847,8 @@ void main() {
       ],
     );
     mockito
-        .when(mockInvitesBannerController.pendingInvitesStreamValue)
+        .when(mockController.pendingInvitesStreamValue)
         .thenReturn(pendingInviteStream);
-    mockito
-        .when(
-          mockInvitesBannerController.isPendingInvitesDisplayReadyStreamValue,
-        )
-        .thenReturn(StreamValue<bool>(defaultValue: true));
 
     final mockRouter = MockStackRouter();
     _stubMockRouterRoot(mockRouter);

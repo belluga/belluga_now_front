@@ -16,6 +16,7 @@ class TenantAdminAccountProfileGalleryEditor extends StatelessWidget {
     required this.maxGroups,
     required this.maxItemsPerGallery,
     required this.busy,
+    required this.savingFieldPath,
     required this.fieldErrors,
     required this.operationError,
     required this.resolveInputValue,
@@ -37,6 +38,7 @@ class TenantAdminAccountProfileGalleryEditor extends StatelessWidget {
   final int maxGroups;
   final int maxItemsPerGallery;
   final bool busy;
+  final String? savingFieldPath;
   final Map<String, String> fieldErrors;
   final String? operationError;
   final String Function(String fieldPath, String authoritativeValue)
@@ -118,6 +120,7 @@ class TenantAdminAccountProfileGalleryEditor extends StatelessWidget {
               totalGroups: groups.length,
               maxItems: maxItemsPerGallery,
               busy: busy,
+              savingFieldPath: savingFieldPath,
               fieldErrors: fieldErrors,
               resolveInputValue: resolveInputValue,
               onInputChanged: onInputChanged,
@@ -177,6 +180,7 @@ class _GalleryGroupCard extends StatelessWidget {
     required this.totalGroups,
     required this.maxItems,
     required this.busy,
+    required this.savingFieldPath,
     required this.fieldErrors,
     required this.resolveInputValue,
     required this.onInputChanged,
@@ -197,6 +201,7 @@ class _GalleryGroupCard extends StatelessWidget {
   final int totalGroups;
   final int maxItems;
   final bool busy;
+  final String? savingFieldPath;
   final Map<String, String> fieldErrors;
   final String Function(String fieldPath, String authoritativeValue)
   resolveInputValue;
@@ -340,6 +345,7 @@ class _GalleryGroupCard extends StatelessWidget {
                     index: itemIndex,
                     totalItems: group.items.length,
                     busy: busy,
+                    savingFieldPath: savingFieldPath,
                     fieldErrors: fieldErrors,
                     resolveInputValue: resolveInputValue,
                     onInputChanged: onInputChanged,
@@ -447,6 +453,7 @@ class _GalleryItemCard extends StatelessWidget {
     required this.index,
     required this.totalItems,
     required this.busy,
+    required this.savingFieldPath,
     required this.fieldErrors,
     required this.resolveInputValue,
     required this.onInputChanged,
@@ -462,6 +469,7 @@ class _GalleryItemCard extends StatelessWidget {
   final int index;
   final int totalItems;
   final bool busy;
+  final String? savingFieldPath;
   final Map<String, String> fieldErrors;
   final String Function(String fieldPath, String authoritativeValue)
   resolveInputValue;
@@ -479,6 +487,13 @@ class _GalleryItemCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final errorPrefix = 'group.$groupId.item.${item.itemId}';
+    final titleFieldPath = '$errorPrefix.title';
+    final descriptionFieldPath = '$errorPrefix.description';
+    final title = resolveInputValue(titleFieldPath, item.title ?? '');
+    final description = resolveInputValue(
+      descriptionFieldPath,
+      item.description ?? '',
+    );
     final providerError =
         fieldErrors['$errorPrefix.${item.type == TenantAdminAccountProfileGalleryItemType.photo ? 'image' : 'youtube_url'}'];
     return Container(
@@ -507,50 +522,95 @@ class _GalleryItemCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 6),
                 _AuthoritativeGalleryTextField(
+                  key: ValueKey(titleFieldPath),
                   fieldKey: Key('tenantAdminGalleryItemTitle_${item.itemId}'),
-                  authoritativeSnapshot: item,
-                  value: resolveInputValue(
-                    '$errorPrefix.title',
-                    item.title ?? '',
-                  ),
+                  value: title,
                   maxLength: 255,
                   labelText: 'Título do item',
                   errorText: fieldErrors['$errorPrefix.title'],
                   errorKey: Key(
                     'tenantAdminGalleryItemTitleError_${item.itemId}',
                   ),
-                  onSubmitted: busy
+                  onSubmitted: busy || title == (item.title ?? '')
                       ? null
                       : (value) => unawaited(
                           onTitleChanged(groupId, item.itemId, value),
                         ),
-                  onChanged: (value) =>
-                      onInputChanged('$errorPrefix.title', value),
+                  onChanged: (value) => onInputChanged(titleFieldPath, value),
                 ),
+                if (title != (item.title ?? '')) ...[
+                  const SizedBox(height: 6),
+                  OutlinedButton.icon(
+                    key: Key('tenantAdminGalleryItemSaveTitle_${item.itemId}'),
+                    onPressed: busy
+                        ? null
+                        : () => unawaited(
+                            onTitleChanged(groupId, item.itemId, title),
+                          ),
+                    icon: savingFieldPath == titleFieldPath
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.save_outlined),
+                    label: Text(
+                      savingFieldPath == titleFieldPath
+                          ? 'Salvando título'
+                          : 'Salvar título',
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 6),
                 _AuthoritativeGalleryTextField(
+                  key: ValueKey(descriptionFieldPath),
                   fieldKey: Key(
                     'tenantAdminGalleryItemDescription_${item.itemId}',
                   ),
-                  authoritativeSnapshot: item,
-                  value: resolveInputValue(
-                    '$errorPrefix.description',
-                    item.description ?? '',
-                  ),
+                  value: description,
                   maxLines: 2,
                   labelText: 'Descrição do item',
                   errorText: fieldErrors['$errorPrefix.description'],
                   errorKey: Key(
                     'tenantAdminGalleryItemDescriptionError_${item.itemId}',
                   ),
-                  onSubmitted: busy
+                  onSubmitted: busy || description == (item.description ?? '')
                       ? null
                       : (value) => unawaited(
                           onDescriptionChanged(groupId, item.itemId, value),
                         ),
                   onChanged: (value) =>
-                      onInputChanged('$errorPrefix.description', value),
+                      onInputChanged(descriptionFieldPath, value),
                 ),
+                if (description != (item.description ?? '')) ...[
+                  const SizedBox(height: 6),
+                  OutlinedButton.icon(
+                    key: Key(
+                      'tenantAdminGalleryItemSaveDescription_${item.itemId}',
+                    ),
+                    onPressed: busy
+                        ? null
+                        : () => unawaited(
+                            onDescriptionChanged(
+                              groupId,
+                              item.itemId,
+                              description,
+                            ),
+                          ),
+                    icon: savingFieldPath == descriptionFieldPath
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.save_outlined),
+                    label: Text(
+                      savingFieldPath == descriptionFieldPath
+                          ? 'Salvando descrição'
+                          : 'Salvar descrição',
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 8),
                 Wrap(
                   spacing: 8,
@@ -630,10 +690,10 @@ class _GalleryItemCard extends StatelessWidget {
   }
 }
 
-class _AuthoritativeGalleryTextField extends StatelessWidget {
+class _AuthoritativeGalleryTextField extends StatefulWidget {
   const _AuthoritativeGalleryTextField({
+    super.key,
     required this.fieldKey,
-    required this.authoritativeSnapshot,
     required this.value,
     required this.labelText,
     required this.onSubmitted,
@@ -645,7 +705,6 @@ class _AuthoritativeGalleryTextField extends StatelessWidget {
   });
 
   final Key fieldKey;
-  final Object authoritativeSnapshot;
   final String value;
   final String labelText;
   final ValueChanged<String>? onSubmitted;
@@ -656,30 +715,57 @@ class _AuthoritativeGalleryTextField extends StatelessWidget {
   final int maxLines;
 
   @override
+  State<_AuthoritativeGalleryTextField> createState() =>
+      _AuthoritativeGalleryTextFieldState();
+}
+
+class _AuthoritativeGalleryTextFieldState
+    extends State<_AuthoritativeGalleryTextField> {
+  late final TextEditingController _textController = TextEditingController(
+    text: widget.value,
+  );
+
+  @override
+  void didUpdateWidget(covariant _AuthoritativeGalleryTextField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.value == oldWidget.value ||
+        _textController.text != oldWidget.value) {
+      return;
+    }
+    _textController.value = TextEditingValue(
+      text: widget.value,
+      selection: TextSelection.collapsed(offset: widget.value.length),
+    );
+  }
+
+  @override
+  void dispose() {
+    _textController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        KeyedSubtree(
-          key: ValueKey((authoritativeSnapshot, fieldKey)),
-          child: TextFormField(
-            key: fieldKey,
-            initialValue: value,
-            maxLength: maxLength,
-            maxLines: maxLines,
-            decoration: InputDecoration(
-              labelText: labelText,
-              hintText: 'Opcional',
-            ),
-            onFieldSubmitted: onSubmitted,
-            onChanged: onChanged,
+        TextField(
+          key: widget.fieldKey,
+          controller: _textController,
+          maxLength: widget.maxLength,
+          maxLines: widget.maxLines,
+          decoration: InputDecoration(
+            labelText: widget.labelText,
+            hintText: 'Opcional',
           ),
+          onSubmitted: widget.onSubmitted,
+          onChanged: widget.onChanged,
         ),
-        if (errorText != null) ...[
+        if (widget.errorText != null) ...[
           const SizedBox(height: 4),
           Text(
-            errorText!,
-            key: errorKey,
+            widget.errorText!,
+            key: widget.errorKey,
             style: TextStyle(color: Theme.of(context).colorScheme.error),
           ),
         ],

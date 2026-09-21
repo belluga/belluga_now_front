@@ -106,7 +106,7 @@ void main() {
 
     test('type label prefers payload category over technical refType', () {
       final poi = _buildPoi(
-        refType: 'accountProfile',
+        refType: 'account_profile',
         category: CityPoiCategory.attraction,
         categoryLabel: 'beach_club_custom',
       );
@@ -114,15 +114,17 @@ void main() {
       expect(PoiContentResolver.typeLabel(poi), 'Beach Club Custom');
     });
 
-    test('type label stays empty when payload does not provide factual label',
-        () {
-      final poi = _buildPoi(
-        refType: 'accountProfile',
-        category: CityPoiCategory.attraction,
-      );
+    test(
+      'type label stays empty when payload does not provide factual label',
+      () {
+        final poi = _buildPoi(
+          refType: 'account_profile',
+          category: CityPoiCategory.attraction,
+        );
 
-      expect(PoiContentResolver.typeLabel(poi), isEmpty);
-    });
+        expect(PoiContentResolver.typeLabel(poi), isEmpty);
+      },
+    );
 
     test('compact address hides generic map placeholders', () {
       final poi = _buildPoi(address: 'Mapa');
@@ -148,18 +150,19 @@ void main() {
     });
 
     test(
-        'search meta falls back to payload-derived category when address is weak',
-        () {
-      final poi = _buildPoi(
-        refType: 'accountProfile',
-        category: CityPoiCategory.attraction,
-        categoryLabel: 'beach_club_custom',
-        address: 'Mapa',
-        distanceMeters: null,
-      );
+      'search meta falls back to payload-derived category when address is weak',
+      () {
+        final poi = _buildPoi(
+          refType: 'account_profile',
+          category: CityPoiCategory.attraction,
+          categoryLabel: 'beach_club_custom',
+          address: 'Mapa',
+          distanceMeters: null,
+        );
 
-      expect(PoiContentResolver.searchMeta(poi), 'Beach Club Custom');
-    });
+        expect(PoiContentResolver.searchMeta(poi), 'Beach Club Custom');
+      },
+    );
 
     test('image and icon helpers reuse payload visual contract', () {
       final imagePoi = _buildPoi(
@@ -198,7 +201,7 @@ CityPoiModel _buildPoi({
   String name = 'Praia das Castanheiras',
   String description = 'Ponto de interesse no mapa',
   String address = 'Av. Oceânica, Centro',
-  String refType = 'static',
+  String refType = 'account_profile',
   String refId = 'poi-1',
   CityPoiCategory category = CityPoiCategory.beach,
   String? categoryLabel,
@@ -230,9 +233,7 @@ CityPoiModel _buildPoi({
   final isDynamicValue = PoiBooleanValue()
     ..parse(refType == 'event' ? 'true' : 'false');
   final isHappeningNowValue = PoiBooleanValue()
-    ..parse(
-      isHappeningNow ? 'true' : 'false',
-    );
+    ..parse(isHappeningNow ? 'true' : 'false');
   final timeStartValue = timeStart == null
       ? null
       : (PoiTimeStartValue()..parse(timeStart.toIso8601String()));
@@ -248,8 +249,8 @@ CityPoiModel _buildPoi({
       : (PoiUpdatedAtValue()..parse(updatedAt.toUtc().toIso8601String()));
   final categoryLabelValue =
       categoryLabel == null || categoryLabel.trim().isEmpty
-          ? null
-          : (PoiTypeLabelValue()..parse(categoryLabel.trim()));
+      ? null
+      : (PoiTypeLabelValue()..parse(categoryLabel.trim()));
 
   return CityPoiModel(
     idValue: idValue,

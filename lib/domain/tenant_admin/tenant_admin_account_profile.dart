@@ -11,6 +11,7 @@ import 'package:belluga_now/domain/shared/value_objects/account_profile_contact_
 import 'package:belluga_now/domain/shared/value_objects/account_profile_contact_source_account_profile_id_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_account_profile_aggregate_revision_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_account_profile_external_links_limit_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_flag_value.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_text_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_url_value.dart';
@@ -28,6 +29,12 @@ class TenantAdminAccountProfile {
     TenantAdminOptionalTextValue? slugValue,
     TenantAdminOptionalUrlValue? avatarUrlValue,
     TenantAdminOptionalUrlValue? coverUrlValue,
+    TenantAdminOptionalTextValue? visibilityValue,
+    TenantAdminFlagValue? isActiveValue,
+    TenantAdminOptionalTextValue? deletedAtValue,
+    TenantAdminOptionalTextValue? parentAccountPublicationStatusValue,
+    TenantAdminOptionalUrlValue? adminAvatarUrlValue,
+    TenantAdminOptionalUrlValue? adminCoverUrlValue,
     TenantAdminOptionalTextValue? bioValue,
     this.location,
     TenantAdminTaxonomyTerms? taxonomyTerms,
@@ -48,6 +55,15 @@ class TenantAdminAccountProfile {
   }) : slugValue = slugValue ?? TenantAdminOptionalTextValue(),
        avatarUrlValue = avatarUrlValue ?? TenantAdminOptionalUrlValue(),
        coverUrlValue = coverUrlValue ?? TenantAdminOptionalUrlValue(),
+       visibilityValue = visibilityValue ?? TenantAdminOptionalTextValue(),
+       isActiveValue = isActiveValue ?? TenantAdminFlagValue(false),
+       deletedAtValue = deletedAtValue ?? TenantAdminOptionalTextValue(),
+       parentAccountPublicationStatusValue =
+           parentAccountPublicationStatusValue ??
+           TenantAdminOptionalTextValue(),
+       adminAvatarUrlValue =
+           adminAvatarUrlValue ?? TenantAdminOptionalUrlValue(),
+       adminCoverUrlValue = adminCoverUrlValue ?? TenantAdminOptionalUrlValue(),
        bioValue = bioValue ?? TenantAdminOptionalTextValue(),
        taxonomyTerms = taxonomyTerms ?? const TenantAdminTaxonomyTerms.empty(),
        galleryGroups = List<TenantAdminAccountProfileGalleryGroup>.unmodifiable(
@@ -81,6 +97,12 @@ class TenantAdminAccountProfile {
   final TenantAdminOptionalTextValue slugValue;
   final TenantAdminOptionalUrlValue avatarUrlValue;
   final TenantAdminOptionalUrlValue coverUrlValue;
+  final TenantAdminOptionalTextValue visibilityValue;
+  final TenantAdminFlagValue isActiveValue;
+  final TenantAdminOptionalTextValue deletedAtValue;
+  final TenantAdminOptionalTextValue parentAccountPublicationStatusValue;
+  final TenantAdminOptionalUrlValue adminAvatarUrlValue;
+  final TenantAdminOptionalUrlValue adminCoverUrlValue;
   final TenantAdminOptionalTextValue bioValue;
   final TenantAdminLocation? location;
   final TenantAdminTaxonomyTerms taxonomyTerms;
@@ -122,6 +144,13 @@ class TenantAdminAccountProfile {
   String? get slug => slugValue.nullableValue;
   String? get avatarUrl => avatarUrlValue.nullableValue;
   String? get coverUrl => coverUrlValue.nullableValue;
+  String? get visibility => visibilityValue.nullableValue;
+  bool get isActive => isActiveValue.value;
+  String? get deletedAt => deletedAtValue.nullableValue;
+  String? get parentAccountPublicationStatus =>
+      parentAccountPublicationStatusValue.nullableValue;
+  String? get adminAvatarUrl => adminAvatarUrlValue.nullableValue;
+  String? get adminCoverUrl => adminCoverUrlValue.nullableValue;
   String? get bio => bioValue.nullableValue;
   String? get contactSourceAccountProfileId {
     final raw = contactSourceAccountProfileIdValue?.value.trim();

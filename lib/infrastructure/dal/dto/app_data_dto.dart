@@ -31,6 +31,7 @@ import 'package:belluga_now/domain/partners/profile_type_definition.dart';
 import 'package:belluga_now/domain/partners/profile_type_registry.dart';
 import 'package:belluga_now/domain/partners/profile_type_visual.dart';
 import 'package:belluga_now/domain/partners/value_objects/profile_type_flag_value.dart';
+import 'package:belluga_now/domain/partners/value_objects/profile_type_location_policy_value.dart';
 import 'package:belluga_now/domain/partners/value_objects/profile_type_key_value.dart';
 import 'package:belluga_now/domain/partners/value_objects/profile_type_label_value.dart';
 import 'package:belluga_now/domain/partners/value_objects/profile_type_visual_hex_color_value.dart';
@@ -400,10 +401,10 @@ class AppDataDTO {
       final capabilitiesMap = capabilitiesRaw is Map
           ? Map<String, dynamic>.from(capabilitiesRaw)
           : const <String, dynamic>{};
-      final isPoiEnabled = capabilitiesMap['is_poi_enabled'] == true;
-      final isReferenceLocationEnabled =
-          isPoiEnabled &&
-          capabilitiesMap['is_reference_location_enabled'] == true;
+      final locationPolicy = _capabilityStringValue(
+        capabilitiesMap,
+        'location_policy',
+      );
 
       types.add(
         ProfileTypeDefinition(
@@ -426,41 +427,53 @@ class AppDataDTO {
           ),
           capabilities: ProfileTypeCapabilities(
             isPubliclyDiscoverableValue: ProfileTypeFlagValue(
-              capabilitiesMap['is_publicly_discoverable'] == true,
+              _capabilityBooleanValue(
+                capabilitiesMap,
+                'is_publicly_discoverable',
+              ),
             ),
             isFavoritableValue: ProfileTypeFlagValue(
-              capabilitiesMap['is_favoritable'] == true,
+              _capabilityBooleanValue(capabilitiesMap, 'is_favoritable'),
             ),
-            isPoiEnabledValue: ProfileTypeFlagValue(isPoiEnabled),
+            locationPolicyValue: ProfileTypeLocationPolicyValue(locationPolicy),
+            isMapPoiEnabledValue: ProfileTypeFlagValue(
+              _capabilityBooleanValue(capabilitiesMap, 'is_map_poi_enabled'),
+            ),
             isReferenceLocationEnabledValue: ProfileTypeFlagValue(
-              isReferenceLocationEnabled,
+              _capabilityBooleanValue(
+                capabilitiesMap,
+                'is_reference_location_enabled',
+              ),
             ),
             hasBioValue: ProfileTypeFlagValue(
-              capabilitiesMap['has_bio'] == true,
+              _capabilityBooleanValue(capabilitiesMap, 'has_bio'),
             ),
             hasTaxonomiesValue: ProfileTypeFlagValue(
-              capabilitiesMap['has_taxonomies'] == true,
+              _capabilityBooleanValue(capabilitiesMap, 'has_taxonomies'),
             ),
             hasAvatarValue: ProfileTypeFlagValue(
-              capabilitiesMap['has_avatar'] == true,
+              _capabilityBooleanValue(capabilitiesMap, 'has_avatar'),
             ),
             hasCoverValue: ProfileTypeFlagValue(
-              capabilitiesMap['has_cover'] == true,
+              _capabilityBooleanValue(capabilitiesMap, 'has_cover'),
             ),
             hasEventsValue: ProfileTypeFlagValue(
-              capabilitiesMap['has_events'] == true,
+              _capabilityBooleanValue(capabilitiesMap, 'has_events'),
             ),
             hasGalleryValue: ProfileTypeFlagValue(
-              capabilitiesMap['has_gallery'] == true,
+              _capabilityBooleanValue(capabilitiesMap, 'has_gallery'),
             ),
             hasNestedProfileGroupsValue: ProfileTypeFlagValue(
-              capabilitiesMap['has_nested_profile_groups'] == true,
+              _capabilityBooleanValue(
+                capabilitiesMap,
+                'has_nested_profile_groups',
+              ),
             ),
             hasContactChannelsValue: ProfileTypeFlagValue(
-              capabilitiesMap['has_contact_channels'] == true,
+              _capabilityBooleanValue(capabilitiesMap, 'has_contact_channels'),
             ),
             hasExternalLinksValue: ProfileTypeFlagValue(
-              capabilitiesMap['has_external_links'] == true,
+              _capabilityBooleanValue(capabilitiesMap, 'has_external_links'),
             ),
           ),
         ),
@@ -1068,5 +1081,28 @@ class AppDataDTO {
       return fallback;
     }
     return normalized;
+  }
+
+  static bool _capabilityBooleanValue(
+    Map<String, dynamic> capabilities,
+    String key,
+  ) {
+    final raw = capabilities[key];
+    if (raw is! Map) return false;
+    final effective = raw['effective'];
+    if (effective is! Map) return false;
+    return effective['value'] == true;
+  }
+
+  static String _capabilityStringValue(
+    Map<String, dynamic> capabilities,
+    String key,
+  ) {
+    final raw = capabilities[key];
+    if (raw is! Map) return '';
+    final effective = raw['effective'];
+    if (effective is! Map) return '';
+    final value = effective['value'];
+    return value is String ? value.trim() : '';
   }
 }

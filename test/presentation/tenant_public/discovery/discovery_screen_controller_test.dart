@@ -1203,7 +1203,7 @@ void main() {
       expect(find.text('Descubra'), findsOneWidget);
       expect(find.byKey(_primaryFilterKey(primaryFilter)), findsOneWidget);
       expect(
-        find.bySemanticsLabel('Painel de filtros de perfis'),
+        find.bySemanticsLabel(RegExp(r'^Painel de filtros de perfis(?:\n|$)')),
         findsOneWidget,
       );
       expect(
@@ -1220,6 +1220,12 @@ void main() {
       expect(
         find.byKey(_selectedPrimaryFilterKey(primaryFilter)),
         findsOneWidget,
+      );
+      expect(controller.filteredPartnersStreamValue.value, isNotEmpty);
+      expect(
+        find.byKey(const ValueKey<String>('discoveryFilterTaxonomyArea')),
+        findsNothing,
+        reason: 'An eligible Type without groups must not leave an empty panel',
       );
       controller.scrollController.jumpTo(
         controller.scrollController.position.maxScrollExtent / 2,
@@ -1251,7 +1257,7 @@ void main() {
         findsNothing,
       );
       expect(
-        find.bySemanticsLabel('Painel de filtros de perfis'),
+        find.bySemanticsLabel(RegExp(r'^Painel de filtros de perfis(?:\n|$)')),
         findsOneWidget,
       );
 
@@ -1311,7 +1317,7 @@ void main() {
       expect(find.text('Descubra'), findsNothing);
       expect(find.byKey(_primaryFilterKey(primaryFilter)), findsNothing);
       expect(
-        find.bySemanticsLabel('Painel de filtros de perfis'),
+        find.bySemanticsLabel(RegExp(r'^Painel de filtros de perfis(?:\n|$)')),
         findsNothing,
       );
       await tester.enterText(find.byType(TextField), 'sem resultado');
@@ -1479,6 +1485,54 @@ void main() {
       expect(
         find.byKey(_taxonomyChipKey(secondTaxonomyGroup, secondTaxonomyTerm)),
         findsOneWidget,
+      );
+
+      final panelToggle = find.byKey(
+        const ValueKey<String>('discoveryFilterPanelToggle'),
+      );
+      final taxonomyArea = find.byKey(
+        const ValueKey<String>('discoveryFilterTaxonomyArea'),
+      );
+      final expandedScrollExtent =
+          controller.scrollController.position.maxScrollExtent;
+      controller.scrollController.jumpTo(expandedScrollExtent);
+      await tester.pumpAndSettle();
+      expect(panelToggle.hitTestable(), findsOneWidget);
+      expect(taxonomyArea.hitTestable(), findsNothing);
+      expect(controller.isDiscoveryFilterPanelVisibleStreamValue.value, isTrue);
+      final pinnedToggleBounds = tester.getRect(panelToggle);
+      final requestsBeforeCollapse = repository.pageRequests.length;
+      await tester.tap(panelToggle);
+      await tester.pumpAndSettle();
+      expect(
+        controller.scrollController.position.maxScrollExtent,
+        lessThan(expandedScrollExtent),
+      );
+      await tester.tap(panelToggle);
+      await tester.pumpAndSettle();
+      expect(repository.pageRequests, hasLength(requestsBeforeCollapse));
+      final viewport = tester.getRect(find.byType(CustomScrollView));
+      expect(
+        tester
+            .getRect(taxonomyArea)
+            .overlaps(
+              Rect.fromLTRB(
+                viewport.left,
+                tester.getRect(panelToggle).bottom,
+                viewport.right,
+                viewport.bottom,
+              ),
+            ),
+        isTrue,
+        reason: 'Reopening from deep scroll must reveal the nonsticky panel',
+      );
+      controller.scrollController.jumpTo(
+        controller.scrollController.position.maxScrollExtent,
+      );
+      await tester.pumpAndSettle();
+      expect(
+        tester.getRect(panelToggle).top,
+        closeTo(pinnedToggleBounds.top, 4),
       );
 
       await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
@@ -2132,7 +2186,8 @@ void main() {
         ),
       },
     );
-    final catalog = _accountProfileDiscoveryFilterCatalogWithMultipleTypes();
+    final catalog =
+        _accountProfileDiscoveryFilterCatalogWithTwoTaxonomyGroups();
     repository.fallbackRuntimeCatalog = catalog;
     final primaryFilter = catalog.filters.first;
     final controller = _buildDiscoveryController(
@@ -2154,6 +2209,83 @@ void main() {
     );
     controller.onDispose();
   });
+
+  for (var repetition = 0; repetition < 2; repetition++) {
+    test(
+      'discovery keeps a manual taxonomy collapse through a same-type catalog refresh (repetition ${repetition + 1})',
+      () async {
+        final catalog =
+            _accountProfileDiscoveryFilterCatalogWithTwoTaxonomyGroups();
+        final repository = _FakeAccountProfilesRepository(
+          pages: {
+            1: pagedAccountProfilesResultFromRaw(
+              profiles: const [],
+              hasMore: true,
+            ),
+            2: pagedAccountProfilesResultFromRaw(
+              profiles: const [],
+              hasMore: false,
+            ),
+          },
+        )..fallbackRuntimeCatalog = catalog;
+        final controller = _buildDiscoveryController(
+          accountProfilesRepository: repository,
+        );
+        await controller.init();
+        final selection = DiscoveryFilterSelection(
+          primaryKeys: {catalog.filters.single.key},
+        );
+        final refreshedCatalog =
+            _accountProfileDiscoveryFilterCatalogWithTwoTaxonomyGroups(
+              taxonomyLabel: 'Updated taxonomy $repetition',
+            );
+        repository.fallbackRuntimeCatalog = refreshedCatalog;
+        final pendingResponse = Completer<void>();
+        repository.nextPageGate = pendingResponse;
+        final requestCount = repository.pageRequests.length;
+        try {
+          controller.setDiscoveryFilterSelection(selection);
+          await Future<void>.delayed(Duration.zero);
+          expect(repository.pageRequests, hasLength(requestCount + 1));
+          expect(pendingResponse.isCompleted, isFalse);
+          expect(
+            controller.isDiscoveryFilterPanelVisibleStreamValue.value,
+            isTrue,
+          );
+          controller.closeDiscoveryFilterPanel();
+
+          for (var trigger = 0; trigger < 4; trigger++) {
+            controller.setDiscoveryFilterSelection(selection);
+          }
+          await Future<void>.delayed(Duration.zero);
+          expect(repository.pageRequests, hasLength(requestCount + 1));
+          expect(
+            controller.isDiscoveryFilterPanelVisibleStreamValue.value,
+            isFalse,
+          );
+          expect(
+            controller.discoveryFilterSelectionStreamValue.value.primaryKeys,
+            selection.primaryKeys,
+          );
+
+          pendingResponse.complete();
+          await Future<void>.delayed(Duration.zero);
+          expect(
+            controller.discoveryFilterCatalogStreamValue.value.toJson(),
+            refreshedCatalog.toJson(),
+          );
+          expect(
+            controller.isDiscoveryFilterPanelVisibleStreamValue.value,
+            isFalse,
+          );
+        } finally {
+          if (!pendingResponse.isCompleted) pendingResponse.complete();
+          await Future<void>.delayed(Duration.zero);
+          controller.onDispose();
+        }
+      },
+    );
+  }
 
   test(
     'discovery restores persisted canonical filter selection before first fetch',
@@ -2513,7 +2645,9 @@ _accountProfileDiscoveryFilterCatalogWithMultipleTypes() {
 }
 
 DiscoveryFilterCatalog
-_accountProfileDiscoveryFilterCatalogWithTwoTaxonomyGroups() {
+_accountProfileDiscoveryFilterCatalogWithTwoTaxonomyGroups({
+  String? taxonomyLabel,
+}) {
   final filterKey = _fixtureFilterKey(1);
   final firstTaxonomyKey = _fixtureTaxonomyKey(1);
   final secondTaxonomyKey = _fixtureTaxonomyKey(2);
@@ -2536,7 +2670,7 @@ _accountProfileDiscoveryFilterCatalogWithTwoTaxonomyGroups() {
     taxonomyOptionsByKey: <String, DiscoveryFilterTaxonomyGroupOption>{
       firstTaxonomyKey: DiscoveryFilterTaxonomyGroupOption(
         key: firstTaxonomyKey,
-        label: _fixtureTaxonomyLabel(1),
+        label: taxonomyLabel ?? _fixtureTaxonomyLabel(1),
         terms: <DiscoveryFilterTaxonomyTermOption>[
           DiscoveryFilterTaxonomyTermOption(
             value: firstTaxonomyTermValue,
@@ -2764,6 +2898,7 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
   final bool filterRequestAgainstFixtures;
   final Map<String, Duration> queryDelayByQuery;
   DiscoveryFilterCatalog? fallbackRuntimeCatalog;
+  Completer<void>? nextPageGate;
   final List<String> toggleCalls = <String>[];
   final List<_PageRequest> pageRequests = <_PageRequest>[];
   final Map<String, AccountProfileComplete> _bySlug =
@@ -2812,6 +2947,9 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
         taxonomyFilters: normalizedTaxonomyFilters,
       ),
     );
+    final pageGate = nextPageGate;
+    nextPageGate = null;
+    if (pageGate != null) await pageGate.future;
     final queryDelay = queryDelayByQuery[normalizedQueryInput?.trim() ?? ''];
     if (queryDelay != null && queryDelay > Duration.zero) {
       await Future<void>.delayed(queryDelay);
@@ -3538,9 +3676,30 @@ AppData _buildAppData() {
         'label': 'Artist',
         'allowed_taxonomies': const [],
         'capabilities': {
-          'is_publicly_discoverable': true,
-          'is_favoritable': true,
-          'is_poi_enabled': false,
+          'is_publicly_discoverable': {
+            'configured': {'value': true, 'parameters': {}},
+            'effective': {'value': true, 'parameters': {}},
+          },
+          'is_favoritable': {
+            'configured': {'value': true, 'parameters': {}},
+            'effective': {'value': true, 'parameters': {}},
+          },
+          'location_policy': {
+            'configured': {'value': 'disabled', 'parameters': {}},
+            'effective': {'value': 'disabled', 'parameters': {}},
+          },
+          'is_map_poi_enabled': {
+            'configured': {'value': false, 'parameters': {}},
+            'effective': {'value': false, 'parameters': {}},
+          },
+          'is_physical_host_enabled': {
+            'configured': {'value': false, 'parameters': {}},
+            'effective': {'value': false, 'parameters': {}},
+          },
+          'is_reference_location_enabled': {
+            'configured': {'value': false, 'parameters': {}},
+            'effective': {'value': false, 'parameters': {}},
+          },
         },
       },
       {
@@ -3548,9 +3707,30 @@ AppData _buildAppData() {
         'label': 'Curator',
         'allowed_taxonomies': const [],
         'capabilities': {
-          'is_publicly_discoverable': false,
-          'is_favoritable': false,
-          'is_poi_enabled': false,
+          'is_publicly_discoverable': {
+            'configured': {'value': false, 'parameters': {}},
+            'effective': {'value': false, 'parameters': {}},
+          },
+          'is_favoritable': {
+            'configured': {'value': false, 'parameters': {}},
+            'effective': {'value': false, 'parameters': {}},
+          },
+          'location_policy': {
+            'configured': {'value': 'disabled', 'parameters': {}},
+            'effective': {'value': 'disabled', 'parameters': {}},
+          },
+          'is_map_poi_enabled': {
+            'configured': {'value': false, 'parameters': {}},
+            'effective': {'value': false, 'parameters': {}},
+          },
+          'is_physical_host_enabled': {
+            'configured': {'value': false, 'parameters': {}},
+            'effective': {'value': false, 'parameters': {}},
+          },
+          'is_reference_location_enabled': {
+            'configured': {'value': false, 'parameters': {}},
+            'effective': {'value': false, 'parameters': {}},
+          },
         },
       },
     ],
