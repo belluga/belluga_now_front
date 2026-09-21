@@ -305,7 +305,28 @@ class _FakeAppDataBackend implements AppDataBackendContract {
           'type': 'artist',
           'label': 'Artist',
           'allowed_taxonomies': [],
-          'capabilities': {'is_favoritable': true, 'is_poi_enabled': true},
+          'capabilities': {
+            'is_favoritable': {
+              'configured': {'value': true, 'parameters': {}},
+              'effective': {'value': true, 'parameters': {}},
+            },
+            'location_policy': {
+              'configured': {'value': 'required', 'parameters': {}},
+              'effective': {'value': 'required', 'parameters': {}},
+            },
+            'is_map_poi_enabled': {
+              'configured': {'value': true, 'parameters': {}},
+              'effective': {'value': true, 'parameters': {}},
+            },
+            'is_physical_host_enabled': {
+              'configured': {'value': true, 'parameters': {}},
+              'effective': {'value': true, 'parameters': {}},
+            },
+            'is_reference_location_enabled': {
+              'configured': {'value': true, 'parameters': {}},
+              'effective': {'value': true, 'parameters': {}},
+            },
+          },
         },
       ],
       'domains': const ['https://tenant.test'],

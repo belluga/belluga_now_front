@@ -7,6 +7,97 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   testWidgets(
+    'shows only the dirty metadata action and hides it when the draft reverts',
+    (tester) async {
+      await _pumpEditor(
+        tester,
+        groups: [
+          _group(
+            'group-1',
+            itemCount: 1,
+            title: 'Título salvo',
+            description: 'Descrição salva',
+          ),
+        ],
+        maxGroups: 2,
+        maxItems: 2,
+      );
+
+      const titleAction = Key('tenantAdminGalleryItemSaveTitle_group-1-item-0');
+      const descriptionAction = Key(
+        'tenantAdminGalleryItemSaveDescription_group-1-item-0',
+      );
+      expect(find.byKey(titleAction), findsNothing);
+      expect(find.byKey(descriptionAction), findsNothing);
+
+      final titleField = find.byKey(
+        const Key('tenantAdminGalleryItemTitle_group-1-item-0'),
+      );
+      await tester.enterText(titleField, 'Título novo');
+      await tester.pump();
+      expect(find.byKey(titleAction), findsOneWidget);
+      expect(find.byKey(descriptionAction), findsNothing);
+
+      await tester.enterText(titleField, 'Título salvo');
+      await tester.pump();
+      expect(find.byKey(titleAction), findsNothing);
+
+      final descriptionField = find.byKey(
+        const Key('tenantAdminGalleryItemDescription_group-1-item-0'),
+      );
+      await tester.enterText(descriptionField, 'Linha um\nLinha dois');
+      await tester.pump();
+      expect(find.byKey(titleAction), findsNothing);
+      expect(find.byKey(descriptionAction), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'clicking each dirty action submits its own multiline metadata field',
+    (tester) async {
+      final titleCalls = <String>[];
+      final descriptionCalls = <String>[];
+      await _pumpEditor(
+        tester,
+        groups: [_group('group-1', itemCount: 1)],
+        maxGroups: 2,
+        maxItems: 2,
+        onTitleChanged: (groupId, itemId, title) async {
+          titleCalls.add(title);
+        },
+        onDescriptionChanged: (groupId, itemId, description) async {
+          descriptionCalls.add(description);
+        },
+      );
+
+      final titleField = find.byKey(
+        const Key('tenantAdminGalleryItemTitle_group-1-item-0'),
+      );
+      await tester.enterText(titleField, 'Título explícito');
+      await tester.pump();
+      await tester.tap(
+        find.byKey(const Key('tenantAdminGalleryItemSaveTitle_group-1-item-0')),
+      );
+      await tester.pump();
+
+      final descriptionField = find.byKey(
+        const Key('tenantAdminGalleryItemDescription_group-1-item-0'),
+      );
+      await tester.enterText(descriptionField, 'Primeira linha\nSegunda linha');
+      await tester.pump();
+      await tester.tap(
+        find.byKey(
+          const Key('tenantAdminGalleryItemSaveDescription_group-1-item-0'),
+        ),
+      );
+      await tester.pump();
+
+      expect(titleCalls, ['Título explícito']);
+      expect(descriptionCalls, ['Primeira linha\nSegunda linha']);
+    },
+  );
+
+  testWidgets(
     'item editor submits and clears title independently from description',
     (tester) async {
       final titleCalls = <List<String>>[];
@@ -32,6 +123,7 @@ void main() {
       );
 
       await tester.enterText(titleField, 'Um minuto na praia');
+      await tester.pump();
       await tester.testTextInput.receiveAction(TextInputAction.done);
       await tester.pump();
       await tester.enterText(titleField, '');
@@ -359,7 +451,11 @@ void main() {
             matching: find.byType(EditableText),
           ),
         );
-        expect(field.onSubmitted, isNotNull, reason: key);
+        expect(
+          field.onSubmitted,
+          key.contains('GroupSubtitle') ? isNotNull : isNull,
+          reason: key,
+        );
       }
       expect(
         _button(
@@ -416,6 +512,46 @@ void main() {
       expect(_iconButton(tester, 'Remover foto').onPressed, isNotNull);
     },
   );
+
+  testWidgets(
+    'saving one metadata field disables both actions but marks only that field',
+    (tester) async {
+      await _pumpEditor(
+        tester,
+        groups: [_group('group-1', itemCount: 1, title: 'Título salvo')],
+        maxGroups: 2,
+        maxItems: 2,
+        busy: true,
+        savingFieldPath: 'group.group-1.item.group-1-item-0.title',
+      );
+
+      await tester.enterText(
+        find.byKey(const Key('tenantAdminGalleryItemTitle_group-1-item-0')),
+        'Título novo',
+      );
+      await tester.enterText(
+        find.byKey(
+          const Key('tenantAdminGalleryItemDescription_group-1-item-0'),
+        ),
+        'Descrição nova',
+      );
+      await tester.pump();
+
+      final titleButton = tester.widget<OutlinedButton>(
+        find.byKey(const Key('tenantAdminGalleryItemSaveTitle_group-1-item-0')),
+      );
+      final descriptionButton = tester.widget<OutlinedButton>(
+        find.byKey(
+          const Key('tenantAdminGalleryItemSaveDescription_group-1-item-0'),
+        ),
+      );
+      expect(titleButton.onPressed, isNull);
+      expect(descriptionButton.onPressed, isNull);
+      expect(find.text('Salvando título'), findsOneWidget);
+      expect(find.text('Salvando descrição'), findsNothing);
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    },
+  );
 }
 
 Future<void> _pumpEditor(
@@ -424,16 +560,20 @@ Future<void> _pumpEditor(
   required int maxGroups,
   required int maxItems,
   bool busy = false,
+  String? savingFieldPath,
   Map<String, String> fieldErrors = const {},
   String? operationError,
   ValueNotifier<Map<String, String>>? fieldErrorsNotifier,
   Future<void> Function(String groupId, String itemId, String title)?
   onTitleChanged,
+  Future<void> Function(String groupId, String itemId, String description)?
+  onDescriptionChanged,
 }) async {
   await tester.binding.setSurfaceSize(const Size(1200, 2000));
   addTearDown(() => tester.binding.setSurfaceSize(null));
   Future<void> done([Object? _, Object? _, Object? _]) async {}
-  final inputValues = <String, String>{};
+  final inputValues = ValueNotifier<Map<String, String>>(<String, String>{});
+  addTearDown(inputValues.dispose);
 
   Widget editor(Map<String, String> errors) =>
       TenantAdminAccountProfileGalleryEditor(
@@ -441,11 +581,17 @@ Future<void> _pumpEditor(
         maxGroups: maxGroups,
         maxItemsPerGallery: maxItems,
         busy: busy,
+        savingFieldPath: savingFieldPath,
         fieldErrors: errors,
         operationError: operationError,
         resolveInputValue: (fieldPath, authoritativeValue) =>
-            inputValues[fieldPath] ?? authoritativeValue,
-        onInputChanged: (fieldPath, value) => inputValues[fieldPath] = value,
+            inputValues.value[fieldPath] ?? authoritativeValue,
+        onInputChanged: (fieldPath, value) {
+          inputValues.value = <String, String>{
+            ...inputValues.value,
+            fieldPath: value,
+          };
+        },
         onAddGroup: done,
         onRenameGroup: (groupId, subtitle) => done(),
         onMoveGroup: (groupId, delta) => done(),
@@ -456,19 +602,23 @@ Future<void> _pumpEditor(
         onMoveItem: (groupId, itemId, delta) => done(),
         onRemoveItem: (groupId, itemId) => done(),
         onTitleChanged: onTitleChanged ?? (groupId, itemId, title) => done(),
-        onDescriptionChanged: (groupId, itemId, description) => done(),
+        onDescriptionChanged:
+            onDescriptionChanged ?? (groupId, itemId, description) => done(),
       );
 
   await tester.pumpWidget(
     MaterialApp(
       home: Scaffold(
         body: SingleChildScrollView(
-          child: fieldErrorsNotifier == null
-              ? editor(fieldErrors)
-              : ValueListenableBuilder<Map<String, String>>(
-                  valueListenable: fieldErrorsNotifier,
-                  builder: (context, errors, _) => editor(errors),
-                ),
+          child: ValueListenableBuilder<Map<String, String>>(
+            valueListenable: inputValues,
+            builder: (context, _, _) => fieldErrorsNotifier == null
+                ? editor(fieldErrors)
+                : ValueListenableBuilder<Map<String, String>>(
+                    valueListenable: fieldErrorsNotifier,
+                    builder: (context, errors, _) => editor(errors),
+                  ),
+          ),
         ),
       ),
     ),

@@ -7245,7 +7245,16 @@ AppData _buildAppData() {
             'color': '#FF3355',
             'icon_color': '#FFFFFF',
           },
-          'capabilities': {'has_events': true, 'is_favoritable': true},
+          'capabilities': {
+            'has_events': {
+              'configured': {'value': true, 'parameters': {}},
+              'effective': {'value': true, 'parameters': {}},
+            },
+            'is_favoritable': {
+              'configured': {'value': true, 'parameters': {}},
+              'effective': {'value': true, 'parameters': {}},
+            },
+          },
         },
         {
           'type': 'restaurant',
@@ -7257,7 +7266,28 @@ AppData _buildAppData() {
             'color': '#3355FF',
             'icon_color': '#FFFFFF',
           },
-          'capabilities': {'is_poi_enabled': true, 'is_favoritable': true},
+          'capabilities': {
+            'location_policy': {
+              'configured': {'value': 'required', 'parameters': {}},
+              'effective': {'value': 'required', 'parameters': {}},
+            },
+            'is_map_poi_enabled': {
+              'configured': {'value': true, 'parameters': {}},
+              'effective': {'value': true, 'parameters': {}},
+            },
+            'is_physical_host_enabled': {
+              'configured': {'value': true, 'parameters': {}},
+              'effective': {'value': true, 'parameters': {}},
+            },
+            'is_reference_location_enabled': {
+              'configured': {'value': true, 'parameters': {}},
+              'effective': {'value': true, 'parameters': {}},
+            },
+            'is_favoritable': {
+              'configured': {'value': true, 'parameters': {}},
+              'effective': {'value': true, 'parameters': {}},
+            },
+          },
         },
       ],
       'theme_data_settings': const {

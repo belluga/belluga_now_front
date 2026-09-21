@@ -3,6 +3,7 @@ import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/support/tenant_admin_safe_back.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/presentation/tenant_admin/profile_types/controllers/tenant_admin_profile_types_controller.dart';
+import 'package:belluga_now/presentation/tenant_admin/profile_types/tenant_admin_capability_domain_presentation.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_form_value_utils.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_field_edit_sheet.dart';
 import 'package:flutter/material.dart';
@@ -122,23 +123,10 @@ class _TenantAdminProfileTypeDetailScreenState
       streamValue: _controller.detailTypeStreamValue,
       builder: (context, detailDefinition) {
         final definition = detailDefinition ?? widget.definition;
-        final capabilities = <String>[
-          if (definition.capabilities.isQueryable) 'Consultável',
-          if (definition.capabilities.isPubliclyNavigable) 'Página pública',
-          if (definition.capabilities.isPubliclyDiscoverable)
-            'Descoberta pública',
-          if (definition.capabilities.isFavoritable) 'Favoritavel',
-          if (definition.capabilities.isPoiEnabled) 'POI habilitado',
-          if (definition.capabilities.hasBio) 'Bio',
-          if (definition.capabilities.hasTaxonomies) 'Taxonomias',
-          if (definition.capabilities.hasAvatar) 'Avatar',
-          if (definition.capabilities.hasCover) 'Capa',
-          if (definition.capabilities.hasEvents) 'Agenda',
-          if (definition.capabilities.hasGallery) 'Galeria',
-          if (definition.capabilities.hasNestedProfileGroups) 'Abas vinculadas',
-          if (definition.capabilities.hasContactChannels) 'Contato por canais',
-          if (definition.capabilities.hasExternalLinks) 'Links externos',
-        ];
+        final capabilities = definition.capabilities.entries
+            .where((entry) => entry.effective?.booleanValue == true)
+            .map((entry) => tenantAdminCapabilityLabel(entry.key))
+            .toList(growable: false);
 
         return StreamValueBuilder<bool>(
           streamValue: _controller.detailSavingStreamValue,

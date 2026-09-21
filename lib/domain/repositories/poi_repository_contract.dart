@@ -11,7 +11,6 @@ import 'package:belluga_now/domain/map/value_objects/poi_positive_int_value.dart
 import 'package:belluga_now/domain/map/value_objects/poi_reference_type_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_stack_key_value.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
-import 'package:belluga_now/domain/static_assets/public_static_asset_model.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 abstract class PoiRepositoryContract {
@@ -64,5 +63,4 @@ abstract class PoiRepositoryContract {
 
   AccountProfileComplete? hydratedAccountProfileForPoi(CityPoiModel poi);
   EventModel? hydratedEventForPoi(CityPoiModel poi);
-  PublicStaticAssetModel? hydratedStaticAssetForPoi(CityPoiModel poi);
 }

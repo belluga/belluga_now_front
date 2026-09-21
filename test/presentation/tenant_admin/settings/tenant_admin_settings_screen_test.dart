@@ -19,7 +19,6 @@ import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_re
 import 'package:belluga_now/domain/repositories/tenant_admin_discovery_filter_rule_catalog_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_settings_repository_contract.dart';
-import 'package:belluga_now/domain/repositories/tenant_admin_static_assets_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_external_image_proxy_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_location_selection_contract.dart';
@@ -30,7 +29,6 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_settings.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms_by_taxonomy_id.dart';
@@ -1200,9 +1198,6 @@ void main() {
               _FakeDiscoveryFilterAccountProfilesRepository(
                 profileTypes: const <TenantAdminProfileTypeDefinition>[],
               ),
-          staticAssetsRepository: _FakeDiscoveryFilterStaticAssetsRepository(
-            staticTypes: const <TenantAdminStaticProfileTypeDefinition>[],
-          ),
           taxonomiesRepository: taxonomiesRepository,
           eventsRepository: _FakeDiscoveryFilterEventsRepository(
             allowedTaxonomies: ['genre', 'cuisine'],
@@ -1254,7 +1249,6 @@ void main() {
         ruleCatalogRepository: TenantAdminDiscoveryFilterRuleCatalogRepository(
           accountProfilesRepository:
               _FakeDiscoveryFilterAccountProfilesRepository(),
-          staticAssetsRepository: _FakeDiscoveryFilterStaticAssetsRepository(),
           taxonomiesRepository: taxonomiesRepository,
           eventsRepository: _FakeDiscoveryFilterEventsRepository(
             allowedTaxonomies: allowedTaxonomies,
@@ -1433,7 +1427,7 @@ void main() {
               labelValue: _requiredText('Assets'),
               imageUriValue: _optionalUrl(imageUri),
               query: TenantAdminDiscoveryFilterQuery(
-                entityValues: [_token('static_asset')],
+                entityValues: [_token('account_profile')],
               ),
             ),
           ]),
@@ -3591,24 +3585,6 @@ class _FakeDiscoveryFilterAccountProfilesRepository
   @override
   Future<List<TenantAdminProfileTypeDefinition>> fetchProfileTypes() async {
     return profileTypes;
-  }
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
-class _FakeDiscoveryFilterStaticAssetsRepository
-    extends TenantAdminStaticAssetsRepositoryContract {
-  _FakeDiscoveryFilterStaticAssetsRepository({
-    this.staticTypes = const <TenantAdminStaticProfileTypeDefinition>[],
-  });
-
-  final List<TenantAdminStaticProfileTypeDefinition> staticTypes;
-
-  @override
-  Future<List<TenantAdminStaticProfileTypeDefinition>>
-  fetchStaticProfileTypes() async {
-    return staticTypes;
   }
 
   @override

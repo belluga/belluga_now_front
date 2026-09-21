@@ -9,8 +9,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('tenant admin current back policy pops when history exists',
-      (tester) async {
+  testWidgets('tenant admin current back policy pops when history exists', (
+    tester,
+  ) async {
     final router = _RecordingStackRouter(canPopResult: true);
     late RouteBackPolicy policy;
 
@@ -39,85 +40,116 @@ void main() {
   });
 
   testWidgets(
-      'tenant admin current back policy falls back to section root when no history exists',
-      (tester) async {
-    final router = _RecordingStackRouter(canPopResult: false);
-    late RouteBackPolicy policy;
+    'tenant admin current back policy respects explicit fallback override',
+    (tester) async {
+      final router = _RecordingStackRouter(canPopResult: false);
+      late RouteBackPolicy policy;
 
-    await tester.pumpWidget(
-      _buildPolicyHarness(
-        router: router,
-        routeData: _buildRouteData(
+      await tester.pumpWidget(
+        _buildPolicyHarness(
           router: router,
-          routeName: TenantAdminStaticAssetDetailRoute.name,
-          fullPath: '/admin/assets/asset-1',
-          meta: canonicalRouteMeta(
-            family: CanonicalRouteFamily.tenantAdminAssetsInternal,
-            chromeMode: RouteChromeMode.fullscreen,
+          routeData: _buildRouteData(
+            router: router,
+            routeName: TenantAdminLocationPickerRoute.name,
+            fullPath: '/admin/accounts/location-picker',
+            meta: canonicalRouteMeta(
+              family: CanonicalRouteFamily.tenantAdminAccountsInternal,
+              chromeMode: RouteChromeMode.fullscreen,
+            ),
           ),
+          fallbackRoute: const TenantAdminSettingsLocalPreferencesRoute(),
+          onPolicyReady: (value) => policy = value,
         ),
-        onPolicyReady: (value) => policy = value,
-      ),
-    );
+      );
 
-    policy.handleBack();
-    await tester.pump();
+      policy.handleBack();
+      await tester.pump();
 
-    expect(router.canPopCallCount, 1);
-    expect(router.popCallCount, 0);
-    expect(router.replacedRoute, isNotNull);
-    expect(
-      router.replacedRoute?.routeName,
-      TenantAdminStaticAssetsListRoute.name,
-    );
-  });
+      expect(router.canPopCallCount, 1);
+      expect(router.popCallCount, 0);
+      expect(router.replacedRoute, isNotNull);
+      expect(
+        router.replacedRoute?.routeName,
+        TenantAdminSettingsLocalPreferencesRoute.name,
+      );
+    },
+  );
 
   testWidgets(
-      'tenant admin current back policy respects explicit fallback override',
-      (tester) async {
-    final router = _RecordingStackRouter(canPopResult: false);
-    late RouteBackPolicy policy;
+    'tenant admin current back policy falls back safely without RouteDataScope',
+    (tester) async {
+      final router = _RecordingStackRouter(canPopResult: false);
+      late RouteBackPolicy policy;
 
-    await tester.pumpWidget(
-      _buildPolicyHarness(
-        router: router,
-        routeData: _buildRouteData(
-          router: router,
-          routeName: TenantAdminLocationPickerRoute.name,
-          fullPath: '/admin/accounts/location-picker',
-          meta: canonicalRouteMeta(
-            family: CanonicalRouteFamily.tenantAdminAccountsInternal,
-            chromeMode: RouteChromeMode.fullscreen,
+      await tester.pumpWidget(
+        StackRouterScope(
+          controller: router,
+          stateHash: 0,
+          child: MaterialApp(
+            home: Builder(
+              builder: (context) {
+                policy = buildTenantAdminCurrentRouteBackPolicy(context);
+                return const SizedBox.shrink();
+              },
+            ),
           ),
         ),
-        fallbackRoute: const TenantAdminSettingsLocalPreferencesRoute(),
-        onPolicyReady: (value) => policy = value,
-      ),
-    );
+      );
 
-    policy.handleBack();
-    await tester.pump();
+      policy.handleBack();
+      await tester.pump();
 
-    expect(router.canPopCallCount, 1);
-    expect(router.popCallCount, 0);
-    expect(router.replacedRoute, isNotNull);
-    expect(
-      router.replacedRoute?.routeName,
-      TenantAdminSettingsLocalPreferencesRoute.name,
-    );
-  });
+      expect(router.canPopCallCount, 1);
+      expect(router.popCallCount, 0);
+      expect(router.replaceAllRoutes, hasLength(1));
+      expect(
+        router.replaceAllRoutes.single.single.routeName,
+        TenantAdminDashboardRoute.name,
+      );
+    },
+  );
 
   testWidgets(
-      'tenant admin current back policy falls back safely without RouteDataScope',
-      (tester) async {
-    final router = _RecordingStackRouter(canPopResult: false);
-    late RouteBackPolicy policy;
+    'tenant admin perform back uses the same compat fallback without RouteDataScope',
+    (tester) async {
+      final router = _RecordingStackRouter(canPopResult: false);
+      late BuildContext capturedContext;
 
-    await tester.pumpWidget(
-      StackRouterScope(
-        controller: router,
-        stateHash: 0,
-        child: MaterialApp(
+      await tester.pumpWidget(
+        StackRouterScope(
+          controller: router,
+          stateHash: 0,
+          child: MaterialApp(
+            home: Builder(
+              builder: (context) {
+                capturedContext = context;
+                return const SizedBox.shrink();
+              },
+            ),
+          ),
+        ),
+      );
+
+      performTenantAdminCurrentRouteBack(capturedContext);
+      await tester.pump();
+
+      expect(router.canPopCallCount, 1);
+      expect(router.popCallCount, 0);
+      expect(router.replaceAllRoutes, hasLength(1));
+      expect(
+        router.replaceAllRoutes.single.single.routeName,
+        TenantAdminDashboardRoute.name,
+      );
+    },
+  );
+
+  testWidgets(
+    'tenant admin current back policy is a no-op compat policy without AutoRoute scopes',
+    (tester) async {
+      late RouteBackPolicy policy;
+
+      await tester.pumpWidget(
+        MaterialApp(
           home: Builder(
             builder: (context) {
               policy = buildTenantAdminCurrentRouteBackPolicy(context);
@@ -125,73 +157,12 @@ void main() {
             },
           ),
         ),
-      ),
-    );
+      );
 
-    policy.handleBack();
-    await tester.pump();
-
-    expect(router.canPopCallCount, 1);
-    expect(router.popCallCount, 0);
-    expect(router.replaceAllRoutes, hasLength(1));
-    expect(
-      router.replaceAllRoutes.single.single.routeName,
-      TenantAdminDashboardRoute.name,
-    );
-  });
-
-  testWidgets(
-      'tenant admin perform back uses the same compat fallback without RouteDataScope',
-      (tester) async {
-    final router = _RecordingStackRouter(canPopResult: false);
-    late BuildContext capturedContext;
-
-    await tester.pumpWidget(
-      StackRouterScope(
-        controller: router,
-        stateHash: 0,
-        child: MaterialApp(
-          home: Builder(
-            builder: (context) {
-              capturedContext = context;
-              return const SizedBox.shrink();
-            },
-          ),
-        ),
-      ),
-    );
-
-    performTenantAdminCurrentRouteBack(capturedContext);
-    await tester.pump();
-
-    expect(router.canPopCallCount, 1);
-    expect(router.popCallCount, 0);
-    expect(router.replaceAllRoutes, hasLength(1));
-    expect(
-      router.replaceAllRoutes.single.single.routeName,
-      TenantAdminDashboardRoute.name,
-    );
-  });
-
-  testWidgets(
-      'tenant admin current back policy is a no-op compat policy without AutoRoute scopes',
-      (tester) async {
-    late RouteBackPolicy policy;
-
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Builder(
-          builder: (context) {
-            policy = buildTenantAdminCurrentRouteBackPolicy(context);
-            return const SizedBox.shrink();
-          },
-        ),
-      ),
-    );
-
-    expect(policy.surfaceKind, BackSurfaceKind.internalOnly);
-    expect(policy.handleBack, returnsNormally);
-  });
+      expect(policy.surfaceKind, BackSurfaceKind.internalOnly);
+      expect(policy.handleBack, returnsNormally);
+    },
+  );
 }
 
 Widget _buildPolicyHarness({
@@ -229,11 +200,7 @@ RouteData _buildRouteData({
   required Map<String, dynamic> meta,
 }) {
   return RouteData(
-    route: _FakeRouteMatch(
-      name: routeName,
-      fullPath: fullPath,
-      meta: meta,
-    ),
+    route: _FakeRouteMatch(name: routeName, fullPath: fullPath, meta: meta),
     router: router,
     stackKey: const ValueKey<String>('stack'),
     pendingChildren: const <RouteMatch>[],
@@ -308,8 +275,7 @@ class _FakeRouteMatch extends Fake implements RouteMatch {
     required this.fullPath,
     required this.meta,
     PageRouteInfo<dynamic>? pageRouteInfo,
-  }) : pageRouteInfo =
-          pageRouteInfo ?? const TenantAdminAccountsListRoute();
+  }) : pageRouteInfo = pageRouteInfo ?? const TenantAdminAccountsListRoute();
 
   @override
   final String name;

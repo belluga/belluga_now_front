@@ -6,6 +6,8 @@ import 'package:belluga_now/domain/map/value_objects/city_poi_id_value.dart';
 import 'package:belluga_now/domain/map/value_objects/city_poi_name_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_boolean_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_priority_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_reference_id_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_reference_type_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_tag_value.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:value_object_pattern/domain/value_objects/html_content_value.dart';
@@ -19,6 +21,8 @@ class EventPoiModel extends CityPoiModel {
     required super.addressValue,
     required super.coordinate,
     required super.priorityValue,
+    required super.refTypeValue,
+    required super.refIdValue,
     super.tagValues,
   }) : super(
           category: CityPoiCategory.culture,
@@ -55,6 +59,8 @@ class EventPoiModel extends CityPoiModel {
 
     final priorityValue = PoiPriorityValue()
       ..parse(_priorityForEvent(event).toString());
+    final refTypeValue = PoiReferenceTypeValue()..parse('event');
+    final refIdValue = PoiReferenceIdValue()..parse(idSource);
 
     final tagValues = _buildTagValues(event);
 
@@ -66,6 +72,8 @@ class EventPoiModel extends CityPoiModel {
       addressValue: addressValue,
       coordinate: coordinate,
       priorityValue: priorityValue,
+      refTypeValue: refTypeValue,
+      refIdValue: refIdValue,
       tagValues: tagValues,
     );
   }

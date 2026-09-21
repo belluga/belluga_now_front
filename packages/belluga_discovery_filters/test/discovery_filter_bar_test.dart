@@ -4,6 +4,97 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  testWidgets('separates compact primary controls from taxonomy content',
+      (tester) async {
+    await tester.pumpWidget(
+      _Harness(
+        child: DiscoveryFilterBar(
+          catalog: _catalog,
+          selection: const DiscoveryFilterSelection(
+            primaryKeys: <String>{'events'},
+          ),
+          policy: const DiscoveryFilterPolicy(),
+          showTaxonomyGroups: false,
+          showCompactControls: true,
+          isTaxonomyPanelExpanded: false,
+          onTaxonomyPanelToggled: () {},
+          onSelectionChanged: (_) {},
+        ),
+      ),
+    );
+
+    expect(find.byKey(const ValueKey<String>('discoveryFilterPanelToggle')),
+        findsOneWidget);
+    expect(find.byKey(const ValueKey<String>('discoveryFilterTaxonomyArea')),
+        findsNothing);
+    expect(find.text('Filtros (1)'), findsOneWidget);
+  });
+
+  testWidgets(
+      'compact taxonomy toggle exposes collapsed and expanded semantics',
+      (tester) async {
+    final semantics = tester.ensureSemantics();
+    const toggleKey = ValueKey<String>('discoveryFilterPanelToggle');
+
+    try {
+      await tester.pumpWidget(
+        _Harness(
+          child: DiscoveryFilterBar(
+            catalog: _catalog,
+            selection: const DiscoveryFilterSelection(
+              primaryKeys: <String>{'events'},
+            ),
+            policy: const DiscoveryFilterPolicy(),
+            showTaxonomyGroups: false,
+            showCompactControls: true,
+            isTaxonomyPanelExpanded: false,
+            onTaxonomyPanelToggled: () {},
+            onSelectionChanged: (_) {},
+          ),
+        ),
+      );
+
+      expect(
+        tester
+            .getSemantics(find.byKey(toggleKey))
+            .getSemanticsData()
+            .flagsCollection
+            .isExpanded
+            .toBoolOrNull(),
+        isFalse,
+      );
+
+      await tester.pumpWidget(
+        _Harness(
+          child: DiscoveryFilterBar(
+            catalog: _catalog,
+            selection: const DiscoveryFilterSelection(
+              primaryKeys: <String>{'events'},
+            ),
+            policy: const DiscoveryFilterPolicy(),
+            showTaxonomyGroups: true,
+            showCompactControls: true,
+            isTaxonomyPanelExpanded: true,
+            onTaxonomyPanelToggled: () {},
+            onSelectionChanged: (_) {},
+          ),
+        ),
+      );
+
+      expect(
+        tester
+            .getSemantics(find.byKey(toggleKey))
+            .getSemanticsData()
+            .flagsCollection
+            .isExpanded
+            .toBoolOrNull(),
+        isTrue,
+      );
+    } finally {
+      semantics.dispose();
+    }
+  });
+
   testWidgets('single primary keeps inactive icon chips and selected label',
       (tester) async {
     DiscoveryFilterSelection? changedSelection;

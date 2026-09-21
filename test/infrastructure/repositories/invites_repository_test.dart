@@ -6,6 +6,7 @@ import 'package:belluga_now/domain/invites/value_objects/invite_account_profile_
 import 'package:belluga_now/domain/invites/value_objects/invite_contact_group_id_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_contact_group_name_value.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/invite_contact_region_code_value.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/domain/user/user_profile_contract.dart';
@@ -22,9 +23,11 @@ import 'package:belluga_now/infrastructure/dal/dao/invites/invites_backend_reque
 import 'package:belluga_now/infrastructure/dal/dto/invites/invite_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/invites/invite_realtime_delta_dto.dart';
 import 'package:belluga_now/infrastructure/repositories/invites_repository.dart';
+import 'package:belluga_now/infrastructure/repositories/user_events_repository.dart';
 import 'package:belluga_now/infrastructure/dal/dao/invites/invite_contact_import_cache_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/invites/invite_contact_match_cache_dto.dart';
 import 'package:belluga_now/infrastructure/services/invites_backend_contract.dart';
+import 'package:belluga_now/infrastructure/services/user_events_backend_contract.dart';
 import 'package:belluga_now/testing/domain_factories.dart';
 import 'package:crypto/crypto.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -344,6 +347,59 @@ void main() {
     },
   );
 
+  test(
+    'acceptInvite awaits confirmed-occurrence refresh and publishes its ids before returning',
+    () async {
+      final backend = _HeldConfirmedOccurrencesBackend();
+      final userEvents = UserEventsRepository(
+        scheduleRepository: _InviteRepositoryScheduleFake(),
+        backend: backend,
+      );
+      final repository = InvitesRepository(
+        backend: _FakeInvitesBackend(),
+        userEventsRepositoryResolver: () => userEvents,
+      );
+      var returned = false;
+      late Future<dynamic> acceptance;
+      try {
+        acceptance = repository
+            .acceptInvite(
+              invitesRepoString('invite-1', defaultValue: '', isRequired: true),
+            )
+            .then((value) {
+              returned = true;
+              return value;
+            });
+        await backend.started.future;
+
+        expect(backend.fetchCalls, 1);
+        expect(returned, isFalse);
+
+        backend.response.complete(const {
+          'confirmed_occurrence_ids': ['occurrence-1'],
+        });
+        final result = await acceptance;
+
+        expect(result.isAccepted, isTrue);
+        expect(returned, isTrue);
+        expect(backend.mutationCalls, 0);
+        expect(
+          userEvents.confirmedOccurrenceIdsStream.value
+              .map((id) => id.value)
+              .toSet(),
+          {'occurrence-1'},
+        );
+      } finally {
+        if (!backend.response.isCompleted) {
+          backend.response.complete(const {
+            'confirmed_occurrence_ids': ['occurrence-1'],
+          });
+        }
+        await acceptance;
+      }
+    },
+  );
+
   test('acceptInviteByCode routes to share accept endpoint', () async {
     final backend = _FakeInvitesBackend(
       acceptResponse: {
@@ -367,6 +423,58 @@ void main() {
     expect(backend.acceptShareCodeCalls, ['ABCD1234']);
     expect(backend.acceptInviteCalls, isEmpty);
   });
+
+  test(
+    'acceptInviteByCode awaits confirmed-occurrence refresh and publishes its ids before returning',
+    () async {
+      final backend = _HeldConfirmedOccurrencesBackend();
+      final userEvents = UserEventsRepository(
+        scheduleRepository: _InviteRepositoryScheduleFake(),
+        backend: backend,
+      );
+      final repository = InvitesRepository(
+        backend: _FakeInvitesBackend(),
+        userEventsRepositoryResolver: () => userEvents,
+      );
+      var returned = false;
+      late Future<dynamic> acceptance;
+      try {
+        acceptance = repository
+            .acceptInviteByCode(
+              invitesRepoString('SHARE-1', defaultValue: '', isRequired: true),
+            )
+            .then((value) {
+              returned = true;
+              return value;
+            });
+        await backend.started.future;
+
+        expect(backend.fetchCalls, 1);
+        expect(returned, isFalse);
+
+        backend.response.complete(const {
+          'confirmed_occurrence_ids': ['occurrence-share-1'],
+        });
+        await acceptance;
+
+        expect(returned, isTrue);
+        expect(backend.mutationCalls, 0);
+        expect(
+          userEvents.confirmedOccurrenceIdsStream.value
+              .map((id) => id.value)
+              .toSet(),
+          {'occurrence-share-1'},
+        );
+      } finally {
+        if (!backend.response.isCompleted) {
+          backend.response.complete(const {
+            'confirmed_occurrence_ids': ['occurrence-share-1'],
+          });
+        }
+        await acceptance;
+      }
+    },
+  );
 
   test(
     'materializeShareCode maps pending state from canonical payload',
@@ -1391,6 +1499,45 @@ class _FakeInviteContactImportCache
     entries.clear();
   }
 }
+
+class _HeldConfirmedOccurrencesBackend implements UserEventsBackendContract {
+  final response = Completer<Map<String, dynamic>>();
+  final started = Completer<void>();
+  int fetchCalls = 0;
+  int mutationCalls = 0;
+
+  @override
+  Future<Map<String, dynamic>> fetchConfirmedOccurrenceIds() {
+    fetchCalls += 1;
+    if (!started.isCompleted) {
+      started.complete();
+    }
+    return response.future;
+  }
+
+  @override
+  Future<Map<String, dynamic>> confirmAttendance({
+    required String eventId,
+    required String occurrenceId,
+  }) {
+    mutationCalls++;
+    throw StateError(
+      'Invite acceptance must not issue a second attendance mutation',
+    );
+  }
+
+  @override
+  Future<Map<String, dynamic>> unconfirmAttendance({
+    required String eventId,
+    required String occurrenceId,
+  }) {
+    mutationCalls++;
+    throw StateError('Invite acceptance must not cancel attendance');
+  }
+}
+
+class _InviteRepositoryScheduleFake extends Fake
+    implements ScheduleRepositoryContract {}
 
 class _FakeInvitesBackend implements InvitesBackendContract {
   _FakeInvitesBackend({

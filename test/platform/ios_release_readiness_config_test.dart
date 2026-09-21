@@ -47,6 +47,14 @@ void main() {
     );
     expect(plist, contains(r'$(BELLUGA_IOS_DISPLAY_NAME)'));
     expect(plist, contains(r'$(BELLUGA_IOS_BUNDLE_NAME)'));
+    expect(
+      plist,
+      contains(
+        RegExp(
+          r'<key>ITSAppUsesNonExemptEncryption</key>\s*<false\s*/>',
+        ),
+      ),
+    );
 
     expect(
       project,

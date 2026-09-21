@@ -27,7 +27,7 @@ CityPoiModel _buildPoi({
   required CityPoiCategory category,
   CityPoiVisual? visual,
   int stackCount = 1,
-  String refType = 'static',
+  String refType = 'account_profile',
   DateTime? timeStart,
   bool isHappeningNow = false,
 }) {
@@ -70,7 +70,10 @@ CityPoiModel _buildPoi({
 }
 
 CityPoiModel _buildPoiFromTransportPayload(Map<String, dynamic> payload) {
-  return CityPoiDTO.fromJson(payload).toDomain();
+  return CityPoiDTO.fromJson({
+    'ref_type': 'account_profile',
+    ...payload,
+  }).toDomain();
 }
 
 PoiIconSymbolValue _iconValue(String raw) {
@@ -110,10 +113,7 @@ void main() {
             child: SizedBox(
               width: 56,
               height: 56,
-              child: PoiMarker(
-                poi: poi,
-                isSelected: false,
-              ),
+              child: PoiMarker(poi: poi, isSelected: false),
             ),
           ),
         ),
@@ -142,10 +142,7 @@ void main() {
             child: SizedBox(
               width: 56,
               height: 56,
-              child: PoiMarker(
-                poi: poi,
-                isSelected: true,
-              ),
+              child: PoiMarker(poi: poi, isSelected: true),
             ),
           ),
         ),
@@ -155,21 +152,17 @@ void main() {
     final iconWidget = tester.widget<Icon>(find.byIcon(BooraIcons.restaurant));
     expect(iconWidget.color, Colors.white);
 
-    final markerContainer =
-        tester.widget<DecoratedBox>(find.byType(DecoratedBox).first);
-    final decoration = markerContainer.decoration as BoxDecoration;
-    expect(
-      decoration.color,
-      const Color(0xFF00AAFF).withValues(alpha: 0.92),
+    final markerContainer = tester.widget<DecoratedBox>(
+      find.byType(DecoratedBox).first,
     );
+    final decoration = markerContainer.decoration as BoxDecoration;
+    expect(decoration.color, const Color(0xFF00AAFF).withValues(alpha: 0.92));
   });
 
   testWidgets('uses single generic fallback icon when visual is absent', (
     tester,
   ) async {
-    final poi = _buildPoi(
-      category: CityPoiCategory.restaurant,
-    );
+    final poi = _buildPoi(category: CityPoiCategory.restaurant);
 
     await tester.pumpWidget(
       MaterialApp(
@@ -178,10 +171,7 @@ void main() {
             child: SizedBox(
               width: 56,
               height: 56,
-              child: PoiMarker(
-                poi: poi,
-                isSelected: false,
-              ),
+              child: PoiMarker(poi: poi, isSelected: false),
             ),
           ),
         ),
@@ -209,10 +199,7 @@ void main() {
             child: SizedBox(
               width: 56,
               height: 56,
-              child: PoiMarker(
-                poi: poi,
-                isSelected: false,
-              ),
+              child: PoiMarker(poi: poi, isSelected: false),
             ),
           ),
         ),
@@ -238,10 +225,7 @@ void main() {
             child: SizedBox(
               width: 72,
               height: 72,
-              child: PoiMarker(
-                poi: poi,
-                isSelected: false,
-              ),
+              child: PoiMarker(poi: poi, isSelected: false),
             ),
           ),
         ),
@@ -251,8 +235,9 @@ void main() {
     expect(find.text('AGORA'), findsOneWidget);
   });
 
-  testWidgets('renders start time badge for upcoming event marker',
-      (tester) async {
+  testWidgets('renders start time badge for upcoming event marker', (
+    tester,
+  ) async {
     final poi = _buildPoi(
       category: CityPoiCategory.culture,
       refType: 'event',
@@ -266,10 +251,7 @@ void main() {
             child: SizedBox(
               width: 72,
               height: 72,
-              child: PoiMarker(
-                poi: poi,
-                isSelected: false,
-              ),
+              child: PoiMarker(poi: poi, isSelected: false),
             ),
           ),
         ),
@@ -279,8 +261,9 @@ void main() {
     expect(find.text('18h'), findsOneWidget);
   });
 
-  testWidgets('keeps event time badge on one line when marker is narrow',
-      (tester) async {
+  testWidgets('keeps event time badge on one line when marker is narrow', (
+    tester,
+  ) async {
     final poi = _buildPoi(
       category: CityPoiCategory.culture,
       refType: 'event',
@@ -294,10 +277,7 @@ void main() {
             child: SizedBox(
               width: 24,
               height: 56,
-              child: PoiMarker(
-                poi: poi,
-                isSelected: false,
-              ),
+              child: PoiMarker(poi: poi, isSelected: false),
             ),
           ),
         ),
@@ -312,79 +292,75 @@ void main() {
     expect(timeTextSize.width, greaterThan(24));
   });
 
-  testWidgets(
-    'prefers valid override visual over poi visual',
-    (tester) async {
-      final poi = _buildPoi(
-        category: CityPoiCategory.culture,
-        visual: CityPoiVisual.icon(
-          iconValue: _iconValue('museum'),
-          colorHexValue: _hexColorValue('#11AA11'),
-        ),
-      );
+  testWidgets('prefers valid override visual over poi visual', (tester) async {
+    final poi = _buildPoi(
+      category: CityPoiCategory.culture,
+      visual: CityPoiVisual.icon(
+        iconValue: _iconValue('museum'),
+        colorHexValue: _hexColorValue('#11AA11'),
+      ),
+    );
 
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: Center(
-              child: SizedBox(
-                width: 56,
-                height: 56,
-                child: PoiMarker(
-                  poi: poi,
-                  isSelected: false,
-                  overrideVisual: CityPoiVisual.icon(
-                    iconValue: _iconValue('restaurant'),
-                    colorHexValue: _hexColorValue('#AA1111'),
-                  ),
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              width: 56,
+              height: 56,
+              child: PoiMarker(
+                poi: poi,
+                isSelected: false,
+                overrideVisual: CityPoiVisual.icon(
+                  iconValue: _iconValue('restaurant'),
+                  colorHexValue: _hexColorValue('#AA1111'),
                 ),
               ),
             ),
           ),
         ),
-      );
+      ),
+    );
 
-      expect(find.byIcon(BooraIcons.restaurant), findsOneWidget);
-      expect(find.byIcon(BooraIcons.museum), findsNothing);
-    },
-  );
+    expect(find.byIcon(BooraIcons.restaurant), findsOneWidget);
+    expect(find.byIcon(BooraIcons.museum), findsNothing);
+  });
 
-  testWidgets(
-    'falls back to poi visual when override visual is invalid',
-    (tester) async {
-      final poi = _buildPoi(
-        category: CityPoiCategory.culture,
-        visual: CityPoiVisual.icon(
-          iconValue: _iconValue('museum'),
-          colorHexValue: _hexColorValue('#11AA11'),
-        ),
-      );
+  testWidgets('falls back to poi visual when override visual is invalid', (
+    tester,
+  ) async {
+    final poi = _buildPoi(
+      category: CityPoiCategory.culture,
+      visual: CityPoiVisual.icon(
+        iconValue: _iconValue('museum'),
+        colorHexValue: _hexColorValue('#11AA11'),
+      ),
+    );
 
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: Center(
-              child: SizedBox(
-                width: 56,
-                height: 56,
-                child: PoiMarker(
-                  poi: poi,
-                  isSelected: false,
-                  overrideVisual: CityPoiVisual.icon(
-                    iconValue: PoiIconSymbolValue(),
-                    colorHexValue: _hexColorValue('#AA1111'),
-                  ),
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              width: 56,
+              height: 56,
+              child: PoiMarker(
+                poi: poi,
+                isSelected: false,
+                overrideVisual: CityPoiVisual.icon(
+                  iconValue: PoiIconSymbolValue(),
+                  colorHexValue: _hexColorValue('#AA1111'),
                 ),
               ),
             ),
           ),
         ),
-      );
+      ),
+    );
 
-      expect(find.byIcon(BooraIcons.museum), findsOneWidget);
-      expect(find.byIcon(BooraIcons.restaurant), findsNothing);
-    },
-  );
+    expect(find.byIcon(BooraIcons.museum), findsOneWidget);
+    expect(find.byIcon(BooraIcons.restaurant), findsNothing);
+  });
 
   testWidgets(
     'renders icon from transport payload without falling back to generic marker',
@@ -395,10 +371,7 @@ void main() {
         'description': 'Descricao',
         'address': 'Endereco',
         'category': 'restaurant',
-        'location': {
-          'lat': -20.0,
-          'lng': -40.0,
-        },
+        'location': {'lat': -20.0, 'lng': -40.0},
         'visual': {
           'mode': {'value': 'icon'},
           'icon': {'value': 'restaurant'},
@@ -414,10 +387,7 @@ void main() {
               child: SizedBox(
                 width: 56,
                 height: 56,
-                child: PoiMarker(
-                  poi: poi,
-                  isSelected: false,
-                ),
+                child: PoiMarker(poi: poi, isSelected: false),
               ),
             ),
           ),
@@ -429,97 +399,82 @@ void main() {
     },
   );
 
-  testWidgets(
-    'renders AGORA badge from transport happening-now payload',
-    (tester) async {
-      final poi = _buildPoiFromTransportPayload({
-        'id': 'poi-transport-now',
-        'name': 'Event Now',
-        'description': 'Descricao',
-        'address': 'Endereco',
-        'category': 'event',
-        'ref_type': 'event',
-        'ref_id': 'event-now',
-        'is_happening_now': true,
-        'time_start': '2026-04-07T18:00:00.000000Z',
-        'location': {
-          'lat': -20.0,
-          'lng': -40.0,
-        },
-        'visual': {
-          'mode': {'value': 'icon'},
-          'icon': {'value': 'music'},
-          'color': {'value': '#EB2528'},
-          'source': {'value': 'type_definition'},
-        },
-      });
+  testWidgets('renders AGORA badge from transport happening-now payload', (
+    tester,
+  ) async {
+    final poi = _buildPoiFromTransportPayload({
+      'id': 'poi-transport-now',
+      'name': 'Event Now',
+      'description': 'Descricao',
+      'address': 'Endereco',
+      'category': 'event',
+      'ref_type': 'event',
+      'ref_id': 'event-now',
+      'is_happening_now': true,
+      'time_start': '2026-04-07T18:00:00.000000Z',
+      'location': {'lat': -20.0, 'lng': -40.0},
+      'visual': {
+        'mode': {'value': 'icon'},
+        'icon': {'value': 'music'},
+        'color': {'value': '#EB2528'},
+        'source': {'value': 'type_definition'},
+      },
+    });
 
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: Center(
-              child: SizedBox(
-                width: 56,
-                height: 56,
-                child: PoiMarker(
-                  poi: poi,
-                  isSelected: false,
-                ),
-              ),
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              width: 56,
+              height: 56,
+              child: PoiMarker(poi: poi, isSelected: false),
             ),
           ),
         ),
-      );
+      ),
+    );
 
-      expect(find.text('AGORA'), findsOneWidget);
-      expect(find.text('18h'), findsNothing);
-    },
-  );
+    expect(find.text('AGORA'), findsOneWidget);
+    expect(find.text('18h'), findsNothing);
+  });
 
-  testWidgets(
-    'uses transport icon_color for icon glyph when provided',
-    (tester) async {
-      final poi = _buildPoiFromTransportPayload({
-        'id': 'poi-transport-2',
-        'name': 'Restaurante',
-        'description': 'Descricao',
-        'address': 'Endereco',
-        'category': 'restaurant',
-        'location': {
-          'lat': -20.0,
-          'lng': -40.0,
-        },
-        'visual': {
-          'mode': {'value': 'icon'},
-          'icon': {'value': 'restaurant'},
-          'color': {'value': '#111111'},
-          'icon_color': {'value': '#EB2528'},
-          'source': {'value': 'type_definition'},
-        },
-      });
+  testWidgets('uses transport icon_color for icon glyph when provided', (
+    tester,
+  ) async {
+    final poi = _buildPoiFromTransportPayload({
+      'id': 'poi-transport-2',
+      'name': 'Restaurante',
+      'description': 'Descricao',
+      'address': 'Endereco',
+      'category': 'restaurant',
+      'location': {'lat': -20.0, 'lng': -40.0},
+      'visual': {
+        'mode': {'value': 'icon'},
+        'icon': {'value': 'restaurant'},
+        'color': {'value': '#111111'},
+        'icon_color': {'value': '#EB2528'},
+        'source': {'value': 'type_definition'},
+      },
+    });
 
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: Center(
-              child: SizedBox(
-                width: 56,
-                height: 56,
-                child: PoiMarker(
-                  poi: poi,
-                  isSelected: false,
-                ),
-              ),
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              width: 56,
+              height: 56,
+              child: PoiMarker(poi: poi, isSelected: false),
             ),
           ),
         ),
-      );
+      ),
+    );
 
-      final iconWidget =
-          tester.widget<Icon>(find.byIcon(BooraIcons.restaurant));
-      expect(iconWidget.color, const Color(0xFFEB2528));
-    },
-  );
+    final iconWidget = tester.widget<Icon>(find.byIcon(BooraIcons.restaurant));
+    expect(iconWidget.color, const Color(0xFFEB2528));
+  });
 
   testWidgets(
     'renders marker visual from legacy payload without explicit mode',
@@ -530,10 +485,7 @@ void main() {
         'description': 'Descricao',
         'address': 'Endereco',
         'category': 'restaurant',
-        'location': {
-          'lat': -20.0,
-          'lng': -40.0,
-        },
+        'location': {'lat': -20.0, 'lng': -40.0},
         'poi_visual': {
           'icon': 'restaurant',
           'color': 'eb2528',
@@ -549,10 +501,7 @@ void main() {
               child: SizedBox(
                 width: 56,
                 height: 56,
-                child: PoiMarker(
-                  poi: poi,
-                  isSelected: false,
-                ),
+                child: PoiMarker(poi: poi, isSelected: false),
               ),
             ),
           ),
@@ -562,23 +511,18 @@ void main() {
       expect(find.byIcon(BooraIcons.restaurant), findsOneWidget);
       expect(find.byIcon(BooraIcons.local), findsNothing);
 
-      final markerContainer =
-          tester.widget<DecoratedBox>(find.byType(DecoratedBox).first);
-      final decoration = markerContainer.decoration as BoxDecoration;
-      expect(
-        decoration.color,
-        const Color(0xFFEB2528).withValues(alpha: 0.92),
+      final markerContainer = tester.widget<DecoratedBox>(
+        find.byType(DecoratedBox).first,
       );
+      final decoration = markerContainer.decoration as BoxDecoration;
+      expect(decoration.color, const Color(0xFFEB2528).withValues(alpha: 0.92));
     },
   );
 
   testWidgets('stack badge shows total count instead of plus delta', (
     tester,
   ) async {
-    final poi = _buildPoi(
-      category: CityPoiCategory.culture,
-      stackCount: 4,
-    );
+    final poi = _buildPoi(category: CityPoiCategory.culture, stackCount: 4);
 
     await tester.pumpWidget(
       MaterialApp(
@@ -587,10 +531,7 @@ void main() {
             child: SizedBox(
               width: 56,
               height: 56,
-              child: PoiMarker(
-                poi: poi,
-                isSelected: false,
-              ),
+              child: PoiMarker(poi: poi, isSelected: false),
             ),
           ),
         ),
@@ -604,9 +545,7 @@ void main() {
   testWidgets('shows loading badge while selected poi is hydrating', (
     tester,
   ) async {
-    final poi = _buildPoi(
-      category: CityPoiCategory.restaurant,
-    );
+    final poi = _buildPoi(category: CityPoiCategory.restaurant);
 
     await tester.pumpWidget(
       MaterialApp(
@@ -615,11 +554,7 @@ void main() {
             child: SizedBox(
               width: 56,
               height: 56,
-              child: PoiMarker(
-                poi: poi,
-                isSelected: false,
-                isLoading: true,
-              ),
+              child: PoiMarker(poi: poi, isSelected: false, isLoading: true),
             ),
           ),
         ),

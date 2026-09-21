@@ -618,7 +618,10 @@ void main() {
       );
       await tester.tap(find.bySemanticsLabel('Pinned Venue, TEM EVENTO'));
       await tester.pumpAndSettle();
-      expect(router.lastPushedPath, '/agenda/evento/pinned-venue');
+      expect(
+        router.lastPushedPath,
+        '/agenda/evento/pinned-venue?occurrence=occ-pinned',
+      );
     },
   );
 
@@ -756,7 +759,9 @@ FavoriteResume _profileFavoriteResume({
     )..parse(nextEventOccurrenceAt?.toIso8601String()),
     eventTargetPathValue: nextEventOccurrenceAt == null
         ? null
-        : FavoriteEventTargetPathValue('/agenda/evento/pinned-venue'),
+        : FavoriteEventTargetPathValue(
+            '/agenda/evento/pinned-venue?occurrence=occ-pinned',
+          ),
   );
 }
 

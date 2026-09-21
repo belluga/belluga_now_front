@@ -37,7 +37,7 @@ void main() {
           'entity_slug': 'hotel-base',
           'reference_status': 'disabled',
           'reference_status_reason': 'source_capability_disabled',
-          'blocked_capability_key': 'is_poi_enabled',
+          'blocked_capability_key': 'is_reference_location_enabled',
         },
       },
     });
@@ -65,14 +65,18 @@ void main() {
       fixedReference.referenceStatusReason,
       FixedLocationReferenceStatusReason.sourceCapabilityDisabled,
     );
-    expect(fixedReference.blockedCapabilityKey, 'is_poi_enabled');
+    expect(
+      fixedReference.blockedCapabilityKey,
+      'is_reference_location_enabled',
+    );
     expect(preference.locationPreference.hasFixedReference, isTrue);
     expect(preference.locationPreference.usesFixedReference, isFalse);
 
     final encoded = ProximityPreferenceDTO.fromDomain(preference).toJson();
     expect(
       (encoded['location_preference']
-          as Map<String, dynamic>)['fixed_reference'] as Map<String, dynamic>,
+              as Map<String, dynamic>)['fixed_reference']
+          as Map<String, dynamic>,
       containsPair('entity_slug', 'hotel-base'),
     );
   });

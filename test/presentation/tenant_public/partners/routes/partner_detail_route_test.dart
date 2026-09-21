@@ -122,10 +122,34 @@ AppData _buildAppData() {
           'icon_color': '#FFFFFF',
         },
         'capabilities': {
-          'is_favoritable': true,
-          'is_poi_enabled': false,
-          'has_events': true,
-          'has_bio': true,
+          'is_favoritable': {
+            'configured': {'value': true, 'parameters': {}},
+            'effective': {'value': true, 'parameters': {}},
+          },
+          'location_policy': {
+            'configured': {'value': 'disabled', 'parameters': {}},
+            'effective': {'value': 'disabled', 'parameters': {}},
+          },
+          'is_map_poi_enabled': {
+            'configured': {'value': false, 'parameters': {}},
+            'effective': {'value': false, 'parameters': {}},
+          },
+          'is_physical_host_enabled': {
+            'configured': {'value': false, 'parameters': {}},
+            'effective': {'value': false, 'parameters': {}},
+          },
+          'is_reference_location_enabled': {
+            'configured': {'value': false, 'parameters': {}},
+            'effective': {'value': false, 'parameters': {}},
+          },
+          'has_events': {
+            'configured': {'value': true, 'parameters': {}},
+            'effective': {'value': true, 'parameters': {}},
+          },
+          'has_bio': {
+            'configured': {'value': true, 'parameters': {}},
+            'effective': {'value': true, 'parameters': {}},
+          },
         },
       },
     ],

@@ -28,8 +28,9 @@ void main() {
             ],
           );
       final searchLoadingStreamValue = StreamValue<bool>(defaultValue: false);
-      final searchPageLoadingStreamValue =
-          StreamValue<bool>(defaultValue: false);
+      final searchPageLoadingStreamValue = StreamValue<bool>(
+        defaultValue: false,
+      );
       final searchHasMoreStreamValue = StreamValue<bool>(defaultValue: false);
 
       String? latestSearchQuery;
@@ -126,14 +127,11 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(
-        lastSelection,
-        (
-          groupId: 'group-1',
-          profileId: 'profile-2',
-          selected: true,
-        ),
-      );
+      expect(lastSelection, (
+        groupId: 'group-1',
+        profileId: 'profile-2',
+        selected: true,
+      ));
 
       final checkbox = tester.widget<CheckboxListTile>(
         find.byKey(const Key('testNestedAccountCandidate_group-1_profile-2')),
@@ -157,15 +155,40 @@ TenantAdminProfileTypeDefinition _profileType(String type, String label) {
     type: type,
     label: label,
     allowedTaxonomies: const [],
-    capabilities: TenantAdminProfileTypeCapabilities(
-      isFavoritable: TenantAdminFlagValue(true),
-      isPoiEnabled: TenantAdminFlagValue(false),
-      hasBio: TenantAdminFlagValue(false),
-      hasTaxonomies: TenantAdminFlagValue(false),
-      hasAvatar: TenantAdminFlagValue(false),
-      hasCover: TenantAdminFlagValue(false),
-      hasEvents: TenantAdminFlagValue(false),
-      hasNestedProfileGroups: TenantAdminFlagValue(true),
-    ),
+    capabilities: tenantAdminProfileTypeCapabilitiesFromRaw(<
+      String,
+      TenantAdminProfileTypeCapabilityValue
+    >{
+      'is_favoritable': tenantAdminProfileTypeCapabilityValueFromRaw(
+        value: true,
+      ),
+      'location_policy': tenantAdminProfileTypeCapabilityValueFromRaw(
+        value: 'disabled',
+      ),
+      'is_map_poi_enabled': tenantAdminProfileTypeCapabilityValueFromRaw(
+        value: false,
+      ),
+      'is_physical_host_enabled': tenantAdminProfileTypeCapabilityValueFromRaw(
+        value: false,
+      ),
+      'has_bio': tenantAdminProfileTypeCapabilityValueFromRaw(
+        value: false,
+      ),
+      'has_taxonomies': tenantAdminProfileTypeCapabilityValueFromRaw(
+        value: false,
+      ),
+      'has_avatar': tenantAdminProfileTypeCapabilityValueFromRaw(
+        value: false,
+      ),
+      'has_cover': tenantAdminProfileTypeCapabilityValueFromRaw(
+        value: false,
+      ),
+      'has_events': tenantAdminProfileTypeCapabilityValueFromRaw(
+        value: false,
+      ),
+      'has_nested_profile_groups': tenantAdminProfileTypeCapabilityValueFromRaw(
+        value: true,
+      ),
+    }),
   );
 }

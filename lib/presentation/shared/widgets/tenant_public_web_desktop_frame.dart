@@ -23,7 +23,6 @@ class TenantPublicWebDesktopFrame extends StatelessWidget {
     TenantPrivacyPolicyRoute.name,
     DiscoveryRoute.name,
     PartnerDetailRoute.name,
-    StaticAssetDetailRoute.name,
     EventSearchRoute.name,
     ImmersiveEventDetailRoute.name,
     InviteFlowRoute.name,

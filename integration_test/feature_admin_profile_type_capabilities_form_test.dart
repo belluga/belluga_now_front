@@ -263,28 +263,74 @@ class _FakeTenantAdminAccountProfilesRepository
         type: 'full',
         label: 'Completo',
         allowedTaxonomies: ['genre'],
-        capabilities: TenantAdminProfileTypeCapabilities(
-          isFavoritable: TenantAdminFlagValue(true),
-          isPoiEnabled: TenantAdminFlagValue(true),
-          hasBio: TenantAdminFlagValue(true),
-          hasTaxonomies: TenantAdminFlagValue(true),
-          hasAvatar: TenantAdminFlagValue(true),
-          hasCover: TenantAdminFlagValue(true),
-          hasEvents: TenantAdminFlagValue(false),
+        capabilities: tenantAdminProfileTypeCapabilitiesFromRaw(
+          <String, TenantAdminProfileTypeCapabilityValue>{
+            'is_favoritable': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: true,
+            ),
+            'location_policy': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: 'required',
+            ),
+            'is_map_poi_enabled': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: true,
+            ),
+            'is_physical_host_enabled':
+                tenantAdminProfileTypeCapabilityValueFromRaw(
+                  value: true,
+                ),
+            'has_bio': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: true,
+            ),
+            'has_taxonomies': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: true,
+            ),
+            'has_avatar': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: true,
+            ),
+            'has_cover': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: true,
+            ),
+            'has_events': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: false,
+            ),
+          },
         ),
       ),
       tenantAdminProfileTypeDefinitionFromRaw(
         type: 'basic',
         label: 'Basico',
         allowedTaxonomies: [],
-        capabilities: TenantAdminProfileTypeCapabilities(
-          isFavoritable: TenantAdminFlagValue(false),
-          isPoiEnabled: TenantAdminFlagValue(false),
-          hasBio: TenantAdminFlagValue(false),
-          hasTaxonomies: TenantAdminFlagValue(false),
-          hasAvatar: TenantAdminFlagValue(false),
-          hasCover: TenantAdminFlagValue(false),
-          hasEvents: TenantAdminFlagValue(false),
+        capabilities: tenantAdminProfileTypeCapabilitiesFromRaw(
+          <String, TenantAdminProfileTypeCapabilityValue>{
+            'is_favoritable': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: false,
+            ),
+            'location_policy': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: 'disabled',
+            ),
+            'is_map_poi_enabled': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: false,
+            ),
+            'is_physical_host_enabled':
+                tenantAdminProfileTypeCapabilityValueFromRaw(
+                  value: false,
+                ),
+            'has_bio': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: false,
+            ),
+            'has_taxonomies': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: false,
+            ),
+            'has_avatar': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: false,
+            ),
+            'has_cover': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: false,
+            ),
+            'has_events': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: false,
+            ),
+          },
         ),
       ),
     ];
@@ -405,6 +451,7 @@ class _FakeTenantAdminAccountProfilesRepository
     TenantAdminAccountProfilesRepoString? slug,
     TenantAdminAccountProfilesRepoInt? aggregateRevision,
     TenantAdminLocation? location,
+    TenantAdminAccountProfilesRepoBool? includeLocation,
     TenantAdminTaxonomyTerms? taxonomyTerms,
     TenantAdminAccountProfilesRepoString? bio,
     TenantAdminAccountProfilesRepoString? avatarUrl,
@@ -479,6 +526,7 @@ class _FakeTenantAdminAccountProfilesRepository
     TenantAdminAccountProfilesRepoString? pluralLabel,
     List<TenantAdminAccountProfilesRepoString>? allowedTaxonomies,
     TenantAdminProfileTypeCapabilities? capabilities,
+    TenantAdminAccountProfilesRepoInt? expectedCapabilityRevision,
   }) async {
     return tenantAdminProfileTypeDefinitionFromRaw(
       type: type,
@@ -486,15 +534,39 @@ class _FakeTenantAdminAccountProfilesRepository
       allowedTaxonomies: allowedTaxonomies ?? [],
       capabilities:
           capabilities ??
-          TenantAdminProfileTypeCapabilities(
-            isFavoritable: TenantAdminFlagValue(false),
-            isPoiEnabled: TenantAdminFlagValue(false),
-            hasBio: TenantAdminFlagValue(false),
-            hasTaxonomies: TenantAdminFlagValue(false),
-            hasAvatar: TenantAdminFlagValue(false),
-            hasCover: TenantAdminFlagValue(false),
-            hasEvents: TenantAdminFlagValue(false),
-          ),
+          tenantAdminProfileTypeCapabilitiesFromRaw(<
+            String,
+            TenantAdminProfileTypeCapabilityValue
+          >{
+            'is_favoritable': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: false,
+            ),
+            'location_policy': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: 'disabled',
+            ),
+            'is_map_poi_enabled': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: false,
+            ),
+            'is_physical_host_enabled':
+                tenantAdminProfileTypeCapabilityValueFromRaw(
+                  value: false,
+                ),
+            'has_bio': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: false,
+            ),
+            'has_taxonomies': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: false,
+            ),
+            'has_avatar': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: false,
+            ),
+            'has_cover': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: false,
+            ),
+            'has_events': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: false,
+            ),
+          }),
     );
   }
 

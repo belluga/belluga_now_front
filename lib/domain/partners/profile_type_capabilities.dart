@@ -1,33 +1,28 @@
 import 'package:belluga_now/domain/partners/value_objects/profile_type_flag_value.dart';
+import 'package:belluga_now/domain/partners/value_objects/profile_type_location_policy_value.dart';
 
 class ProfileTypeCapabilities {
   ProfileTypeCapabilities({
     required this.isPubliclyDiscoverableValue,
     required this.isFavoritableValue,
-    required this.isPoiEnabledValue,
-    ProfileTypeFlagValue? isReferenceLocationEnabledValue,
+    required this.locationPolicyValue,
+    required this.isMapPoiEnabledValue,
+    required this.isReferenceLocationEnabledValue,
     required this.hasBioValue,
     required this.hasTaxonomiesValue,
     required this.hasAvatarValue,
     required this.hasCoverValue,
     required this.hasEventsValue,
-    ProfileTypeFlagValue? hasGalleryValue,
-    ProfileTypeFlagValue? hasNestedProfileGroupsValue,
-    ProfileTypeFlagValue? hasContactChannelsValue,
-    ProfileTypeFlagValue? hasExternalLinksValue,
-  }) : isReferenceLocationEnabledValue =
-           isReferenceLocationEnabledValue ?? ProfileTypeFlagValue(false),
-       hasGalleryValue = hasGalleryValue ?? ProfileTypeFlagValue(false),
-       hasNestedProfileGroupsValue =
-           hasNestedProfileGroupsValue ?? ProfileTypeFlagValue(false),
-       hasContactChannelsValue =
-           hasContactChannelsValue ?? ProfileTypeFlagValue(false),
-       hasExternalLinksValue =
-           hasExternalLinksValue ?? ProfileTypeFlagValue(false);
+    required this.hasGalleryValue,
+    required this.hasNestedProfileGroupsValue,
+    required this.hasContactChannelsValue,
+    required this.hasExternalLinksValue,
+  });
 
   final ProfileTypeFlagValue isPubliclyDiscoverableValue;
   final ProfileTypeFlagValue isFavoritableValue;
-  final ProfileTypeFlagValue isPoiEnabledValue;
+  final ProfileTypeLocationPolicyValue locationPolicyValue;
+  final ProfileTypeFlagValue isMapPoiEnabledValue;
   final ProfileTypeFlagValue isReferenceLocationEnabledValue;
   final ProfileTypeFlagValue hasBioValue;
   final ProfileTypeFlagValue hasTaxonomiesValue;
@@ -41,9 +36,11 @@ class ProfileTypeCapabilities {
 
   bool get isPubliclyDiscoverable => isPubliclyDiscoverableValue.value;
   bool get isFavoritable => isFavoritableValue.value;
-  bool get isPoiEnabled => isPoiEnabledValue.value;
-  bool get isReferenceLocationEnabled =>
-      isPoiEnabled && isReferenceLocationEnabledValue.value;
+  String get locationPolicy => locationPolicyValue.value;
+  bool get allowsLocation => locationPolicyValue.allowsLocation;
+  bool get requiresLocation => locationPolicyValue.requiresLocation;
+  bool get isMapPoiEnabled => isMapPoiEnabledValue.value;
+  bool get isReferenceLocationEnabled => isReferenceLocationEnabledValue.value;
   bool get hasBio => hasBioValue.value;
   bool get hasTaxonomies => hasTaxonomiesValue.value;
   bool get hasAvatar => hasAvatarValue.value;

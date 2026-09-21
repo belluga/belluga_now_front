@@ -14,6 +14,31 @@ void main() {
     expect(profile.accountSlug, 'account-one');
   });
 
+  test(
+    'carries admin lifecycle and protected-media fields through to domain',
+    () {
+      final profile = TenantAdminAccountProfileDTO.fromJson({
+        'id': 'profile-1',
+        'account_id': 'account-1',
+        'profile_type': 'venue',
+        'display_name': 'Venue',
+        'visibility': 'private',
+        'is_active': false,
+        'deleted_at': '2026-09-19T12:00:00.000000Z',
+        'parent_account_publication_status': 'draft',
+        'admin_avatar_url': 'https://tenant.test/admin/avatar',
+        'admin_cover_url': 'https://tenant.test/admin/cover',
+      }).toDomain();
+
+      expect(profile.visibility, 'private');
+      expect(profile.isActive, isFalse);
+      expect(profile.deletedAt, '2026-09-19T12:00:00.000000Z');
+      expect(profile.parentAccountPublicationStatus, 'draft');
+      expect(profile.adminAvatarUrl, 'https://tenant.test/admin/avatar');
+      expect(profile.adminCoverUrl, 'https://tenant.test/admin/cover');
+    },
+  );
+
   test('decodes ordered external links and enabled collection limit', () {
     final profile = TenantAdminAccountProfileDTO.fromJson({
       'id': 'profile-1',

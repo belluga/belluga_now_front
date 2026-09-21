@@ -10,8 +10,6 @@ import 'package:belluga_now/application/router/resolvers/tenant_admin_account_pr
 import 'package:belluga_now/application/router/resolvers/tenant_admin_event_edit_route_resolver.dart';
 import 'package:belluga_now/application/router/resolvers/tenant_admin_organization_detail_route_resolver.dart';
 import 'package:belluga_now/application/router/resolvers/tenant_admin_profile_type_detail_route_resolver.dart';
-import 'package:belluga_now/application/router/resolvers/tenant_admin_static_asset_detail_route_resolver.dart';
-import 'package:belluga_now/application/router/resolvers/tenant_admin_static_profile_type_detail_route_resolver.dart';
 import 'package:belluga_now/application/router/resolvers/tenant_admin_taxonomy_detail_route_resolver.dart';
 import 'package:belluga_now/application/router/resolvers/tenant_admin_taxonomy_term_route_model.dart';
 import 'package:belluga_now/application/router/resolvers/tenant_admin_taxonomy_term_route_resolver.dart';
@@ -22,8 +20,6 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dar
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_organization.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_asset.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/services/tenant_admin_external_image_proxy_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_location_selection_contract.dart';
@@ -44,8 +40,6 @@ import 'package:belluga_now/presentation/tenant_admin/settings/controllers/tenan
 import 'package:belluga_now/presentation/tenant_admin/settings/controllers/tenant_admin_home_favorites_pinned_profile_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/shell/controllers/tenant_admin_shell_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/shell/controllers/tenant_admin_shell_login_controller.dart';
-import 'package:belluga_now/presentation/tenant_admin/static_assets/controllers/tenant_admin_static_assets_controller.dart';
-import 'package:belluga_now/presentation/tenant_admin/static_profile_types/controllers/tenant_admin_static_profile_types_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/taxonomies/controllers/tenant_admin_taxonomies_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_selected_tenant_repository_contract.dart';
@@ -76,17 +70,11 @@ class TenantAdminModule extends ModuleContract {
     registerRouteResolver<TenantAdminEvent>(
       TenantAdminEventEditRouteResolver.new,
     );
-    registerRouteResolver<TenantAdminStaticAsset>(
-      TenantAdminStaticAssetDetailRouteResolver.new,
-    );
     registerRouteResolver<TenantAdminOrganization>(
       TenantAdminOrganizationDetailRouteResolver.new,
     );
     registerRouteResolver<TenantAdminProfileTypeDefinition>(
       TenantAdminProfileTypeDetailRouteResolver.new,
-    );
-    registerRouteResolver<TenantAdminStaticProfileTypeDefinition>(
-      TenantAdminStaticProfileTypeDetailRouteResolver.new,
     );
     registerRouteResolver<TenantAdminTaxonomyDefinition>(
       TenantAdminTaxonomyDetailRouteResolver.new,
@@ -148,9 +136,6 @@ class TenantAdminModule extends ModuleContract {
     registerFactory<TenantAdminTaxonomiesController>(
       () => TenantAdminTaxonomiesController(),
     );
-    registerFactory<TenantAdminStaticProfileTypesController>(
-      () => TenantAdminStaticProfileTypesController(),
-    );
     registerFactory<TenantAdminSettingsController>(
       () => TenantAdminSettingsController(),
     );
@@ -159,9 +144,6 @@ class TenantAdminModule extends ModuleContract {
     );
     registerLazySingleton<TenantAdminDiscoveryFiltersController>(
       () => TenantAdminDiscoveryFiltersController(),
-    );
-    registerLazySingleton<TenantAdminStaticAssetsController>(
-      () => TenantAdminStaticAssetsController(),
     );
   }
 
@@ -403,47 +385,10 @@ class TenantAdminModule extends ModuleContract {
           ),
         ),
         AutoRoute(
-          path: 'static_profile_types',
-          page: TenantAdminStaticProfileTypesListRoute.page,
-          meta: canonicalRouteMeta(
-            family: CanonicalRouteFamily.tenantAdminAssetsInternal,
-          ),
-        ),
-        AutoRoute(
-          path: 'static_profile_types/:profileType',
-          page: TenantAdminStaticProfileTypeDetailRoute.page,
-          meta: canonicalRouteMeta(
-            family: CanonicalRouteFamily.tenantAdminAssetsInternal,
-            chromeMode: RouteChromeMode.fullscreen,
-          ),
-        ),
-        CustomRoute(
-          path: 'static_profile_types/create',
-          page: TenantAdminStaticProfileTypeCreateRoute.page,
-          transitionsBuilder: TransitionsBuilders.slideBottom,
-          duration: const Duration(milliseconds: 260),
-          reverseDuration: const Duration(milliseconds: 220),
-          meta: canonicalRouteMeta(
-            family: CanonicalRouteFamily.tenantAdminAssetsInternal,
-            chromeMode: RouteChromeMode.fullscreen,
-          ),
-        ),
-        CustomRoute(
-          path: 'static_profile_types/:profileType/edit',
-          page: TenantAdminStaticProfileTypeEditRoute.page,
-          transitionsBuilder: TransitionsBuilders.slideBottom,
-          duration: const Duration(milliseconds: 260),
-          reverseDuration: const Duration(milliseconds: 220),
-          meta: canonicalRouteMeta(
-            family: CanonicalRouteFamily.tenantAdminAssetsInternal,
-            chromeMode: RouteChromeMode.fullscreen,
-          ),
-        ),
-        AutoRoute(
           path: 'taxonomies',
           page: TenantAdminTaxonomiesListRoute.page,
           meta: canonicalRouteMeta(
-            family: CanonicalRouteFamily.tenantAdminAssetsInternal,
+            family: CanonicalRouteFamily.tenantAdminTaxonomiesRoot,
           ),
         ),
         CustomRoute(
@@ -453,7 +398,7 @@ class TenantAdminModule extends ModuleContract {
           duration: const Duration(milliseconds: 260),
           reverseDuration: const Duration(milliseconds: 220),
           meta: canonicalRouteMeta(
-            family: CanonicalRouteFamily.tenantAdminAssetsInternal,
+            family: CanonicalRouteFamily.tenantAdminTaxonomiesInternal,
             chromeMode: RouteChromeMode.fullscreen,
           ),
         ),
@@ -464,7 +409,7 @@ class TenantAdminModule extends ModuleContract {
           duration: const Duration(milliseconds: 260),
           reverseDuration: const Duration(milliseconds: 220),
           meta: canonicalRouteMeta(
-            family: CanonicalRouteFamily.tenantAdminAssetsInternal,
+            family: CanonicalRouteFamily.tenantAdminTaxonomiesInternal,
             chromeMode: RouteChromeMode.fullscreen,
           ),
         ),
@@ -472,7 +417,7 @@ class TenantAdminModule extends ModuleContract {
           path: 'taxonomies/:taxonomyId/terms',
           page: TenantAdminTaxonomyTermsRoute.page,
           meta: canonicalRouteMeta(
-            family: CanonicalRouteFamily.tenantAdminAssetsInternal,
+            family: CanonicalRouteFamily.tenantAdminTaxonomiesInternal,
             chromeMode: RouteChromeMode.fullscreen,
           ),
         ),
@@ -480,7 +425,7 @@ class TenantAdminModule extends ModuleContract {
           path: 'taxonomies/:taxonomyId/terms/:termId',
           page: TenantAdminTaxonomyTermDetailRoute.page,
           meta: canonicalRouteMeta(
-            family: CanonicalRouteFamily.tenantAdminAssetsInternal,
+            family: CanonicalRouteFamily.tenantAdminTaxonomiesInternal,
             chromeMode: RouteChromeMode.fullscreen,
           ),
         ),
@@ -491,7 +436,7 @@ class TenantAdminModule extends ModuleContract {
           duration: const Duration(milliseconds: 260),
           reverseDuration: const Duration(milliseconds: 220),
           meta: canonicalRouteMeta(
-            family: CanonicalRouteFamily.tenantAdminAssetsInternal,
+            family: CanonicalRouteFamily.tenantAdminTaxonomiesInternal,
             chromeMode: RouteChromeMode.fullscreen,
           ),
         ),
@@ -502,44 +447,7 @@ class TenantAdminModule extends ModuleContract {
           duration: const Duration(milliseconds: 260),
           reverseDuration: const Duration(milliseconds: 220),
           meta: canonicalRouteMeta(
-            family: CanonicalRouteFamily.tenantAdminAssetsInternal,
-            chromeMode: RouteChromeMode.fullscreen,
-          ),
-        ),
-        AutoRoute(
-          path: 'static_assets',
-          page: TenantAdminStaticAssetsListRoute.page,
-          meta: canonicalRouteMeta(
-            family: CanonicalRouteFamily.tenantAdminAssetsRoot,
-          ),
-        ),
-        AutoRoute(
-          path: 'static_assets/:assetId',
-          page: TenantAdminStaticAssetDetailRoute.page,
-          meta: canonicalRouteMeta(
-            family: CanonicalRouteFamily.tenantAdminAssetsInternal,
-            chromeMode: RouteChromeMode.fullscreen,
-          ),
-        ),
-        CustomRoute(
-          path: 'static_assets/create',
-          page: TenantAdminStaticAssetCreateRoute.page,
-          transitionsBuilder: TransitionsBuilders.slideBottom,
-          duration: const Duration(milliseconds: 260),
-          reverseDuration: const Duration(milliseconds: 220),
-          meta: canonicalRouteMeta(
-            family: CanonicalRouteFamily.tenantAdminAssetsInternal,
-            chromeMode: RouteChromeMode.fullscreen,
-          ),
-        ),
-        CustomRoute(
-          path: 'static_assets/:assetId/edit',
-          page: TenantAdminStaticAssetEditRoute.page,
-          transitionsBuilder: TransitionsBuilders.slideBottom,
-          duration: const Duration(milliseconds: 260),
-          reverseDuration: const Duration(milliseconds: 220),
-          meta: canonicalRouteMeta(
-            family: CanonicalRouteFamily.tenantAdminAssetsInternal,
+            family: CanonicalRouteFamily.tenantAdminTaxonomiesInternal,
             chromeMode: RouteChromeMode.fullscreen,
           ),
         ),

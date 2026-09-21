@@ -8,7 +8,7 @@ import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/home_app_bar.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/home_my_events_carousel.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/favorite_section/favorites_section_builder.dart';
-import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/invites_banner/invites_banner_builder.dart';
+import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/invites_banner/invites_banner_view.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/models/invite_filter.dart';
 import 'package:belluga_now/presentation/tenant_public/widgets/belluga_bottom_navigation_bar.dart';
 import 'package:belluga_now/presentation/tenant_public/widgets/section_header.dart';
@@ -73,7 +73,9 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
               children: [
                 SectionHeader(title: 'Seus Favoritos'),
                 const FavoritesSectionBuilder(),
-                InvitesBannerBuilder(
+                InvitesBannerView(
+                  pendingInvitesStreamValue:
+                      _controller.pendingInvitesStreamValue,
                   margin: const EdgeInsets.only(top: 12),
                   onPressed: () {
                     context.router.push(const InviteFlowRoute());

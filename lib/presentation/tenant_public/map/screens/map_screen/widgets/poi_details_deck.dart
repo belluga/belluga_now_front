@@ -6,7 +6,6 @@ import 'package:belluga_now/application/invites/invite_from_event_factory.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/support/tenant_public_event_path.dart';
 import 'package:belluga_now/application/sharing/account_profile_public_share_payload.dart';
-import 'package:belluga_now/application/sharing/static_asset_public_share_payload.dart';
 import 'package:belluga_now/application/telemetry/auth_wall_telemetry.dart';
 import 'package:belluga_now/domain/map/city_poi_model.dart';
 import 'package:belluga_now/domain/partners/account_profile_complete.dart';
@@ -418,17 +417,6 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
       );
       return;
     }
-    if (_isStaticPoi(poi)) {
-      final assetRef = _resolveStaticAssetRef(poi);
-      if (assetRef.isNotEmpty) {
-        context.router.push(StaticAssetDetailRoute(assetRef: assetRef));
-        return;
-      }
-      _controller.statusMessageStreamValue.addValue(
-        'Ativo sem referência para abrir detalhes.',
-      );
-      return;
-    }
     final poiQueryKey = _controller.buildPoiQueryKey(poi);
     if (poiQueryKey.isEmpty) {
       _controller.statusMessageStreamValue.addValue(
@@ -498,16 +486,7 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
 
   bool _isPartnerPoi(CityPoiModel poi) {
     final refType = poi.refType.trim().toLowerCase();
-    return refType == 'account_profile' ||
-        refType == 'accountprofile' ||
-        refType == 'partner';
-  }
-
-  bool _isStaticPoi(CityPoiModel poi) {
-    final refType = poi.refType.trim().toLowerCase();
-    return refType == 'static' ||
-        refType == 'static_asset' ||
-        refType == 'asset';
+    return refType == 'account_profile';
   }
 
   String _resolveEventSlug(CityPoiModel poi) {
@@ -525,22 +504,6 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
   String? _resolvePartnerPublicDetailPath(CityPoiModel poi) {
     final profile = _controller.hydratedAccountProfileForPoi(poi);
     return profile?.publicDetailUrl;
-  }
-
-  String _resolveStaticAssetRef(CityPoiModel poi) {
-    final refSlug = poi.refSlug?.trim();
-    if (refSlug != null && refSlug.isNotEmpty) {
-      return refSlug;
-    }
-    final refId = poi.refId.trim();
-    if (refId.isNotEmpty) {
-      return refId;
-    }
-    final fromPath = _extractSlugFromPath(poi.refPath);
-    if (fromPath.isNotEmpty) {
-      return fromPath;
-    }
-    return '';
   }
 
   String _extractSlugFromPath(String? refPath) {
@@ -576,14 +539,6 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
         icon: BooraIcons.inviteSolid,
         tooltip: 'Convidar',
         onTap: isHydrated ? () => unawaited(_openEventInvite(poi)) : null,
-      );
-    }
-
-    if (_isStaticPoi(poi)) {
-      return PoiCardSecondaryAction(
-        icon: Icons.share_outlined,
-        tooltip: 'Compartilhar',
-        onTap: () => unawaited(_shareStaticAsset(poi)),
       );
     }
 
@@ -648,36 +603,6 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
     context.router.push(InviteShareRoute(invite: invite));
   }
 
-  Future<void> _shareStaticAsset(CityPoiModel poi) async {
-    final publicPath = _resolveStaticAssetSharePath(poi);
-    final publicUri = _controller.buildTenantPublicUriFromPath(publicPath);
-    if (publicUri == null) {
-      _controller.statusMessageStreamValue.addValue(
-        'Não foi possível compartilhar ${poi.name}.',
-      );
-      return;
-    }
-
-    final asset = _controller.hydratedStaticAssetForPoi(poi);
-    final payload = StaticAssetPublicSharePayloadBuilder.build(
-      publicUri: publicUri,
-      fallbackName: poi.name,
-      asset: asset,
-      actorDisplayName: _controller.authenticatedUserDisplayName,
-      fallbackDescription: poi.description,
-    );
-
-    try {
-      await SharePlus.instance.share(
-        ShareParams(text: payload.message, subject: payload.subject),
-      );
-    } catch (_) {
-      _controller.statusMessageStreamValue.addValue(
-        'Não foi possível compartilhar ${poi.name}.',
-      );
-    }
-  }
-
   String? _resolvePartnerSharePath(CityPoiModel poi) {
     return _resolvePartnerPublicDetailPath(poi);
   }
@@ -690,23 +615,6 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
         eventSlug: event.slug,
         occurrenceId: event.selectedOccurrenceId,
       );
-
-  String? _resolveStaticAssetSharePath(CityPoiModel poi) {
-    final asset = _controller.hydratedStaticAssetForPoi(poi);
-    final assetSlug = asset?.slug.trim();
-    if (assetSlug != null && assetSlug.isNotEmpty) {
-      return '/static/$assetSlug';
-    }
-    final ref = _resolveStaticAssetRef(poi);
-    if (ref.isNotEmpty) {
-      return '/static/$ref';
-    }
-    final refPath = poi.refPath?.trim();
-    if (refPath != null && refPath.isNotEmpty) {
-      return refPath;
-    }
-    return null;
-  }
 
   void _handleMeasuredHeight(
     BuildContext context,

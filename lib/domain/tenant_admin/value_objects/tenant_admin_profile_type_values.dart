@@ -1,5 +1,6 @@
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_count_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value_parsers.dart';
 
 TenantAdminProfileTypeDefinition tenantAdminProfileTypeDefinitionFromRaw({
@@ -8,6 +9,11 @@ TenantAdminProfileTypeDefinition tenantAdminProfileTypeDefinitionFromRaw({
   Object? pluralLabel,
   required Object? allowedTaxonomies,
   required TenantAdminProfileTypeCapabilities capabilities,
+  TenantAdminProfileTypeCapabilities capabilityCreationConfiguration =
+      const TenantAdminProfileTypeCapabilities.empty(),
+  List<TenantAdminProfileTypeCapabilityDefinition> capabilityDefinitions =
+      const <TenantAdminProfileTypeCapabilityDefinition>[],
+  int capabilityRevision = 0,
   TenantAdminPoiVisual? visual,
   @Deprecated('Use visual instead.') TenantAdminPoiVisual? poiVisual,
 }) {
@@ -17,6 +23,12 @@ TenantAdminProfileTypeDefinition tenantAdminProfileTypeDefinitionFromRaw({
     pluralLabelValue: tenantAdminRequiredText(pluralLabel ?? label),
     allowedTaxonomiesValue: tenantAdminTrimmedStringList(allowedTaxonomies),
     capabilities: capabilities,
+    capabilityCreationConfiguration: capabilityCreationConfiguration,
+    capabilityDefinitions:
+        List<TenantAdminProfileTypeCapabilityDefinition>.unmodifiable(
+          capabilityDefinitions,
+        ),
+    capabilityRevisionValue: TenantAdminCountValue(capabilityRevision),
     visual: visual ?? poiVisual,
   );
 }

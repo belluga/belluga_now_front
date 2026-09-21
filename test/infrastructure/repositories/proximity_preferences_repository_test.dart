@@ -34,7 +34,7 @@ void main() {
                 'entity_id': 'profile-1',
                 'reference_status': 'disabled',
                 'reference_status_reason': 'source_capability_disabled',
-                'blocked_capability_key': 'is_poi_enabled',
+                'blocked_capability_key': 'is_reference_location_enabled',
               },
             },
           }),
@@ -149,7 +149,9 @@ void main() {
 
       expect(
         repository
-            .proximityPreference?.locationPreference.usesLiveDeviceLocation,
+            .proximityPreference
+            ?.locationPreference
+            .usesLiveDeviceLocation,
         isTrue,
       );
       expect(backend.lastUpsert?.mode, 'live_device_location');
@@ -191,8 +193,8 @@ class _FakeAppDataRepository extends AppDataRepositoryContract {
   );
   final StreamValue<DistanceInMetersValue> _maxRadiusMetersStreamValue =
       StreamValue<DistanceInMetersValue>(
-    defaultValue: DistanceInMetersValue.fromRaw(5000),
-  );
+        defaultValue: DistanceInMetersValue.fromRaw(5000),
+      );
 
   @override
   AppData get appData => throw UnimplementedError();

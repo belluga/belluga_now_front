@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:belluga_discovery_filters/belluga_discovery_filters.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/controllers/tenant_home_agenda_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/home_agenda_app_bar.dart';
@@ -5,6 +7,7 @@ import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/home_agenda_section_slots.dart';
 import 'package:belluga_now/presentation/shared/widgets/discovery_filter_visual_icon.dart';
 import 'package:belluga_now/presentation/shared/widgets/size_reporting_widget.dart';
+import 'package:flutter/foundation.dart' show setEquals;
 import 'package:flutter/material.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
@@ -26,6 +29,7 @@ class HomeAgendaSectionView extends StatefulWidget {
 }
 
 class _HomeAgendaSectionViewState extends State<HomeAgendaSectionView> {
+  final GlobalKey _taxonomyPanelRevealKey = GlobalKey();
   static const int _coordinatedScrollSyncWarmupFrames = 8;
   static const double _defaultFilterPanelExtent = 60;
 
@@ -142,62 +146,107 @@ class _HomeAgendaSectionViewState extends State<HomeAgendaSectionView> {
               builder: (context, selection) {
                 final showFilterPanel =
                     hasCanonicalCatalog && catalog.filters.isNotEmpty;
+                final hasTaxonomyGroups =
+                    showFilterPanel &&
+                    hasDiscoveryFilterTaxonomyGroups(
+                      catalog: catalog,
+                      selection: selection,
+                      policy: widget.controller.discoveryFilterPolicy,
+                    );
 
-                return widget.builder(
-                  context,
-                  HomeAgendaSectionSlots(
-                    headerSlivers: [
-                      if (showFilterPanel)
-                        SliverToBoxAdapter(
-                          child: Offstage(
-                            offstage: true,
-                            child: SizeReportingWidget(
-                              onSizeChanged: _updateFilterPanelExtent,
-                              child: _HomeAgendaFilterPanel(
+                return StreamValueBuilder<bool>(
+                  streamValue: widget
+                      .controller
+                      .isDiscoveryFilterPanelVisibleStreamValue,
+                  builder: (context, isTaxonomyPanelVisible) => widget.builder(
+                    context,
+                    HomeAgendaSectionSlots(
+                      headerSlivers: [
+                        if (showFilterPanel)
+                          SliverToBoxAdapter(
+                            child: Offstage(
+                              offstage: true,
+                              child: SizeReportingWidget(
+                                onSizeChanged: _updateFilterPanelExtent,
+                                child: _HomeAgendaFilterPanel(
+                                  controller: widget.controller,
+                                  catalog: catalog,
+                                  selection: selection,
+                                  compact: true,
+                                  isTaxonomyPanelExpanded:
+                                      isTaxonomyPanelVisible,
+                                  onTaxonomyPanelToggled: () =>
+                                      _toggleTaxonomyPanel(hasTaxonomyGroups),
+                                  onPrimarySelectionChanged: (next) =>
+                                      _revealTaxonomyPanelForTypeChange(
+                                        catalog,
+                                        next,
+                                      ),
+                                  autoRevealSelectedChips: false,
+                                ),
+                              ),
+                            ),
+                          ),
+                        SliverPersistentHeader(
+                          pinned: true,
+                          delegate: _PinnedHeaderDelegate(
+                            minHeight: kToolbarHeight,
+                            maxHeight: kToolbarHeight,
+                            child: SizedBox(
+                              height: kToolbarHeight,
+                              child: HomeAgendaAppBar(
                                 controller: widget.controller,
-                                catalog: catalog,
-                                selection: selection,
-                                autoRevealSelectedChips: false,
                               ),
                             ),
                           ),
                         ),
-                      SliverPersistentHeader(
-                        pinned: true,
-                        delegate: _PinnedHeaderDelegate(
-                          minHeight: kToolbarHeight,
-                          maxHeight: kToolbarHeight,
-                          child: SizedBox(
-                            height: kToolbarHeight,
-                            child: HomeAgendaAppBar(
-                              controller: widget.controller,
+                        if (showFilterPanel)
+                          SliverPersistentHeader(
+                            pinned: true,
+                            delegate: _PinnedHeaderDelegate(
+                              minHeight: _filterPanelExtent,
+                              maxHeight: _filterPanelExtent,
+                              child: _HomeAgendaFilterPanel(
+                                controller: widget.controller,
+                                catalog: catalog,
+                                selection: selection,
+                                compact: true,
+                                isTaxonomyPanelExpanded: isTaxonomyPanelVisible,
+                                onTaxonomyPanelToggled: () =>
+                                    _toggleTaxonomyPanel(hasTaxonomyGroups),
+                                onPrimarySelectionChanged: (next) =>
+                                    _revealTaxonomyPanelForTypeChange(
+                                      catalog,
+                                      next,
+                                    ),
+                              ),
                             ),
                           ),
-                        ),
-                      ),
-                      if (showFilterPanel)
-                        SliverPersistentHeader(
-                          pinned: true,
-                          delegate: _PinnedHeaderDelegate(
-                            minHeight: _filterPanelExtent,
-                            maxHeight: _filterPanelExtent,
-                            child: _HomeAgendaFilterPanel(
-                              controller: widget.controller,
-                              catalog: catalog,
-                              selection: selection,
+                        if (hasTaxonomyGroups && isTaxonomyPanelVisible)
+                          SliverToBoxAdapter(
+                            child: KeyedSubtree(
+                              key: _taxonomyPanelRevealKey,
+                              child: _HomeAgendaFilterPanel(
+                                controller: widget.controller,
+                                catalog: catalog,
+                                selection: selection,
+                                compact: false,
+                              ),
                             ),
                           ),
-                        ),
-                    ],
-                    scrollViewBuilder:
-                        ({required headerSlivers, required scrollController}) =>
-                            HomeAgendaBody(
-                              controller: widget.controller,
-                              catalog: catalog,
-                              selection: selection,
-                              headerSlivers: headerSlivers,
-                              scrollController: scrollController,
-                            ),
+                      ],
+                      scrollViewBuilder:
+                          ({
+                            required headerSlivers,
+                            required scrollController,
+                          }) => HomeAgendaBody(
+                            controller: widget.controller,
+                            catalog: catalog,
+                            selection: selection,
+                            headerSlivers: headerSlivers,
+                            scrollController: scrollController,
+                          ),
+                    ),
                   ),
                 );
               },
@@ -206,6 +255,16 @@ class _HomeAgendaSectionViewState extends State<HomeAgendaSectionView> {
         );
       },
     );
+  }
+
+  void _toggleTaxonomyPanel(bool hasTaxonomyGroups) {
+    if (!hasTaxonomyGroups) return;
+    if (widget.controller.isDiscoveryFilterPanelVisibleStreamValue.value) {
+      widget.controller.closeDiscoveryFilterPanel();
+      return;
+    }
+    widget.controller.openDiscoveryFilterPanelForReveal();
+    _revealTaxonomyPanelInViewport();
   }
 
   void _updateFilterPanelExtent(Size size) {
@@ -219,6 +278,38 @@ class _HomeAgendaSectionViewState extends State<HomeAgendaSectionView> {
       _filterPanelExtent = nextExtent;
     });
   }
+
+  void _revealTaxonomyPanelForTypeChange(
+    DiscoveryFilterCatalog catalog,
+    DiscoveryFilterSelection selection,
+  ) {
+    if (!hasDiscoveryFilterTaxonomyGroups(
+      catalog: catalog,
+      selection: selection,
+      policy: widget.controller.discoveryFilterPolicy,
+    )) {
+      return;
+    }
+    _revealTaxonomyPanelInViewport();
+  }
+
+  void _revealTaxonomyPanelInViewport() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final targetContext = _taxonomyPanelRevealKey.currentContext;
+      if (targetContext == null) {
+        widget.controller.completeDiscoveryFilterPanelReveal();
+        return;
+      }
+      unawaited(
+        Scrollable.ensureVisible(
+          targetContext,
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOut,
+          alignment: 1.0,
+        ).whenComplete(widget.controller.completeDiscoveryFilterPanelReveal),
+      );
+    });
+  }
 }
 
 class _HomeAgendaFilterPanel extends StatelessWidget {
@@ -226,6 +317,10 @@ class _HomeAgendaFilterPanel extends StatelessWidget {
     required this.controller,
     required this.catalog,
     required this.selection,
+    this.compact = false,
+    this.isTaxonomyPanelExpanded = false,
+    this.onTaxonomyPanelToggled,
+    this.onPrimarySelectionChanged,
     this.autoRevealSelectedChips = true,
   });
 
@@ -233,6 +328,10 @@ class _HomeAgendaFilterPanel extends StatelessWidget {
   final DiscoveryFilterCatalog catalog;
   final DiscoveryFilterSelection selection;
   final bool autoRevealSelectedChips;
+  final bool compact;
+  final bool isTaxonomyPanelExpanded;
+  final VoidCallback? onTaxonomyPanelToggled;
+  final ValueChanged<DiscoveryFilterSelection>? onPrimarySelectionChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -253,10 +352,22 @@ class _HomeAgendaFilterPanel extends StatelessWidget {
                     catalog: catalog,
                     selection: selection,
                     policy: controller.discoveryFilterPolicy,
+                    showPrimary: compact,
+                    showTaxonomyGroups: !compact,
+                    showCompactControls: compact,
+                    isTaxonomyPanelExpanded: isTaxonomyPanelExpanded,
+                    onTaxonomyPanelToggled: onTaxonomyPanelToggled,
                     isLoading: isInitialLoading || isPageLoading,
                     autoRevealSelectedChips: autoRevealSelectedChips,
                     iconBuilder: buildDiscoveryFilterVisualIcon,
-                    onSelectionChanged: controller.setDiscoveryFilterSelection,
+                    onSelectionChanged: (next) {
+                      final primaryChanged = !setEquals(
+                        selection.primaryKeys,
+                        next.primaryKeys,
+                      );
+                      controller.setDiscoveryFilterSelection(next);
+                      if (primaryChanged) onPrimarySelectionChanged?.call(next);
+                    },
                   ),
                 ),
               ),

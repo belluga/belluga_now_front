@@ -3,8 +3,10 @@ import 'dart:async';
 import 'package:belluga_now/domain/app_data/location_origin_settings.dart';
 import 'package:belluga_now/domain/map/geo_distance.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
+import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/services/location_origin_service_contract.dart';
@@ -23,16 +25,21 @@ class TenantHomeController implements Disposable {
     AppDataRepositoryContract? appDataRepository,
     LocationOriginServiceContract? locationOriginService,
     AuthRepositoryContract? authRepository,
-  })  : _userEventsRepository =
-            userEventsRepository ?? GetIt.I.get<UserEventsRepositoryContract>(),
-        _appDataRepository =
-            appDataRepository ?? GetIt.I.get<AppDataRepositoryContract>(),
-        _locationOriginService = locationOriginService ??
-            GetIt.I.get<LocationOriginServiceContract>(),
-        _authRepository = authRepository ??
-            (GetIt.I.isRegistered<AuthRepositoryContract>()
-                ? GetIt.I.get<AuthRepositoryContract>()
-                : null);
+    InvitesRepositoryContract? invitesRepository,
+  }) : _userEventsRepository =
+           userEventsRepository ?? GetIt.I.get<UserEventsRepositoryContract>(),
+       _appDataRepository =
+           appDataRepository ?? GetIt.I.get<AppDataRepositoryContract>(),
+       _locationOriginService =
+           locationOriginService ??
+           GetIt.I.get<LocationOriginServiceContract>(),
+       _authRepository =
+           authRepository ??
+           (GetIt.I.isRegistered<AuthRepositoryContract>()
+               ? GetIt.I.get<AuthRepositoryContract>()
+               : null),
+       _invitesRepository =
+           invitesRepository ?? GetIt.I.get<InvitesRepositoryContract>();
 
   static const Duration _assumedEventDuration = Duration(hours: 3);
 
@@ -40,6 +47,7 @@ class TenantHomeController implements Disposable {
   final AppDataRepositoryContract _appDataRepository;
   final LocationOriginServiceContract _locationOriginService;
   final AuthRepositoryContract? _authRepository;
+  final InvitesRepositoryContract _invitesRepository;
   final AppData _appData = GetIt.I.get<AppData>();
   final ScrollController _scrollController = ScrollController();
 
@@ -51,8 +59,10 @@ class TenantHomeController implements Disposable {
   ScrollController get scrollController => _scrollController;
 
   StreamValue<Set<UserEventsRepositoryContractPrimString>>
-      get confirmedIdsStreamValue =>
-          _userEventsRepository.confirmedOccurrenceIdsStream;
+  get confirmedIdsStreamValue =>
+      _userEventsRepository.confirmedOccurrenceIdsStream;
+  StreamValue<List<InviteModel>> get pendingInvitesStreamValue =>
+      _invitesRepository.pendingInvitesStreamValue;
   AppData get appData => _appData;
 
   StreamSubscription? _confirmedEventsSubscription;
@@ -90,10 +100,12 @@ class TenantHomeController implements Disposable {
 
   void _listenConfirmedEvents() {
     _confirmedEventsSubscription?.cancel();
-    _confirmedEventsSubscription =
-        _userEventsRepository.confirmedOccurrenceIdsStream.stream.listen((_) {
-      unawaited(loadMyEvents());
-    });
+    _confirmedEventsSubscription = _userEventsRepository
+        .confirmedOccurrenceIdsStream
+        .stream
+        .listen((_) {
+          unawaited(loadMyEvents());
+        });
   }
 
   void _listenAuthChanges() {
@@ -116,7 +128,8 @@ class TenantHomeController implements Disposable {
     _publishHomeLocationStatus(_appDataRepository.locationOriginSettings);
     _homeLocationStatusSubscription?.cancel();
     _homeLocationStatusSubscription = _appDataRepository
-        .locationOriginSettingsStreamValue.stream
+        .locationOriginSettingsStreamValue
+        .stream
         .listen(_publishHomeLocationStatus);
   }
 
@@ -173,9 +186,7 @@ class TenantHomeController implements Disposable {
     );
   }
 
-  String _dialogMessageForLocationOrigin(
-    LocationOriginSettings settings,
-  ) {
+  String _dialogMessageForLocationOrigin(LocationOriginSettings settings) {
     return LocationOriginMessageResolver.fromSettings(
       settings: settings,
       appName: _appData.nameValue.value,

@@ -121,7 +121,6 @@ class AccountProfileDetailController implements Disposable {
   StreamSubscription<Set<UserEventsRepositoryContractPrimString>>?
   _confirmedEventIdsSubscription;
   StreamSubscription<dynamic>? _pendingInvitesSubscription;
-
   final _detailStateStreamValue = StreamValue<AccountProfileDetailState>(
     defaultValue: AccountProfileDetailState.empty,
   );
@@ -150,9 +149,7 @@ class AccountProfileDetailController implements Disposable {
 
   bool get isAuthorized => _authRepository?.isAuthorized ?? false;
 
-  Future<void> loadResolvedAccountProfile(
-    AccountProfileComplete accountProfile,
-  ) async {
+  void loadResolvedAccountProfile(AccountProfileComplete accountProfile) {
     if (_detailStateStreamValue.value.accountProfile?.id != accountProfile.id) {
       _releaseRetainedNestedGroupMembersPaths();
     }
@@ -168,7 +165,7 @@ class AccountProfileDetailController implements Disposable {
       capabilities: capabilities,
     );
     try {
-      final moduleData = await _buildModuleData(
+      final moduleData = _buildModuleData(
         accountProfile,
         capabilities: capabilities,
       );
@@ -644,10 +641,10 @@ class AccountProfileDetailController implements Disposable {
     return '${(distanceMeters / 1000).toStringAsFixed(1)} km';
   }
 
-  Future<Map<ProfileModuleId, Object?>> _buildModuleData(
+  Map<ProfileModuleId, Object?> _buildModuleData(
     AccountProfileComplete accountProfile, {
     ProfileTypeCapabilities? capabilities,
-  }) async {
+  }) {
     final modules = <ProfileModuleId, Object?>{};
     final richTextBlocks = _buildRichTextModuleData(
       accountProfile,
