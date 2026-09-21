@@ -57,12 +57,14 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
     required List<InviteModel> initialInvites,
     this.materializedInviteId,
     this.materializeStatus,
+    this.acceptGate,
   }) : _invites = List<InviteModel>.from(initialInvites);
 
   final List<InviteModel> _invites;
   final List<String> previewedShareCodes = <String>[];
   final String? materializedInviteId;
   final String? materializeStatus;
+  final Future<void>? acceptGate;
   bool failFetch = false;
   bool failMaterialization = false;
   final List<String> materializedShareCodes = <String>[];
@@ -99,8 +101,9 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   @override
   Future<InviteAcceptResult> acceptInvite(
     InvitesRepositoryContractPrimString inviteId,
-  ) async => (() {
+  ) async {
     acceptedInviteIds.add(inviteId.value);
+    await acceptGate;
     _removeInvite(inviteId.value);
     pendingInvitesStreamValue.addValue(List<InviteModel>.from(_invites));
     return buildInviteAcceptResult(
@@ -111,7 +114,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
       nextStep: InviteNextStep.freeConfirmationCreated,
       supersededInviteIds: const [],
     );
-  })();
+  }
 
   @override
   Future<InviteAcceptResult> acceptInviteByCode(
@@ -1616,9 +1619,11 @@ void main() {
     'Authenticated multi-inviter share invite with empty picker id still uses canonical decision',
     (tester) async {
       final invite = _buildInviteWithEmptyCandidateIds('multi-1');
+      final acceptGate = Completer<void>();
       final repository = _FakeInvitesRepository(
         initialInvites: [invite],
         materializedInviteId: 'multi-1',
+        acceptGate: acceptGate.future,
       );
       final controller = InviteFlowScreenController(
         repository: repository,
@@ -1663,6 +1668,17 @@ void main() {
       await tester.pump(const Duration(milliseconds: 300));
 
       expect(repository.materializedShareCodes, ['31F8RN5QJ9']);
+      try {
+        for (var tap = 1; tap < 10; tap++) {
+          await tester.tap(find.text('Aceitar'));
+          await tester.pump();
+        }
+        expect(repository.acceptedInviteIds, ['multi-1']);
+      } finally {
+        acceptGate.complete();
+        await tester.pump(const Duration(milliseconds: 300));
+        await tester.pump(const Duration(milliseconds: 300));
+      }
       expect(repository.acceptedInviteIds, ['multi-1']);
     },
   );

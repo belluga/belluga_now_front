@@ -352,23 +352,35 @@ class InviteFlowScreenController with Disposable {
     return result;
   }
 
-  Future<void> requestDecision(InviteDecision decision) async {
-    if (decision == InviteDecision.accepted) {
-      await _trackInviteAcceptanceRequested();
-    }
-    final result = await applyDecision(decision);
-    decisionResultStreamValue.addValue(result);
-  }
+  Future<void> requestDecision(InviteDecision decision) =>
+      _requestDecision(decision);
 
   Future<void> requestDecisionForInvite(
     InviteDecision decision,
     String inviteId,
-  ) async {
-    if (decision == InviteDecision.accepted) {
-      await _trackInviteAcceptanceRequested();
+  ) => _requestDecision(decision, inviteId: inviteId);
+
+  Future<void> _requestDecision(
+    InviteDecision decision, {
+    String? inviteId,
+  }) async {
+    final accepting = decision == InviteDecision.accepted;
+    if (accepting && !beginConfirmPresence()) {
+      return;
     }
-    final result = await applyDecisionForInvite(decision, inviteId);
-    decisionResultStreamValue.addValue(result);
+    try {
+      if (accepting) {
+        await _trackInviteAcceptanceRequested();
+      }
+      final result = inviteId == null
+          ? await applyDecision(decision)
+          : await applyDecisionForInvite(decision, inviteId);
+      decisionResultStreamValue.addValue(result);
+    } finally {
+      if (accepting) {
+        resetConfirmPresence();
+      }
+    }
   }
 
   void clearDecisionResult() {

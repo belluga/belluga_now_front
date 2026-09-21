@@ -1310,9 +1310,8 @@ void main() {
         final primaryFilter = catalog.filters.single;
         final taxonomyGroup = catalog.taxonomyOptionsByKey.values.single;
         final taxonomyTerm = taxonomyGroup.terms.single;
-        final scheduleRepository = _FakeScheduleRepository(
-          homeAgendaRuntimeCatalog: catalog,
-        );
+        final scheduleRepository = _FakeScheduleRepository()
+          ..fallbackHomeAgendaRuntimeCatalog = catalog;
         final controller = _buildAgendaController(
           scheduleRepository: scheduleRepository,
           userEventsRepository: _FakeUserEventsRepository(),
@@ -1509,6 +1508,51 @@ void main() {
 
       controller.onDispose();
     });
+
+    test(
+      'home agenda keeps a manual taxonomy collapse through a same-type catalog refresh',
+      () async {
+        final catalog = _homeEventsFilterCatalog();
+        final scheduleRepository = _FakeScheduleRepository(
+          homeAgendaRuntimeCatalog: catalog,
+        );
+        final controller = _buildAgendaController(
+          scheduleRepository: scheduleRepository,
+          userEventsRepository: _FakeUserEventsRepository(),
+          invitesRepository: _FakeInvitesRepository(),
+          userLocationRepository: _FakeUserLocationRepository(),
+          appDataRepository: _FakeAppDataRepository(
+            _buildAppData(minKm: 1, defaultKm: 5, maxKm: 15),
+          ),
+        );
+        await controller.init();
+        final selection = DiscoveryFilterSelection(
+          primaryKeys: {catalog.filters.single.key},
+        );
+        controller.setDiscoveryFilterSelection(selection);
+        expect(
+          controller.isDiscoveryFilterPanelVisibleStreamValue.value,
+          isTrue,
+        );
+        controller.closeDiscoveryFilterPanel();
+        final refreshedCatalog = _homeEventsFilterCatalog(
+          taxonomyLabel: 'Updated taxonomy',
+        );
+        scheduleRepository.homeAgendaRuntimeCatalog = refreshedCatalog;
+        await Future<void>.delayed(Duration.zero);
+        await Future<void>.delayed(Duration.zero);
+        await controller.searchEvents('');
+        expect(
+          controller.discoveryFilterCatalogStreamValue.value.toJson(),
+          refreshedCatalog.toJson(),
+        );
+        expect(
+          controller.isDiscoveryFilterPanelVisibleStreamValue.value,
+          isFalse,
+        );
+        controller.onDispose();
+      },
+    );
 
     test(
       'home agenda restores persisted canonical filter selection before first fetch',
@@ -3468,7 +3512,9 @@ void main() {
           findsNothing,
         );
         expect(
-          find.bySemanticsLabel('Painel de filtros de eventos'),
+          find.bySemanticsLabel(
+            RegExp(r'^Painel de filtros de eventos(?:\n|$)'),
+          ),
           findsOneWidget,
         );
       },
@@ -3543,7 +3589,9 @@ void main() {
         await tester.pump();
 
         expect(
-          find.bySemanticsLabel('Painel de filtros de eventos'),
+          find.bySemanticsLabel(
+            RegExp(r'^Painel de filtros de eventos(?:\n|$)'),
+          ),
           findsNothing,
         );
         expect(find.text('Tipo Vazio'), findsNothing);
@@ -3552,7 +3600,9 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(
-          find.bySemanticsLabel('Painel de filtros de eventos'),
+          find.bySemanticsLabel(
+            RegExp(r'^Painel de filtros de eventos(?:\n|$)'),
+          ),
           findsOneWidget,
         );
         expect(find.text('Artistas'), findsOneWidget);
@@ -3629,7 +3679,9 @@ void main() {
         await tester.pump();
 
         expect(
-          find.bySemanticsLabel('Painel de filtros de eventos'),
+          find.bySemanticsLabel(
+            RegExp(r'^Painel de filtros de eventos(?:\n|$)'),
+          ),
           findsNothing,
         );
 
@@ -3637,7 +3689,9 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(
-          find.bySemanticsLabel('Painel de filtros de eventos'),
+          find.bySemanticsLabel(
+            RegExp(r'^Painel de filtros de eventos(?:\n|$)'),
+          ),
           findsOneWidget,
         );
         expect(find.text('Artistas'), findsOneWidget);
@@ -3949,7 +4003,9 @@ void main() {
           findsNothing,
         );
         expect(
-          find.bySemanticsLabel('Painel de filtros de eventos'),
+          find.bySemanticsLabel(
+            RegExp(r'^Painel de filtros de eventos(?:\n|$)'),
+          ),
           findsNothing,
         );
       },
@@ -4131,6 +4187,158 @@ void main() {
       },
     );
   });
+
+  testWidgets(
+    'home type change reveals the nonsticky taxonomy panel from deep scroll',
+    (tester) async {
+      final catalog = _homeEventsFilterCatalog();
+      final controller = _buildAgendaController(
+        scheduleRepository: _FakeScheduleRepository(
+          homeAgendaRuntimeCatalog: catalog,
+        ),
+        userEventsRepository: _FakeUserEventsRepository(),
+        invitesRepository: _FakeInvitesRepository(),
+        userLocationRepository: _FakeUserLocationRepository(),
+        appDataRepository: _FakeAppDataRepository(
+          _buildAppData(minKm: 1, defaultKm: 5, maxKm: 15),
+        ),
+      );
+      final scrollController = ScrollController();
+      addTearDown(controller.onDispose);
+      addTearDown(scrollController.dispose);
+      await controller.init();
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: HomeAgendaSectionView(
+              controller: controller,
+              scrollController: scrollController,
+              builder: (context, slots) => CustomScrollView(
+                key: const ValueKey<String>('taxonomy-reveal-scroll'),
+                controller: scrollController,
+                slivers: [
+                  const SliverToBoxAdapter(child: SizedBox(height: 520)),
+                  ...slots.headerSlivers,
+                  const SliverToBoxAdapter(child: SizedBox(height: 1600)),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.drag(
+        find.byKey(const ValueKey<String>('taxonomy-reveal-scroll')),
+        const Offset(0, -500),
+      );
+      await tester.pumpAndSettle();
+      expect(scrollController.offset, greaterThan(0));
+      await tester.tap(
+        find.byKey(
+          ValueKey<String>(
+            'discoveryFilterPrimary_${catalog.filters.single.key}',
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey<String>('discoveryFilterTaxonomyArea')),
+        findsOneWidget,
+      );
+      final viewportBounds = tester.getRect(
+        find.byKey(const ValueKey<String>('taxonomy-reveal-scroll')),
+      );
+      final revealedTaxonomyBounds = tester.getRect(
+        find.byKey(const ValueKey<String>('discoveryFilterTaxonomyArea')),
+      );
+      final toggleBounds = tester.getRect(
+        find.byKey(const ValueKey<String>('discoveryFilterPanelToggle')),
+      );
+      final usableViewport = Rect.fromLTRB(
+        viewportBounds.left,
+        toggleBounds.bottom,
+        viewportBounds.right,
+        viewportBounds.bottom,
+      );
+      expect(revealedTaxonomyBounds.overlaps(usableViewport), isTrue);
+      await tester.drag(
+        find.byKey(const ValueKey<String>('taxonomy-reveal-scroll')),
+        const Offset(0, -1000),
+      );
+      await tester.pumpAndSettle();
+      expect(controller.isDiscoveryFilterPanelVisibleStreamValue.value, isTrue);
+      final toggle = find.byKey(
+        const ValueKey<String>('discoveryFilterPanelToggle'),
+      );
+      expect(toggle.hitTestable(), findsOneWidget);
+      final pinnedToggleTop = tester.getRect(toggle).top;
+      final pinnedScrollOffset = scrollController.offset;
+      await tester.drag(
+        find.byKey(const ValueKey<String>('taxonomy-reveal-scroll')),
+        const Offset(0, -150),
+      );
+      await tester.pumpAndSettle();
+      expect(scrollController.offset, greaterThan(pinnedScrollOffset));
+      expect(tester.getRect(toggle).top, closeTo(pinnedToggleTop, 4));
+      expect(
+        find
+            .byKey(const ValueKey<String>('discoveryFilterTaxonomyArea'))
+            .hitTestable(),
+        findsNothing,
+        reason:
+            'Taxonomies must scroll away while compact controls stay pinned',
+      );
+      final expandedScrollExtent = scrollController.position.maxScrollExtent;
+      await tester.tap(toggle);
+      await tester.pumpAndSettle();
+      expect(
+        controller.isDiscoveryFilterPanelVisibleStreamValue.value,
+        isFalse,
+      );
+      expect(
+        scrollController.position.maxScrollExtent,
+        lessThan(expandedScrollExtent),
+        reason: 'Collapsing must reclaim the taxonomy panel height',
+      );
+      await tester.tap(toggle);
+      await tester.pumpAndSettle();
+      expect(
+        controller.isDiscoveryFilterPanelVisibleStreamValue.value,
+        isTrue,
+        reason: 'Reopen must update panel state before viewport assertions',
+      );
+      expect(
+        find.byKey(
+          const ValueKey<String>('discoveryFilterTaxonomyArea'),
+          skipOffstage: false,
+        ),
+        findsOneWidget,
+        reason:
+            'Expanded taxonomy content must exist even before viewport admission',
+      );
+      expect(
+        find.byKey(const ValueKey<String>('discoveryFilterTaxonomyArea')),
+        findsOneWidget,
+      );
+      final reopenedTaxonomyBounds = tester.getRect(
+        find.byKey(const ValueKey<String>('discoveryFilterTaxonomyArea')),
+      );
+      final reopenedToggleBounds = tester.getRect(
+        find.byKey(const ValueKey<String>('discoveryFilterPanelToggle')),
+      );
+      expect(
+        reopenedTaxonomyBounds.overlaps(
+          Rect.fromLTRB(
+            viewportBounds.left,
+            reopenedToggleBounds.bottom,
+            viewportBounds.right,
+            viewportBounds.bottom,
+          ),
+        ),
+        isTrue,
+      );
+    },
+  );
 }
 
 EventModel _buildHomeAgendaEvent({
@@ -4355,7 +4563,7 @@ AppData _buildAppData({
   );
 }
 
-DiscoveryFilterCatalog _homeEventsFilterCatalog() {
+DiscoveryFilterCatalog _homeEventsFilterCatalog({String? taxonomyLabel}) {
   final primaryFilterKey = _fixtureFilterKey(1);
   final taxonomyKey = _fixtureTaxonomyKey(1);
   final taxonomyTermValue = _fixtureTaxonomyTermValue(1);
@@ -4376,7 +4584,7 @@ DiscoveryFilterCatalog _homeEventsFilterCatalog() {
     taxonomyOptionsByKey: <String, DiscoveryFilterTaxonomyGroupOption>{
       taxonomyKey: DiscoveryFilterTaxonomyGroupOption(
         key: taxonomyKey,
-        label: _fixtureTaxonomyLabel(1),
+        label: taxonomyLabel ?? _fixtureTaxonomyLabel(1),
         terms: <DiscoveryFilterTaxonomyTermOption>[
           DiscoveryFilterTaxonomyTermOption(
             value: taxonomyTermValue,
@@ -4715,7 +4923,7 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
 
   final Map<int, List<EventModel>> pages;
   final DiscoveryFilterRuntimeFacets? homeAgendaRuntimeFacets;
-  final DiscoveryFilterCatalog? homeAgendaRuntimeCatalog;
+  DiscoveryFilterCatalog? homeAgendaRuntimeCatalog;
   DiscoveryFilterCatalog? fallbackHomeAgendaRuntimeCatalog;
   int getEventsPageCallCount = 0;
   double? lastOriginLat;

@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart' show setEquals;
+
 import 'package:belluga_discovery_filters/belluga_discovery_filters.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/app_data/discovery_filter_selection_snapshot.dart';
@@ -162,6 +164,38 @@ class DiscoveryScreenController extends Object
     _persistedDiscoveryFilterSelectionSnapshot =
         discoveryFilterSelectionSnapshot(selection);
     _scheduleReload(immediate: true);
+  }
+
+  @override
+  void setDiscoveryFilterSelection(DiscoveryFilterSelection selection) {
+    final previousPrimaryKeys =
+        discoveryFilterSelectionStreamValue.value.primaryKeys;
+    final repaired = repairPublicDiscoveryFilterSelection(selection);
+    super.setDiscoveryFilterSelection(repaired);
+    if (setEquals(previousPrimaryKeys, repaired.primaryKeys)) {
+      return;
+    }
+    if (repaired.primaryKeys.isEmpty ||
+        !hasDiscoveryFilterTaxonomyGroups(
+          catalog: discoveryFilterCatalogStreamValue.value,
+          selection: repaired,
+          policy: discoveryFilterPolicy,
+        )) {
+      closeDiscoveryFilterPanel();
+      return;
+    }
+    openDiscoveryFilterPanelForReveal();
+    if (scrollController.hasClients) {
+      scrollController
+          .animateTo(
+            0,
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOut,
+          )
+          .whenComplete(completeDiscoveryFilterPanelReveal);
+    } else {
+      completeDiscoveryFilterPanelReveal();
+    }
   }
 
   Future<void> init() async {

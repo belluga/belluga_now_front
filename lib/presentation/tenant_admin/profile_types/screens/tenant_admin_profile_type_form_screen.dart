@@ -10,6 +10,7 @@ import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_poi_disable_confirmation.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_slug_utils.dart';
 import 'package:belluga_now/presentation/tenant_admin/profile_types/controllers/tenant_admin_profile_types_controller.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_ordered_taxonomy_selector.dart';
 import 'package:belluga_now/presentation/tenant_admin/profile_types/tenant_admin_capability_domain_presentation.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_canonical_image_upload_field.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_color_picker_field.dart';
@@ -517,6 +518,10 @@ class _TenantAdminProfileTypeFormScreenState
                   streamValue: _controller.selectedAllowedTaxonomiesStreamValue,
                   builder: (context, selectedTaxonomies) {
                     final selectedSet = selectedTaxonomies.toSet();
+                    final taxonomyLabels = {
+                      for (final taxonomy in availableTaxonomies)
+                        taxonomy.slug: '${taxonomy.name} (${taxonomy.slug})',
+                    };
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -579,6 +584,11 @@ class _TenantAdminProfileTypeFormScreenState
                                 })
                                 .toList(growable: false),
                           ),
+                        TenantAdminOrderedTaxonomySelector(
+                          selectedSlugs: selectedTaxonomies,
+                          labelForSlug: (slug) => taxonomyLabels[slug] ?? slug,
+                          onMove: _controller.moveAllowedTaxonomy,
+                        ),
                       ],
                     );
                   },

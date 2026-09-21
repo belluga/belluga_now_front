@@ -51,7 +51,21 @@ void main() {
       );
       expect(favorites.first.nextEventOccurrenceAt, isNotNull);
       expect(favorites.first.liveNowEventOccurrenceId, 'occ-live-1');
+      expect(
+        favorites.first.nextEventOccurrenceAt,
+        DateTime.parse('2026-03-22T20:00:00Z'),
+      );
+      expect(
+        favorites.first.liveNowEventOccurrenceAt,
+        DateTime.parse('2026-03-20T20:00:00Z'),
+      );
       expect(favorites[1].id, 'profile-2');
+      expect(favorites[1].liveNowEventOccurrenceId, isNull);
+      expect(favorites[1].nextEventOccurrenceAt, isNull);
+      expect(
+        favorites[1].lastEventOccurrenceAt,
+        DateTime.parse('2026-03-18T20:00:00Z'),
+      );
       expect(favorites[1].canOpenPublicDetail, isFalse);
       expect(favorites[1].publicDetailPath, isNull);
 

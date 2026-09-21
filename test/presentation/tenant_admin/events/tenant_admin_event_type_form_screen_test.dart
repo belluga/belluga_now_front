@@ -288,7 +288,13 @@ void main() {
         'genre',
         'cuisine',
       ]);
-      await tester.ensureVisible(find.text('Genero Musical (genre)'));
+      await tester.ensureVisible(
+        find.byKey(
+          const ValueKey<String>(
+            'tenantAdminEventTypeAllowedTaxonomySemantics_genre',
+          ),
+        ),
+      );
       await tester.pumpAndSettle();
       final taxonomySemantics = tester
           .getSemantics(
@@ -300,6 +306,20 @@ void main() {
           )
           .getSemanticsData();
       expect(taxonomySemantics.hasAction(SemanticsAction.tap), isTrue);
+      final moveGenreDown = find.descendant(
+        of: find.byKey(
+          const ValueKey<String>('tenantAdminOrderedTaxonomy_genre'),
+        ),
+        matching: find.byTooltip('Mover para baixo'),
+      );
+      await tester.ensureVisible(moveGenreDown);
+      await tester.pumpAndSettle();
+      await tester.tap(moveGenreDown);
+      await tester.pumpAndSettle();
+      expect(controller.selectedEventTypeAllowedTaxonomies, [
+        'cuisine',
+        'genre',
+      ]);
 
       await tester.enterText(
         find.widgetWithText(TextFormField, 'Cor do marcador'),
@@ -312,7 +332,40 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(repository.updateEventTypeWithVisualCallCount, 1);
-      expect(repository.lastUpdateAllowedTaxonomies, ['genre', 'cuisine']);
+      expect(repository.lastUpdateAllowedTaxonomies, ['cuisine', 'genre']);
+    },
+  );
+
+  test(
+    'failed taxonomy refresh preserves the ordered event type draft and reports the error',
+    () async {
+      final controller = TenantAdminEventsController(
+        eventsRepository: _NoopEventsRepository(),
+        taxonomiesRepository: _FailingTaxonomiesRepository(),
+      );
+      addTearDown(controller.dispose);
+      controller.initEventTypeForm(
+        existingType: TenantAdminEventType.withAllowedTaxonomies(
+          idValue: tenantAdminOptionalText('type-1'),
+          nameValue: tenantAdminRequiredText('Festival'),
+          slugValue: tenantAdminRequiredText('festival'),
+          allowedTaxonomiesValue: tenantAdminTrimmedStringList(const [
+            'cuisine',
+            'genre',
+          ]),
+        ),
+      );
+
+      await controller.loadEventTypeFormTaxonomies();
+
+      expect(controller.selectedEventTypeAllowedTaxonomies, [
+        'cuisine',
+        'genre',
+      ]);
+      expect(
+        controller.taxonomyErrorStreamValue.value,
+        contains('catalog refresh failed'),
+      );
     },
   );
 }
@@ -593,6 +646,17 @@ class _SeededTaxonomiesRepository extends _NoopTaxonomiesRepository {
     required TenantAdminTaxRepoInt pageSize,
   }) async {
     return tenantAdminPagedResultFromRaw(items: taxonomies, hasMore: false);
+  }
+}
+
+class _FailingTaxonomiesRepository extends _NoopTaxonomiesRepository {
+  @override
+  Future<TenantAdminPagedResult<TenantAdminTaxonomyDefinition>>
+  fetchTaxonomiesPage({
+    required TenantAdminTaxRepoInt page,
+    required TenantAdminTaxRepoInt pageSize,
+  }) async {
+    throw StateError('catalog refresh failed');
   }
 }
 
