@@ -140,7 +140,7 @@ class _TenantAdminAccountProfileEditScreenState
 
   bool _hasBio(String? selectedType) {
     final definition = _selectedProfileTypeDefinition(selectedType);
-    return definition?.capabilities.isEnabled(
+    return definition?.capabilities.isEffectivelyEnabled(
           tenantAdminRequiredText('has_bio'),
         ) ??
         false;
@@ -148,7 +148,7 @@ class _TenantAdminAccountProfileEditScreenState
 
   bool _hasTaxonomies(String? selectedType) {
     final definition = _selectedProfileTypeDefinition(selectedType);
-    return definition?.capabilities.isEnabled(
+    return definition?.capabilities.isEffectivelyEnabled(
           tenantAdminRequiredText('has_taxonomies'),
         ) ??
         false;
@@ -156,7 +156,7 @@ class _TenantAdminAccountProfileEditScreenState
 
   bool _hasAvatar(String? selectedType) {
     final definition = _selectedProfileTypeDefinition(selectedType);
-    return definition?.capabilities.isEnabled(
+    return definition?.capabilities.isEffectivelyEnabled(
           tenantAdminRequiredText('has_avatar'),
         ) ??
         false;
@@ -164,7 +164,7 @@ class _TenantAdminAccountProfileEditScreenState
 
   bool _hasCover(String? selectedType) {
     final definition = _selectedProfileTypeDefinition(selectedType);
-    return definition?.capabilities.isEnabled(
+    return definition?.capabilities.isEffectivelyEnabled(
           tenantAdminRequiredText('has_cover'),
         ) ??
         false;
@@ -172,7 +172,7 @@ class _TenantAdminAccountProfileEditScreenState
 
   bool _hasGallery(String? selectedType) {
     final definition = _selectedProfileTypeDefinition(selectedType);
-    return definition?.capabilities.isEnabled(
+    return definition?.capabilities.isEffectivelyEnabled(
           tenantAdminRequiredText('has_gallery'),
         ) ??
         false;
@@ -180,7 +180,7 @@ class _TenantAdminAccountProfileEditScreenState
 
   bool _hasNestedProfileGroups(String? selectedType) {
     final definition = _selectedProfileTypeDefinition(selectedType);
-    return definition?.capabilities.isEnabled(
+    return definition?.capabilities.isEffectivelyEnabled(
           tenantAdminRequiredText('has_nested_profile_groups'),
         ) ??
         false;
@@ -188,7 +188,7 @@ class _TenantAdminAccountProfileEditScreenState
 
   bool _hasContactChannels(String? selectedType) {
     final definition = _selectedProfileTypeDefinition(selectedType);
-    return definition?.capabilities.isEnabled(
+    return definition?.capabilities.isEffectivelyEnabled(
           tenantAdminRequiredText('has_contact_channels'),
         ) ??
         false;
@@ -196,7 +196,7 @@ class _TenantAdminAccountProfileEditScreenState
 
   bool _hasExternalLinks(String? selectedType) {
     final definition = _selectedProfileTypeDefinition(selectedType);
-    return definition?.capabilities.isEnabled(
+    return definition?.capabilities.isEffectivelyEnabled(
           tenantAdminRequiredText('has_external_links'),
         ) ??
         false;

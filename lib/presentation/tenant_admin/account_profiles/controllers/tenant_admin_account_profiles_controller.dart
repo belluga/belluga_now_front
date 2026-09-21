@@ -2026,7 +2026,10 @@ class TenantAdminAccountProfilesController implements Disposable {
         resolvedProfileType,
       )?.capabilities;
       final resolvedBio =
-          capabilities?.isEnabled(tenantAdminRequiredText('has_bio')) == true
+          capabilities?.isEffectivelyEnabled(
+                tenantAdminRequiredText('has_bio'),
+              ) ==
+              true
           ? (bio ?? currentProfile?.bio ?? '')
           : null;
       final updated = await updateProfile(
@@ -3690,7 +3693,9 @@ class TenantAdminAccountProfilesController implements Disposable {
     final capabilities = definition.capabilities;
     final allowedTaxonomies = definition.allowedTaxonomies.toSet();
     final filteredTerms =
-        capabilities.isEnabled(tenantAdminRequiredText('has_taxonomies'))
+        capabilities.isEffectivelyEnabled(
+          tenantAdminRequiredText('has_taxonomies'),
+        )
         ? (() {
             final terms = TenantAdminTaxonomyTerms();
             for (final taxonomyTerm in taxonomyTerms) {
@@ -3704,20 +3709,31 @@ class TenantAdminAccountProfilesController implements Disposable {
     return _CapabilityFilter(
       location: capabilities.allowsLocation ? location : null,
       taxonomyTerms: filteredTerms,
-      bio: capabilities.isEnabled(tenantAdminRequiredText('has_bio'))
+      bio: capabilities.isEffectivelyEnabled(tenantAdminRequiredText('has_bio'))
           ? bio
           : null,
-      avatarUrl: capabilities.isEnabled(tenantAdminRequiredText('has_avatar'))
+      avatarUrl:
+          capabilities.isEffectivelyEnabled(
+            tenantAdminRequiredText('has_avatar'),
+          )
           ? avatarUrl
           : null,
-      coverUrl: capabilities.isEnabled(tenantAdminRequiredText('has_cover'))
+      coverUrl:
+          capabilities.isEffectivelyEnabled(
+            tenantAdminRequiredText('has_cover'),
+          )
           ? coverUrl
           : null,
       avatarUpload:
-          capabilities.isEnabled(tenantAdminRequiredText('has_avatar'))
+          capabilities.isEffectivelyEnabled(
+            tenantAdminRequiredText('has_avatar'),
+          )
           ? avatarUpload
           : null,
-      coverUpload: capabilities.isEnabled(tenantAdminRequiredText('has_cover'))
+      coverUpload:
+          capabilities.isEffectivelyEnabled(
+            tenantAdminRequiredText('has_cover'),
+          )
           ? coverUpload
           : null,
     );

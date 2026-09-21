@@ -147,7 +147,7 @@ class _TenantAdminAccountProfileCreateScreenState
 
   bool _hasBio(String? selectedType) {
     final definition = _profileTypeDefinition(selectedType);
-    return definition?.capabilities.isEnabled(
+    return definition?.capabilities.isEffectivelyEnabled(
           tenantAdminRequiredText('has_bio'),
         ) ??
         false;
@@ -155,7 +155,7 @@ class _TenantAdminAccountProfileCreateScreenState
 
   bool _hasTaxonomies(String? selectedType) {
     final definition = _profileTypeDefinition(selectedType);
-    return definition?.capabilities.isEnabled(
+    return definition?.capabilities.isEffectivelyEnabled(
           tenantAdminRequiredText('has_taxonomies'),
         ) ??
         false;
@@ -163,7 +163,7 @@ class _TenantAdminAccountProfileCreateScreenState
 
   bool _hasAvatar(String? selectedType) {
     final definition = _profileTypeDefinition(selectedType);
-    return definition?.capabilities.isEnabled(
+    return definition?.capabilities.isEffectivelyEnabled(
           tenantAdminRequiredText('has_avatar'),
         ) ??
         false;
@@ -171,7 +171,7 @@ class _TenantAdminAccountProfileCreateScreenState
 
   bool _hasCover(String? selectedType) {
     final definition = _profileTypeDefinition(selectedType);
-    return definition?.capabilities.isEnabled(
+    return definition?.capabilities.isEffectivelyEnabled(
           tenantAdminRequiredText('has_cover'),
         ) ??
         false;
@@ -179,7 +179,7 @@ class _TenantAdminAccountProfileCreateScreenState
 
   bool _hasNestedProfileGroups(String? selectedType) {
     final definition = _profileTypeDefinition(selectedType);
-    return definition?.capabilities.isEnabled(
+    return definition?.capabilities.isEffectivelyEnabled(
           tenantAdminRequiredText('has_nested_profile_groups'),
         ) ??
         false;
@@ -187,7 +187,7 @@ class _TenantAdminAccountProfileCreateScreenState
 
   bool _hasContactChannels(String? selectedType) {
     final definition = _profileTypeDefinition(selectedType);
-    return definition?.capabilities.isEnabled(
+    return definition?.capabilities.isEffectivelyEnabled(
           tenantAdminRequiredText('has_contact_channels'),
         ) ??
         false;

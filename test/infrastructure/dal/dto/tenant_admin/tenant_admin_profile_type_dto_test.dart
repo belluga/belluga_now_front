@@ -241,6 +241,28 @@ void main() {
         );
       },
     );
+
+    test('retains catalog metadata when the profile type list is empty', () {
+      final catalog = const TenantAdminAccountProfilesResponseDecoder()
+          .decodeProfileTypeCatalog({
+            'capability_definitions': [
+              _booleanDefinition('is_queryable', 'relationships'),
+            ],
+            'capability_creation_configuration': {
+              'is_queryable': {'value': true, 'parameters': {}},
+            },
+            'data': const [],
+          });
+
+      expect(catalog.items, isEmpty);
+      expect(catalog.metadata.capabilityDefinitions.single.key, 'is_queryable');
+      expect(
+        catalog.metadata.capabilityCreationConfiguration.isEnabled(
+          _text('is_queryable'),
+        ),
+        isTrue,
+      );
+    });
   });
 }
 

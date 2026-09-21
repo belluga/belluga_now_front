@@ -18,6 +18,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_hex_color_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_text_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value_parsers.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_account_profiles_repository.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_unknown_mutation_failure.dart';
@@ -1379,6 +1380,60 @@ void main() {
       expect(adapter.requests, hasLength(1));
       expect(adapter.requests.single.queryParameters['page'], 1);
       expect(adapter.requests.single.queryParameters['page_size'], 2);
+    },
+  );
+
+  test(
+    'fetchProfileTypesPage retains empty-catalog metadata in repository state',
+    () async {
+      final adapter = _CaptureAdapter(
+        responseBody: {
+          'capability_definitions': [
+            {
+              'key': 'is_queryable',
+              'domain': 'relationships',
+              'value_type': 'boolean',
+              'default_value': false,
+              'fail_closed_value': false,
+              'parameters': const [],
+              'resources': const {},
+            },
+          ],
+          'capability_creation_configuration': {
+            'is_queryable': {'value': true, 'parameters': {}},
+          },
+          'data': const [],
+          'current_page': 1,
+          'last_page': 1,
+        },
+      );
+      final repository = TenantAdminAccountProfilesRepository(
+        dio: Dio()..httpClientAdapter = adapter,
+      );
+
+      final page = await repository.fetchProfileTypesPage(
+        page: tenantAdminAccountProfilesRepoInt(1, defaultValue: 1),
+        pageSize: tenantAdminAccountProfilesRepoInt(20, defaultValue: 20),
+      );
+
+      expect(page.items, isEmpty);
+      expect(
+        repository
+            .profileTypeCatalogMetadataStreamValue
+            .value
+            .capabilityDefinitions
+            .single
+            .key,
+        'is_queryable',
+      );
+      expect(
+        repository
+            .profileTypeCatalogMetadataStreamValue
+            .value
+            .capabilityCreationConfiguration
+            .isEnabled(tenantAdminRequiredText('is_queryable')),
+        isTrue,
+      );
     },
   );
 

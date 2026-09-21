@@ -25,6 +25,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_defin
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_account_profile_id_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_count_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value_parsers.dart';
 import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_location_selection_service.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profiles_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/screens/tenant_admin_account_profile_create_screen.dart';
@@ -214,6 +215,56 @@ void main() {
     expect(editors.single.label, 'Bio');
     expect(editors.single.allowExplicitHttpsLinks, isTrue);
   });
+
+  testWidgets(
+    'uses effective capability values when showing the create bio editor',
+    (tester) async {
+      final profilesRepository =
+          GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
+              as _FakeAccountProfilesRepository;
+      profilesRepository.profileTypesToReturn = [
+        _profileType(
+          hasNestedProfileGroups: false,
+          capabilities: _bioCapabilities(configured: true, effective: false),
+        ),
+      ];
+
+      await _pumpScreen(
+        tester,
+        const TenantAdminAccountProfileCreateScreen(
+          accountSlug: 'route-account',
+        ),
+      );
+      await _selectProfileType(tester, 'Venue');
+
+      expect(find.byType(TenantAdminRichTextEditor), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'shows the create bio editor when only the effective value is enabled',
+    (tester) async {
+      final profilesRepository =
+          GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
+              as _FakeAccountProfilesRepository;
+      profilesRepository.profileTypesToReturn = [
+        _profileType(
+          hasNestedProfileGroups: false,
+          capabilities: _bioCapabilities(configured: false, effective: true),
+        ),
+      ];
+
+      await _pumpScreen(
+        tester,
+        const TenantAdminAccountProfileCreateScreen(
+          accountSlug: 'route-account',
+        ),
+      );
+      await _selectProfileType(tester, 'Venue');
+
+      expect(find.byType(TenantAdminRichTextEditor), findsOneWidget);
+    },
+  );
 
   testWidgets('shows save-first guidance for nested groups on create', (
     tester,
@@ -1105,6 +1156,7 @@ TenantAdminProfileTypeDefinition _profileType({
   required bool hasNestedProfileGroups,
   bool hasContactChannels = false,
   bool hasBio = false,
+  TenantAdminProfileTypeCapabilities? capabilities,
   String type = 'venue',
   String label = 'Venue',
 }) {
@@ -1112,43 +1164,56 @@ TenantAdminProfileTypeDefinition _profileType({
     type: type,
     label: label,
     allowedTaxonomies: const [],
-    capabilities: tenantAdminProfileTypeCapabilitiesFromRaw(<
-      String,
-      TenantAdminProfileTypeCapabilityValue
-    >{
-      'is_favoritable': tenantAdminProfileTypeCapabilityValueFromRaw(
-        value: false,
-      ),
-      'location_policy': tenantAdminProfileTypeCapabilityValueFromRaw(
-        value: 'disabled',
-      ),
-      'is_map_poi_enabled': tenantAdminProfileTypeCapabilityValueFromRaw(
-        value: false,
-      ),
-      'is_physical_host_enabled': tenantAdminProfileTypeCapabilityValueFromRaw(
-        value: false,
-      ),
-      'has_bio': tenantAdminProfileTypeCapabilityValueFromRaw(
-        value: (TenantAdminFlagValue(hasBio)).value,
-      ),
-      'has_taxonomies': tenantAdminProfileTypeCapabilityValueFromRaw(
-        value: false,
-      ),
-      'has_avatar': tenantAdminProfileTypeCapabilityValueFromRaw(
-        value: false,
-      ),
-      'has_cover': tenantAdminProfileTypeCapabilityValueFromRaw(
-        value: false,
-      ),
-      'has_events': tenantAdminProfileTypeCapabilityValueFromRaw(
-        value: false,
-      ),
-      'has_nested_profile_groups': tenantAdminProfileTypeCapabilityValueFromRaw(
-        value: (TenantAdminFlagValue(hasNestedProfileGroups)).value,
-      ),
-      'has_contact_channels': tenantAdminProfileTypeCapabilityValueFromRaw(
-        value: (TenantAdminFlagValue(hasContactChannels)).value,
-      ),
-    }),
+    capabilities:
+        capabilities ??
+        tenantAdminProfileTypeCapabilitiesFromRaw(<
+          String,
+          TenantAdminProfileTypeCapabilityValue
+        >{
+          'is_favoritable': tenantAdminProfileTypeCapabilityValueFromRaw(
+            value: false,
+          ),
+          'location_policy': tenantAdminProfileTypeCapabilityValueFromRaw(
+            value: 'disabled',
+          ),
+          'is_map_poi_enabled': tenantAdminProfileTypeCapabilityValueFromRaw(
+            value: false,
+          ),
+          'is_physical_host_enabled':
+              tenantAdminProfileTypeCapabilityValueFromRaw(value: false),
+          'has_bio': tenantAdminProfileTypeCapabilityValueFromRaw(
+            value: (TenantAdminFlagValue(hasBio)).value,
+          ),
+          'has_taxonomies': tenantAdminProfileTypeCapabilityValueFromRaw(
+            value: false,
+          ),
+          'has_avatar': tenantAdminProfileTypeCapabilityValueFromRaw(
+            value: false,
+          ),
+          'has_cover': tenantAdminProfileTypeCapabilityValueFromRaw(
+            value: false,
+          ),
+          'has_events': tenantAdminProfileTypeCapabilityValueFromRaw(
+            value: false,
+          ),
+          'has_nested_profile_groups':
+              tenantAdminProfileTypeCapabilityValueFromRaw(
+                value: (TenantAdminFlagValue(hasNestedProfileGroups)).value,
+              ),
+          'has_contact_channels': tenantAdminProfileTypeCapabilityValueFromRaw(
+            value: (TenantAdminFlagValue(hasContactChannels)).value,
+          ),
+        }),
   );
 }
+
+TenantAdminProfileTypeCapabilities _bioCapabilities({
+  required bool configured,
+  required bool effective,
+}) => TenantAdminProfileTypeCapabilities([
+  TenantAdminProfileTypeCapabilityEntry(
+    keyValue: tenantAdminRequiredText('has_bio'),
+    configured: tenantAdminProfileTypeCapabilityValueFromRaw(value: configured),
+    effective: tenantAdminProfileTypeCapabilityValueFromRaw(value: effective),
+  ),
+]);

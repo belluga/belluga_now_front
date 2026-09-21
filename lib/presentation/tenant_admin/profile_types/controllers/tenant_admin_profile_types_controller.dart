@@ -7,6 +7,7 @@ import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.d
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type_catalog_metadata.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_hex_color_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_url_value.dart';
@@ -129,8 +130,8 @@ class TenantAdminProfileTypesController implements Disposable {
   _isTypesPageLoadingSubscription;
   StreamSubscription<TenantAdminAccountProfilesRepoString?>?
   _typesErrorSubscription;
-  StreamSubscription<List<TenantAdminProfileTypeDefinition>?>?
-  _profileTypesSubscription;
+  StreamSubscription<TenantAdminProfileTypeCatalogMetadata>?
+  _profileTypeCatalogMetadataSubscription;
   String? _lastTenantDomain;
   List<String> _initialAllowedTaxonomies = const <String>[];
   bool _hasExplicitAllowedTaxonomyDraft = false;
@@ -169,18 +170,23 @@ class TenantAdminProfileTypesController implements Disposable {
           errorStreamValue.addValue(value?.value);
         });
 
-    _profileTypesSubscription = _repository.profileTypesStreamValue.stream
-        .listen((types) {
-          if (_isDisposed || types == null || types.isEmpty) return;
-          final definitions = types.first.capabilityDefinitions;
-          if (definitions.isEmpty) return;
-          capabilityDefinitionsStreamValue.addValue(definitions);
-          if (_isCreateForm && currentCapabilities.isEmpty) {
-            capabilitiesStreamValue.addValue(
-              types.first.capabilityCreationConfiguration,
-            );
-          }
-        });
+    _profileTypeCatalogMetadataSubscription = _repository
+        .profileTypeCatalogMetadataStreamValue
+        .stream
+        .listen(_applyCatalogMetadata);
+    _applyCatalogMetadata(
+      _repository.profileTypeCatalogMetadataStreamValue.value,
+    );
+  }
+
+  void _applyCatalogMetadata(TenantAdminProfileTypeCatalogMetadata metadata) {
+    if (_isDisposed) return;
+    capabilityDefinitionsStreamValue.addValue(metadata.capabilityDefinitions);
+    if (_isCreateForm && currentCapabilities.isEmpty) {
+      capabilitiesStreamValue.addValue(
+        metadata.capabilityCreationConfiguration,
+      );
+    }
   }
 
   void _bindTenantScope() {
@@ -217,19 +223,12 @@ class TenantAdminProfileTypesController implements Disposable {
 
   void initForm(TenantAdminProfileTypeDefinition? definition) {
     _isCreateForm = definition == null;
-    final loadedTypes = _repository.profileTypesStreamValue.value;
+    final metadata = _repository.profileTypeCatalogMetadataStreamValue.value;
     final loadedDefinitions =
-        definition?.capabilityDefinitions ??
-        (loadedTypes != null && loadedTypes.isNotEmpty
-            ? loadedTypes.first.capabilityDefinitions
-            : null) ??
-        const <TenantAdminProfileTypeCapabilityDefinition>[];
+        definition?.capabilityDefinitions ?? metadata.capabilityDefinitions;
     capabilityDefinitionsStreamValue.addValue(loadedDefinitions);
     final capabilities =
-        definition?.capabilities ??
-        (loadedTypes != null && loadedTypes.isNotEmpty
-            ? loadedTypes.first.capabilityCreationConfiguration
-            : const TenantAdminProfileTypeCapabilities.empty());
+        definition?.capabilities ?? metadata.capabilityCreationConfiguration;
     final visual = definition?.visual;
     final existingTypeAssetUrl =
         visual?.imageSource == TenantAdminPoiVisualImageSource.typeAsset
@@ -1024,7 +1023,7 @@ class TenantAdminProfileTypesController implements Disposable {
     _hasMoreTypesSubscription?.cancel();
     _isTypesPageLoadingSubscription?.cancel();
     _typesErrorSubscription?.cancel();
-    _profileTypesSubscription?.cancel();
+    _profileTypeCatalogMetadataSubscription?.cancel();
     typeController.dispose();
     labelController.dispose();
     pluralLabelController.dispose();

@@ -33,6 +33,7 @@ import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_count
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_account_profile_id_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_text_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_url_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value_parsers.dart';
 import 'package:belluga_now/domain/services/tenant_admin_location_selection_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_location_selection_service.dart';
@@ -250,6 +251,16 @@ class _FakeAccountProfilesRepository
   String? lastUpdateProfileType;
   String? lastUpdateDisplayName;
   String? lastUpdateBio;
+  TenantAdminTaxonomyTerms? lastCreateTaxonomyTerms;
+  TenantAdminTaxonomyTerms? lastUpdateTaxonomyTerms;
+  String? lastCreateAvatarUrl;
+  String? lastCreateCoverUrl;
+  String? lastUpdateAvatarUrl;
+  String? lastUpdateCoverUrl;
+  TenantAdminMediaUpload? lastCreateAvatarUpload;
+  TenantAdminMediaUpload? lastCreateCoverUpload;
+  TenantAdminMediaUpload? lastUpdateAvatarUpload;
+  TenantAdminMediaUpload? lastUpdateCoverUpload;
   int? lastUpdateAggregateRevision;
   int fetchAccountProfileCalls = 0;
   String? lastFetchedProfileId;
@@ -418,6 +429,11 @@ class _FakeAccountProfilesRepository
       throw createError;
     }
     lastCreateNestedProfileGroups = nestedProfileGroups;
+    lastCreateTaxonomyTerms = taxonomyTerms;
+    lastCreateAvatarUrl = avatarUrl?.value;
+    lastCreateCoverUrl = coverUrl?.value;
+    lastCreateAvatarUpload = avatarUpload;
+    lastCreateCoverUpload = coverUpload;
     final created = tenantAdminAccountProfileFromRaw(
       id: 'profile-$createProfileCalls',
       accountId: accountId.value,
@@ -524,6 +540,11 @@ class _FakeAccountProfilesRepository
     lastUpdateProfileType = profileType?.value;
     lastUpdateDisplayName = displayName?.value;
     lastUpdateBio = bio?.value;
+    lastUpdateTaxonomyTerms = taxonomyTerms;
+    lastUpdateAvatarUrl = avatarUrl?.value;
+    lastUpdateCoverUrl = coverUrl?.value;
+    lastUpdateAvatarUpload = avatarUpload;
+    lastUpdateCoverUpload = coverUpload;
     lastUpdateAggregateRevision = aggregateRevision?.value;
     lastUpdateNestedProfileGroups = nestedProfileGroups;
     return updateAccountProfileOverride ?? _profiles.first;
@@ -5567,6 +5588,163 @@ void main() {
   );
 
   test(
+    'createProfile omits configured-only taxonomy and media payload values',
+    () async {
+      final profilesRepository = _FakeAccountProfilesRepository(
+        const [],
+        [_payloadProfileType(_controllerPayloadCapabilities(true, false))],
+      );
+      final controller = TenantAdminAccountProfilesController(
+        profilesRepository: profilesRepository,
+        accountsRepository: _FakeAccountsRepository(),
+        taxonomiesRepository: _FakeTaxonomiesRepository(),
+        locationSelectionService: TenantAdminLocationSelectionService(),
+      );
+      await controller.loadProfileTypes();
+      expect(controller.profileTypesStreamValue.value.single.type, 'payload');
+      final terms = TenantAdminTaxonomyTerms()
+        ..add(tenantAdminTaxonomyTermFromRaw(type: 'allowed', value: 'value'));
+      final upload = tenantAdminMediaUploadFromRaw(
+        bytes: Uint8List.fromList([1]),
+        fileName: 'image.jpg',
+        mimeType: 'image/jpeg',
+      );
+
+      final created = await controller.createProfile(
+        accountId: 'account-1',
+        profileType: 'payload',
+        displayName: 'Payload',
+        taxonomyTerms: terms,
+        avatarUrl: 'https://cdn.test/avatar.jpg',
+        coverUrl: 'https://cdn.test/cover.jpg',
+        avatarUpload: upload,
+        coverUpload: upload,
+      );
+
+      expect(created.profileType, 'payload');
+      expect(profilesRepository.createProfileCalls, 1);
+      expect(profilesRepository.lastCreateTaxonomyTerms, isEmpty);
+      expect(profilesRepository.lastCreateAvatarUrl, isNull);
+      expect(profilesRepository.lastCreateCoverUrl, isNull);
+      expect(profilesRepository.lastCreateAvatarUpload, isNull);
+      expect(profilesRepository.lastCreateCoverUpload, isNull);
+    },
+  );
+
+  test(
+    'updateProfile retains effective taxonomy and media payload values',
+    () async {
+      final profile = tenantAdminAccountProfileFromRaw(
+        id: 'profile-payload',
+        accountId: 'account-1',
+        profileType: 'payload',
+        displayName: 'Payload',
+      );
+      final profilesRepository = _FakeAccountProfilesRepository(
+        [profile],
+        [_payloadProfileType(_controllerPayloadCapabilities(false, true))],
+      );
+      final controller = TenantAdminAccountProfilesController(
+        profilesRepository: profilesRepository,
+        accountsRepository: _FakeAccountsRepository(),
+        taxonomiesRepository: _FakeTaxonomiesRepository(),
+        locationSelectionService: TenantAdminLocationSelectionService(),
+      );
+      await controller.loadProfileTypes();
+      expect(controller.profileTypesStreamValue.value.single.type, 'payload');
+      final terms = TenantAdminTaxonomyTerms()
+        ..add(tenantAdminTaxonomyTermFromRaw(type: 'allowed', value: 'value'));
+      final upload = tenantAdminMediaUploadFromRaw(
+        bytes: Uint8List.fromList([1]),
+        fileName: 'image.jpg',
+        mimeType: 'image/jpeg',
+      );
+
+      final updated = await controller.updateProfile(
+        accountProfileId: profile.id,
+        profileType: 'payload',
+        taxonomyTerms: terms,
+        avatarUrl: 'https://cdn.test/avatar.jpg',
+        coverUrl: 'https://cdn.test/cover.jpg',
+        avatarUpload: upload,
+        coverUpload: upload,
+      );
+
+      expect(updated.id, profile.id);
+      expect(profilesRepository.updateProfileCalls, 1);
+      expect(profilesRepository.lastUpdateTaxonomyTerms, hasLength(1));
+      expect(profilesRepository.lastUpdateTaxonomyTerms!.single.type, 'allowed');
+      expect(profilesRepository.lastUpdateTaxonomyTerms!.single.value, 'value');
+      expect(profilesRepository.lastUpdateAvatarUrl, 'https://cdn.test/avatar.jpg');
+      expect(profilesRepository.lastUpdateCoverUrl, 'https://cdn.test/cover.jpg');
+      expect(profilesRepository.lastUpdateAvatarUpload, same(upload));
+      expect(profilesRepository.lastUpdateCoverUpload, same(upload));
+    },
+  );
+
+  test(
+    'submitTaxonomySelectionUpdate omits configured-only bio from its payload',
+    () async {
+      final profilesRepository = _FakeAccountProfilesRepository(
+        [
+          tenantAdminAccountProfileFromRaw(
+            id: 'profile-effective-bio',
+            accountId: 'acc-1',
+            profileType: 'artist',
+            displayName: 'Profile',
+          ),
+        ],
+        [
+          tenantAdminProfileTypeDefinitionFromRaw(
+            type: 'artist',
+            label: 'Artist',
+            allowedTaxonomies: const [],
+            capabilities: _controllerBioCapabilities(
+              configured: true,
+              effective: false,
+            ),
+          ),
+        ],
+      );
+      final controller = TenantAdminAccountProfilesController(
+        profilesRepository: profilesRepository,
+        accountsRepository: _FakeAccountsRepository(),
+        taxonomiesRepository: _FakeTaxonomiesRepository(),
+        locationSelectionService: TenantAdminLocationSelectionService(),
+      );
+      controller.accountProfileStreamValue.addValue(
+        tenantAdminAccountProfileFromRaw(
+          id: 'profile-effective-bio',
+          accountId: 'acc-1',
+          profileType: 'artist',
+          displayName: 'Profile',
+        ),
+      );
+      controller.profileTypesStreamValue.addValue([
+        tenantAdminProfileTypeDefinitionFromRaw(
+          type: 'artist',
+          label: 'Artist',
+          allowedTaxonomies: const [],
+          capabilities: _controllerBioCapabilities(
+            configured: true,
+            effective: false,
+          ),
+        ),
+      ]);
+
+      final saved = await controller.submitTaxonomySelectionUpdate(
+        accountProfileId: 'profile-effective-bio',
+        profileType: 'artist',
+        taxonomyTerms: const TenantAdminTaxonomyTerms.empty(),
+        bio: 'configured-only bio',
+      );
+
+      expect(saved, isTrue);
+      expect(profilesRepository.lastUpdateBio, isNull);
+    },
+  );
+
+  test(
     'submitTaxonomySelectionUpdate resolves profileType and sends bio',
     () async {
       final profilesRepository = _FakeAccountProfilesRepository(
@@ -5855,6 +6033,40 @@ void main() {
     },
   );
 }
+
+TenantAdminProfileTypeCapabilities _controllerBioCapabilities({
+  required bool configured,
+  required bool effective,
+}) => TenantAdminProfileTypeCapabilities([
+  TenantAdminProfileTypeCapabilityEntry(
+    keyValue: tenantAdminRequiredText('has_bio'),
+    configured: tenantAdminProfileTypeCapabilityValueFromRaw(value: configured),
+    effective: tenantAdminProfileTypeCapabilityValueFromRaw(value: effective),
+  ),
+]);
+
+TenantAdminProfileTypeDefinition _payloadProfileType(
+  TenantAdminProfileTypeCapabilities capabilities,
+) => tenantAdminProfileTypeDefinitionFromRaw(
+  type: 'payload',
+  label: 'Payload',
+  allowedTaxonomies: ['allowed'],
+  capabilities: capabilities,
+);
+
+TenantAdminProfileTypeCapabilities _controllerPayloadCapabilities(
+  bool configured,
+  bool effective,
+) => TenantAdminProfileTypeCapabilities([
+  for (final key in ['has_taxonomies', 'has_avatar', 'has_cover'])
+    TenantAdminProfileTypeCapabilityEntry(
+      keyValue: tenantAdminRequiredText(key),
+      configured: tenantAdminProfileTypeCapabilityValueFromRaw(
+        value: configured,
+      ),
+      effective: tenantAdminProfileTypeCapabilityValueFromRaw(value: effective),
+    ),
+]);
 
 class _FakeTenantScope implements TenantAdminTenantScopeContract {
   @override

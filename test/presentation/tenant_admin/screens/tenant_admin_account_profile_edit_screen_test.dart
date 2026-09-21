@@ -39,6 +39,7 @@ import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_count
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_text_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_url_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value_parsers.dart';
 import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_location_selection_service.dart';
 import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_account_profile_dto.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profiles_controller.dart';
@@ -347,6 +348,33 @@ void main() {
     final controller = GetIt.I.get<TenantAdminAccountProfilesController>();
     expect(controller.displayNameController.text, 'AGLA');
     expect(find.text('Salvar alteracoes'), findsOneWidget);
+  });
+
+  testWidgets('uses effective capability values when showing the edit bio editor', (
+    tester,
+  ) async {
+    final profilesRepository =
+        GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
+            as _FakeAccountProfilesRepository;
+    profilesRepository.profileTypesToReturn = [
+      _profileType(
+        hasGallery: false,
+        hasNestedProfileGroups: false,
+        capabilities: _editBioCapabilities(configured: true, effective: false),
+      ),
+    ];
+    final profile = _profile(id: 'effective-bio', profileType: 'poi');
+
+    await _pumpScreen(
+      tester,
+      TenantAdminAccountProfileEditScreen(
+        accountSlug: 'route-account',
+        accountProfileId: profile.id,
+        initialProfile: profile,
+      ),
+    );
+
+    expect(find.text('Bio'), findsNothing);
   });
 
   testWidgets(
@@ -3413,6 +3441,7 @@ TenantAdminAccountProfileGalleryItem _galleryItem({
 TenantAdminProfileTypeDefinition _profileType({
   required bool hasGallery,
   required bool hasNestedProfileGroups,
+  TenantAdminProfileTypeCapabilities? capabilities,
   bool hasContactChannels = false,
   bool hasExternalLinks = false,
   String type = 'poi',
@@ -3422,7 +3451,7 @@ TenantAdminProfileTypeDefinition _profileType({
     type: type,
     label: label,
     allowedTaxonomies: [],
-    capabilities: tenantAdminProfileTypeCapabilitiesFromRaw(<
+    capabilities: capabilities ?? tenantAdminProfileTypeCapabilitiesFromRaw(<
       String,
       TenantAdminProfileTypeCapabilityValue
     >{
@@ -3460,6 +3489,17 @@ TenantAdminProfileTypeDefinition _profileType({
     }),
   );
 }
+
+TenantAdminProfileTypeCapabilities _editBioCapabilities({
+  required bool configured,
+  required bool effective,
+}) => TenantAdminProfileTypeCapabilities([
+  TenantAdminProfileTypeCapabilityEntry(
+    keyValue: tenantAdminRequiredText('has_bio'),
+    configured: tenantAdminProfileTypeCapabilityValueFromRaw(value: configured),
+    effective: tenantAdminProfileTypeCapabilityValueFromRaw(value: effective),
+  ),
+]);
 
 TenantAdminNestedProfileGroup _nestedGroup() {
   return TenantAdminNestedProfileGroup(

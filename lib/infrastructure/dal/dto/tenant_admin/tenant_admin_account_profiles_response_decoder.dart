@@ -4,6 +4,7 @@ import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_acc
 import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_nested_group_member_mutation_result_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_nested_group_member_page_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_profile_type_dto.dart';
+import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_profile_type_catalog_dto.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_head_mutation_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_group_order_mutation_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_snapshot.dart';
@@ -202,12 +203,18 @@ class TenantAdminAccountProfilesResponseDecoder {
   }
 
   List<TenantAdminProfileTypeDTO> decodeProfileTypeList(Object? rawResponse) {
+    return decodeProfileTypeCatalog(rawResponse).items;
+  }
+
+  TenantAdminProfileTypeCatalogDTO decodeProfileTypeCatalog(
+    Object? rawResponse,
+  ) {
     final definitions = _decodeCapabilityDefinitions(rawResponse);
     final creationConfiguration = _decodeCapabilityCreationConfiguration(
       rawResponse,
       definitions,
     );
-    return _envelopeDecoder
+    final items = _envelopeDecoder
         .decodeListMap(rawResponse, label: 'profile types')
         .map(
           (item) => TenantAdminProfileTypeDTO.fromJson(
@@ -217,6 +224,11 @@ class TenantAdminAccountProfilesResponseDecoder {
           ),
         )
         .toList(growable: false);
+    return TenantAdminProfileTypeCatalogDTO(
+      items: items,
+      capabilityDefinitions: definitions,
+      capabilityCreationConfiguration: creationConfiguration,
+    );
   }
 
   int decodeProjectionImpactCount(Object? rawResponse) {

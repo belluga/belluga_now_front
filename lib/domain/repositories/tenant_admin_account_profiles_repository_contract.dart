@@ -21,6 +21,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_member
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type_catalog_metadata.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_taxonomy_terms_value.dart';
 import 'package:stream_value/core/stream_value.dart';
@@ -288,6 +289,16 @@ abstract class TenantAdminAccountProfilesRepositoryContract
   get profileTypesStreamValue =>
       _profileTypesPaginationState.profileTypesStreamValue;
 
+  StreamValue<TenantAdminProfileTypeCatalogMetadata>
+  get profileTypeCatalogMetadataStreamValue =>
+      _profileTypesPaginationState.profileTypeCatalogMetadataStreamValue;
+
+  void publishProfileTypeCatalogMetadata(
+    TenantAdminProfileTypeCatalogMetadata metadata,
+  ) {
+    profileTypeCatalogMetadataStreamValue.addValue(metadata);
+  }
+
   StreamValue<TenantAdminAccountProfilesRepoBool>
   get hasMoreProfileTypesStreamValue =>
       _profileTypesPaginationState.hasMoreProfileTypesStreamValue;
@@ -503,6 +514,9 @@ abstract class TenantAdminAccountProfilesRepositoryContract
         tenantAdminAccountProfilesRepoString(error.toString()),
       );
       if (page.value == 1) {
+        publishProfileTypeCatalogMetadata(
+          const TenantAdminProfileTypeCatalogMetadata.empty(),
+        );
         profileTypesStreamValue.addValue(
           const <TenantAdminProfileTypeDefinition>[],
         );
@@ -524,6 +538,9 @@ abstract class TenantAdminAccountProfilesRepositoryContract
         tenantAdminAccountProfilesRepoBool(true, defaultValue: true);
     _profileTypesPaginationState.isFetchingProfileTypesPage =
         tenantAdminAccountProfilesRepoBool(false, defaultValue: false);
+    publishProfileTypeCatalogMetadata(
+      const TenantAdminProfileTypeCatalogMetadata.empty(),
+    );
     hasMoreProfileTypesStreamValue.addValue(
       tenantAdminAccountProfilesRepoBool(true, defaultValue: true),
     );
@@ -547,6 +564,11 @@ mixin TenantAdminProfileTypesPaginationMixin
   StreamValue<List<TenantAdminProfileTypeDefinition>?>
   get profileTypesStreamValue =>
       _mixinProfileTypesState.profileTypesStreamValue;
+
+  @override
+  StreamValue<TenantAdminProfileTypeCatalogMetadata>
+  get profileTypeCatalogMetadataStreamValue =>
+      _mixinProfileTypesState.profileTypeCatalogMetadataStreamValue;
 
   @override
   StreamValue<TenantAdminAccountProfilesRepoBool>
@@ -724,6 +746,9 @@ mixin TenantAdminProfileTypesPaginationMixin
         tenantAdminAccountProfilesRepoString(error.toString()),
       );
       if (page.value == 1) {
+        publishProfileTypeCatalogMetadata(
+          const TenantAdminProfileTypeCatalogMetadata.empty(),
+        );
         profileTypesStreamValue.addValue(
           const <TenantAdminProfileTypeDefinition>[],
         );
@@ -745,6 +770,9 @@ mixin TenantAdminProfileTypesPaginationMixin
         tenantAdminAccountProfilesRepoBool(true, defaultValue: true);
     _mixinProfileTypesState.isFetchingProfileTypesPage =
         tenantAdminAccountProfilesRepoBool(false, defaultValue: false);
+    publishProfileTypeCatalogMetadata(
+      const TenantAdminProfileTypeCatalogMetadata.empty(),
+    );
     hasMoreProfileTypesStreamValue.addValue(
       tenantAdminAccountProfilesRepoBool(true, defaultValue: true),
     );
@@ -760,6 +788,11 @@ class _TenantAdminProfileTypesPaginationState {
   final StreamValue<List<TenantAdminProfileTypeDefinition>?>
   profileTypesStreamValue =
       StreamValue<List<TenantAdminProfileTypeDefinition>?>();
+  final StreamValue<TenantAdminProfileTypeCatalogMetadata>
+  profileTypeCatalogMetadataStreamValue =
+      StreamValue<TenantAdminProfileTypeCatalogMetadata>(
+        defaultValue: const TenantAdminProfileTypeCatalogMetadata.empty(),
+      );
   final StreamValue<TenantAdminAccountProfilesRepoBool>
   hasMoreProfileTypesStreamValue =
       StreamValue<TenantAdminAccountProfilesRepoBool>(

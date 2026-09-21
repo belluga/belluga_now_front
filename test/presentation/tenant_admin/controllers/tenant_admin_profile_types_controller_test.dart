@@ -9,11 +9,13 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type_catalog_metadata.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
 import 'package:belluga_now/presentation/tenant_admin/profile_types/controllers/tenant_admin_profile_types_controller.dart';
+import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_account_profiles_response_decoder.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stream_value/core/stream_value.dart';
 
@@ -994,6 +996,60 @@ void main() {
     },
   );
 
+  test(
+    'create form receives empty-catalog metadata loaded before initForm',
+    () {
+      final repository = _FakeAccountProfilesRepository([]);
+      repository.publishProfileTypeCatalogMetadata(
+        _emptyCatalogMetadata(),
+      );
+      final controller = TenantAdminProfileTypesController(
+        repository: repository,
+      );
+
+      controller.initForm(null);
+
+      expect(
+        controller.currentCapabilities.isEnabled(
+          _text('is_queryable'),
+        ),
+        isTrue,
+      );
+      expect(
+        controller.capabilityDefinitionsStreamValue.value.single.key,
+        'is_queryable',
+      );
+    },
+  );
+
+  test(
+    'create form receives empty-catalog metadata arriving after initForm',
+    () async {
+      final repository = _FakeAccountProfilesRepository([]);
+      final controller = TenantAdminProfileTypesController(
+        repository: repository,
+      );
+      controller.initForm(null);
+
+      repository.publishProfileTypeCatalogMetadata(
+        _emptyCatalogMetadata(),
+      );
+
+      await Future<void>.delayed(Duration.zero);
+
+      expect(
+        controller.currentCapabilities.isEnabled(
+          _text('is_queryable'),
+        ),
+        isTrue,
+      );
+      expect(
+        controller.capabilityDefinitionsStreamValue.value.single.key,
+        'is_queryable',
+      );
+    },
+  );
+
   test('disabling Map POI preserves host and reference capabilities', () async {
     final repository = _FakeAccountProfilesRepository([]);
     final controller = TenantAdminProfileTypesController(
@@ -1446,6 +1502,26 @@ class _FakeTenantScope implements TenantAdminTenantScopeContract {
 
 TenantAdminRequiredTextValue _text(String value) =>
     TenantAdminRequiredTextValue()..parse(value);
+
+TenantAdminProfileTypeCatalogMetadata _emptyCatalogMetadata() =>
+    const TenantAdminAccountProfilesResponseDecoder()
+        .decodeProfileTypeCatalog({
+          'capability_definitions': [
+            {
+              'key': 'is_queryable',
+              'domain': 'relationships',
+              'value_type': 'boolean',
+              'default_value': false,
+              'fail_closed_value': false,
+              'parameters': [],
+              'resources': {},
+            },
+          ],
+          'capability_creation_configuration': {
+            'is_queryable': {'value': true, 'parameters': {}},
+          },
+          'data': [],
+        }).metadata;
 
 bool _configuredEnabled(
   TenantAdminProfileTypeCapabilities capabilities,

@@ -943,9 +943,12 @@ class TenantAdminAccountProfilesRepository
         queryParameters: {'page': page.value, 'page_size': pageSize.value},
         options: Options(headers: _buildHeaders()),
       );
-      final dtos = _responseDecoder.decodeProfileTypeList(response.data);
+      final catalog = _responseDecoder.decodeProfileTypeCatalog(response.data);
+      publishProfileTypeCatalogMetadata(catalog.metadata);
       return tenantAdminPagedResultFromRaw(
-        items: dtos.map((dto) => dto.toDomain()).toList(growable: false),
+        items: catalog.items
+            .map((dto) => dto.toDomain())
+            .toList(growable: false),
         hasMore: tenantAdminResolveHasMore(
           rawResponse: response.data,
           requestedPage: page.value,
