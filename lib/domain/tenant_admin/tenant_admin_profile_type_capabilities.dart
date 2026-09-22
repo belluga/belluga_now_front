@@ -110,15 +110,60 @@ class TenantAdminProfileTypeCapabilities {
     return null;
   }
 
+  /// Server-resolved location policy from the latest backend read.
+  ///
+  /// It stays stale inside an editable draft until the server recomputes it,
+  /// so same-form dependency and validation logic must read
+  /// [configuredLocationPolicy] instead.
   String get locationPolicy =>
       effectiveValueFor(_locationPolicyKey)?.enumValue ?? '';
+
+  /// Server-resolved location admission; see [locationPolicy] for draft rules.
   bool get allowsLocation =>
       locationPolicy == 'optional' || locationPolicy == 'required';
+
+  /// Server-resolved location requirement; see [locationPolicy] for draft rules.
   bool get requiresLocation => locationPolicy == 'required';
+
+  /// Authoring-time location policy from the configured value.
+  ///
+  /// This is the value the editable draft mutates through [withEnumValue],
+  /// so same-form dependency and validation logic observes in-flight edits
+  /// here, without waiting for a server round trip.
+  String get configuredLocationPolicy =>
+      valueFor(_locationPolicyKey)?.enumValue ?? '';
+
+  /// Authoring-time location admission; see [configuredLocationPolicy].
+  bool get configuredAllowsLocation =>
+      configuredLocationPolicy == 'optional' ||
+      configuredLocationPolicy == 'required';
+
+  /// Authoring-time location requirement; see [configuredLocationPolicy].
+  bool get configuredRequiresLocation =>
+      configuredLocationPolicy == 'required';
+
+  /// Authoring-time Map POI admission; see [configuredLocationPolicy].
   bool get configuredIsMapPoiEnabled =>
       valueFor(_mapPoiKey)?.booleanValue == true;
+
+  /// Server-resolved Map POI admission; draft consumers read
+  /// [configuredIsMapPoiEnabled].
   bool get isMapPoiEnabled => isEffectivelyEnabled(_mapPoiKey);
+
+  /// Server-resolved physical-host admission; draft consumers read
+  /// [configuredIsPhysicalHostEnabled].
   bool get isPhysicalHostEnabled => isEffectivelyEnabled(_physicalHostKey);
+
+  /// Server-resolved reference-location admission; draft consumers read
+  /// [configuredIsReferenceLocationEnabled].
   bool get isReferenceLocationEnabled =>
       isEffectivelyEnabled(_referenceLocationKey);
+
+  /// Authoring-time physical-host admission; see [configuredLocationPolicy].
+  bool get configuredIsPhysicalHostEnabled =>
+      valueFor(_physicalHostKey)?.booleanValue == true;
+
+  /// Authoring-time reference-location admission; see [configuredLocationPolicy].
+  bool get configuredIsReferenceLocationEnabled =>
+      valueFor(_referenceLocationKey)?.booleanValue == true;
 }
