@@ -12,26 +12,25 @@ void main() {
           .map((line) => line.split('='))
           .where((parts) => parts.length >= 2)
           .map(
-            (parts) => MapEntry(
-              parts.first.trim(),
-              parts.sublist(1).join('=').trim(),
-            ),
+            (parts) =>
+                MapEntry(parts.first.trim(), parts.sublist(1).join('=').trim()),
           ),
     );
   }
 
   test('Android main manifest keeps app link hosts out of source XML', () {
-    final manifest =
-        File('android/app/src/main/AndroidManifest.xml').readAsStringSync();
+    final manifest = File(
+      'android/app/src/main/AndroidManifest.xml',
+    ).readAsStringSync();
 
-    expect(
-      manifest,
-      contains('android:name="flutter_deeplinking_enabled"'),
-    );
+    expect(manifest, contains('android:name="flutter_deeplinking_enabled"'));
     expect(manifest, contains('android:value="true"'));
     expect(manifest, isNot(contains('android:autoVerify="true"')));
     expect(manifest, isNot(contains('android:host="*"')));
-    expect(manifest, isNot(contains('android:host="guarappari.belluga.space"')));
+    expect(
+      manifest,
+      isNot(contains('android:host="guarappari.belluga.space"')),
+    );
     expect(manifest, isNot(contains('android:host="guarappari.com.br"')));
     expect(manifest, isNot(contains(r'android:host="${appLinkHost}"')));
   });
@@ -73,10 +72,10 @@ void main() {
       '/privacy-policy',
       '/profile',
       '/home',
-      '/static',
     ]) {
       expect(gradle, contains('"$pathPrefix"'));
     }
+    expect(gradle, isNot(contains('"/static"')));
     expect(gradle, contains('appLinkRouteExactPaths'));
     expect(gradle, contains('"/"'));
 
@@ -84,48 +83,49 @@ void main() {
     expect(gradle, isNot(contains('manifestPlaceholders["appLinkHost"]')));
   });
 
-  test('Android flavor docs keep the public and secret file contract explicit', () {
-    final readme = File('README.md').readAsStringSync();
-    final recovery =
-        File('android/keystores/README.recovery.txt').readAsStringSync();
+  test(
+    'Android flavor docs keep the public and secret file contract explicit',
+    () {
+      final readme = File('README.md').readAsStringSync();
+      final recovery = File(
+        'android/keystores/README.recovery.txt',
+      ).readAsStringSync();
 
-    for (final content in [readme, recovery]) {
+      for (final content in [readme, recovery]) {
+        expect(content, contains('android/flavors/<flavor>.public.properties'));
+        expect(
+          content,
+          contains('android/keystores/<flavor>.signing.properties'),
+        );
+        expect(content, contains('android/keystores/<flavor>.jks'));
+        expect(content, contains('CM_KEYSTORE_PATH'));
+        expect(content, contains('CM_KEYSTORE_PASSWORD'));
+        expect(content, contains('CM_KEY_ALIAS'));
+        expect(content, contains('CM_KEY_PASSWORD'));
+        expect(content.toLowerCase(), contains('fail'));
+        expect(content.toLowerCase(), contains('closed'));
+        expect(content, contains('applicationId'));
+        expect(content, contains('appLinkHosts'));
+      }
+
       expect(
-        content,
-        contains('android/flavors/<flavor>.public.properties'),
+        readme,
+        contains('android/flavors/tenant.public.properties.example'),
       );
       expect(
-        content,
-        contains('android/keystores/<flavor>.signing.properties'),
+        readme,
+        contains('android/keystores/tenant.signing.properties.example'),
       );
-      expect(content, contains('android/keystores/<flavor>.jks'));
-      expect(content, contains('CM_KEYSTORE_PATH'));
-      expect(content, contains('CM_KEYSTORE_PASSWORD'));
-      expect(content, contains('CM_KEY_ALIAS'));
-      expect(content, contains('CM_KEY_PASSWORD'));
-      expect(content.toLowerCase(), contains('fail'));
-      expect(content.toLowerCase(), contains('closed'));
-      expect(content, contains('applicationId'));
-      expect(content, contains('appLinkHosts'));
-    }
-
-    expect(
-      readme,
-      contains('android/flavors/tenant.public.properties.example'),
-    );
-    expect(
-      readme,
-      contains('android/keystores/tenant.signing.properties.example'),
-    );
-    expect(
-      recovery,
-      contains('android/flavors/tenant.public.properties.example'),
-    );
-    expect(
-      recovery,
-      contains('android/keystores/tenant.signing.properties.example'),
-    );
-  });
+      expect(
+        recovery,
+        contains('android/flavors/tenant.public.properties.example'),
+      );
+      expect(
+        recovery,
+        contains('android/keystores/tenant.signing.properties.example'),
+      );
+    },
+  );
 
   test('Android gitignore protects secret signing surfaces only', () {
     final gitignore = File('android/.gitignore').readAsStringSync();
@@ -151,54 +151,54 @@ void main() {
         '--error-unmatch',
         path,
       ]);
-      expect(
-        result.exitCode,
-        0,
-        reason: '$path must be versioned in git.',
-      );
+      expect(result.exitCode, 0, reason: '$path must be versioned in git.');
     }
   });
 
-  test('Android committed flavor files keep required public properties versioned', () {
-    final flavorsDir = Directory('android/flavors');
-    final publicFiles =
-        flavorsDir
-            .listSync()
-            .whereType<File>()
-            .where((file) => file.path.endsWith('.public.properties'))
-            .toList()
-          ..sort((a, b) => a.path.compareTo(b.path));
+  test(
+    'Android committed flavor files keep required public properties versioned',
+    () {
+      final flavorsDir = Directory('android/flavors');
+      final publicFiles =
+          flavorsDir
+              .listSync()
+              .whereType<File>()
+              .where((file) => file.path.endsWith('.public.properties'))
+              .toList()
+            ..sort((a, b) => a.path.compareTo(b.path));
 
-    expect(publicFiles, isNotEmpty);
+      expect(publicFiles, isNotEmpty);
 
-    for (final file in publicFiles) {
-      final properties = parseProperties(file.readAsStringSync());
-      expect(
-        properties['applicationId'],
-        isNotNull,
-        reason: '${file.path} must declare applicationId.',
-      );
-      expect(
-        properties['applicationId']!,
-        isNotEmpty,
-        reason: '${file.path} must not leave applicationId blank.',
-      );
-      expect(
-        properties['appLinkHosts'],
-        isNotNull,
-        reason: '${file.path} must declare appLinkHosts.',
-      );
-      expect(
-        properties['appLinkHosts']!,
-        isNotEmpty,
-        reason: '${file.path} must not leave appLinkHosts blank.',
-      );
-    }
-  });
+      for (final file in publicFiles) {
+        final properties = parseProperties(file.readAsStringSync());
+        expect(
+          properties['applicationId'],
+          isNotNull,
+          reason: '${file.path} must declare applicationId.',
+        );
+        expect(
+          properties['applicationId']!,
+          isNotEmpty,
+          reason: '${file.path} must not leave applicationId blank.',
+        );
+        expect(
+          properties['appLinkHosts'],
+          isNotNull,
+          reason: '${file.path} must declare appLinkHosts.',
+        );
+        expect(
+          properties['appLinkHosts']!,
+          isNotEmpty,
+          reason: '${file.path} must not leave appLinkHosts blank.',
+        );
+      }
+    },
+  );
 
   test('Android device intent validation script queries merged app links', () {
-    final script =
-        File('tool/validate_android_app_link_intents.sh').readAsStringSync();
+    final script = File(
+      'tool/validate_android_app_link_intents.sh',
+    ).readAsStringSync();
 
     expect(script, contains('ANDROID_APP_LINK_HOSTS'));
     expect(script, contains('ANDROID_OPEN_APP_BASE_URL'));
@@ -213,7 +213,6 @@ void main() {
     expect(script, contains('/location/permission'));
     expect(script, contains('/parceiro'));
     expect(script, contains('/parceiro/profile-slug'));
-    expect(script, contains('/static/praia-das-virtudes'));
     expect(script, contains('/agenda/evento/show-rock?occurrence=occ-1'));
     expect(script, contains('tenant.example.com'));
     expect(script, contains('android:host="\\*"'));
@@ -229,16 +228,23 @@ void main() {
     expect(activity, contains('setIntent(intent)'));
   });
 
-  test('iOS entitlements declare guarappari production universal link domains', () {
-    final entitlements =
-        File('ios/Runner/Runner.entitlements').readAsStringSync();
+  test(
+    'iOS entitlements declare guarappari production universal link domains',
+    () {
+      final entitlements = File(
+        'ios/Runner/Runner.entitlements',
+      ).readAsStringSync();
 
-    expect(entitlements, contains('com.apple.developer.associated-domains'));
-    expect(entitlements, contains('applinks:guarappari.com.br'));
-    expect(entitlements, contains('applinks:guarappari.booraagora.com.br'));
-    expect(entitlements, isNot(contains('applinks:guarappari.belluga.space')));
-    expect(entitlements, isNot(contains('applinks:guarappari.belluga.app')));
-  });
+      expect(entitlements, contains('com.apple.developer.associated-domains'));
+      expect(entitlements, contains('applinks:guarappari.com.br'));
+      expect(entitlements, contains('applinks:guarappari.booraagora.com.br'));
+      expect(
+        entitlements,
+        isNot(contains('applinks:guarappari.belluga.space')),
+      );
+      expect(entitlements, isNot(contains('applinks:guarappari.belluga.app')));
+    },
+  );
 
   test('flutter .well-known files are absent (endpoint is canonical)', () {
     final flutterAssetlinks = File('.well-known/assetlinks.json');
@@ -253,12 +259,15 @@ void main() {
 
     expect(flutterGitignore, contains('.well-known/assetlinks.json'));
     expect(
-        flutterGitignore, contains('.well-known/apple-app-site-association'));
+      flutterGitignore,
+      contains('.well-known/apple-app-site-association'),
+    );
   });
 
   test('Android flavor contract verifier covers negative-path failures', () {
-    final script =
-        File('tool/verify_android_flavor_contract.sh').readAsStringSync();
+    final script = File(
+      'tool/verify_android_flavor_contract.sh',
+    ).readAsStringSync();
 
     expect(script, contains('git ls-files --error-unmatch'));
     expect(script, contains('tenant.public.properties.example'));
@@ -277,5 +286,4 @@ void main() {
     expect(script, contains('CM_KEY_ALIAS'));
     expect(script, contains('CM_KEY_PASSWORD'));
   });
-
 }

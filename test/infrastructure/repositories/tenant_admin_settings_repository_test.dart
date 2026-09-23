@@ -645,11 +645,11 @@ void main() {
                 'primary_selection_mode': 'single',
                 'filters': [
                   {
-                    'key': 'assets',
-                    'label': 'Assets',
+                    'key': 'places',
+                    'label': 'Locais',
                     'image_uri': 'https://tenant-a.test/filter.png',
                     'query': {
-                      'entities': ['static_asset'],
+                      'entities': ['account_profile'],
                     },
                   },
                 ],

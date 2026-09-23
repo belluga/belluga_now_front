@@ -4,12 +4,10 @@ import 'package:belluga_now/application/tenant_admin/discovery_filters/tenant_ad
 import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_discovery_filter_rule_catalog_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_events_repository_contract.dart';
-import 'package:belluga_now/domain/repositories/tenant_admin_static_assets_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_settings.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms_by_taxonomy_id.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value_parsers.dart';
@@ -22,7 +20,6 @@ class TenantAdminDiscoveryFilterRuleCatalogRepository
 
   TenantAdminDiscoveryFilterRuleCatalogRepository({
     required this._accountProfilesRepository,
-    required this._staticAssetsRepository,
     required TenantAdminTaxonomiesRepositoryContract taxonomiesRepository,
     TenantAdminTaxonomiesBatchTermsRepositoryContract? batchTermsRepository,
     required this._eventsRepository,
@@ -34,7 +31,6 @@ class TenantAdminDiscoveryFilterRuleCatalogRepository
        );
 
   final TenantAdminAccountProfilesRepositoryContract _accountProfilesRepository;
-  final TenantAdminStaticAssetsRepositoryContract _staticAssetsRepository;
   final TenantAdminTaxonomiesRepositoryContract _taxonomiesRepository;
   final TenantAdminTaxonomiesBatchTermsRepositoryContract _batchTermsRepository;
   final TenantAdminEventsRepositoryContract _eventsRepository;
@@ -63,16 +59,12 @@ class TenantAdminDiscoveryFilterRuleCatalogRepository
     final eventTypesFuture = _eventsRepository.fetchEventTypes();
     await Future.wait<void>([
       _accountProfilesRepository.loadAllProfileTypes(),
-      _staticAssetsRepository.loadAllStaticProfileTypes(),
       _taxonomiesRepository.loadAllTaxonomies(),
     ]);
 
     final accountTypes =
         _accountProfilesRepository.profileTypesStreamValue.value ??
         const <TenantAdminProfileTypeDefinition>[];
-    final staticTypes =
-        _staticAssetsRepository.staticProfileTypesStreamValue.value ??
-        const <TenantAdminStaticProfileTypeDefinition>[];
     final eventTypes = await eventTypesFuture;
     final taxonomies =
         _taxonomiesRepository.taxonomiesStreamValue.value ??
@@ -80,7 +72,6 @@ class TenantAdminDiscoveryFilterRuleCatalogRepository
     final relevantTaxonomies = _relevantTaxonomies(
       taxonomies: taxonomies,
       accountTypes: accountTypes,
-      staticTypes: staticTypes,
       eventTypes: eventTypes,
     );
     final termsByTaxonomySlug = await _loadTermsByTaxonomySlug(
@@ -89,7 +80,6 @@ class TenantAdminDiscoveryFilterRuleCatalogRepository
 
     return _catalogBuilder.build(
       accountTypes: accountTypes,
-      staticTypes: staticTypes,
       eventTypes: eventTypes,
       taxonomies: relevantTaxonomies,
       termsBySlug: termsByTaxonomySlug,
@@ -99,15 +89,10 @@ class TenantAdminDiscoveryFilterRuleCatalogRepository
   List<TenantAdminTaxonomyDefinition> _relevantTaxonomies({
     required List<TenantAdminTaxonomyDefinition> taxonomies,
     required List<TenantAdminProfileTypeDefinition> accountTypes,
-    required List<TenantAdminStaticProfileTypeDefinition> staticTypes,
     required List<TenantAdminEventType> eventTypes,
   }) {
     final referencedSlugs = <String>{
       for (final type in accountTypes)
-        ...type.allowedTaxonomies.value.map(
-          (slug) => slug.trim().toLowerCase(),
-        ),
-      for (final type in staticTypes)
         ...type.allowedTaxonomies.value.map(
           (slug) => slug.trim().toLowerCase(),
         ),

@@ -1,219 +1,169 @@
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type_capability_entry.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type_capability_scalar.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type_capability_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_flag_value.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type_capability_key.dart';
-import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_profile_type_capability_values.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
 
 export 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_flag_value.dart';
+export 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_profile_type_capability_values.dart';
 
 class TenantAdminProfileTypeCapabilities {
-  factory TenantAdminProfileTypeCapabilities({
-    TenantAdminFlagValue? isQueryable,
-    TenantAdminFlagValue? isPubliclyNavigable,
-    TenantAdminFlagValue? isPubliclyDiscoverable,
-    TenantAdminFlagValue? isInviteable,
-    required TenantAdminFlagValue isFavoritable,
-    required TenantAdminFlagValue isPoiEnabled,
-    TenantAdminFlagValue? isReferenceLocationEnabled,
-    required TenantAdminFlagValue hasBio,
-    required TenantAdminFlagValue hasTaxonomies,
-    required TenantAdminFlagValue hasAvatar,
-    required TenantAdminFlagValue hasCover,
-    required TenantAdminFlagValue hasEvents,
-    TenantAdminFlagValue? hasGallery,
-    TenantAdminFlagValue? hasNestedProfileGroups,
-    TenantAdminFlagValue? hasContactChannels,
-    TenantAdminFlagValue? hasExternalLinks,
-  }) {
-    final normalized = TenantAdminProfileTypeCapabilityStateValue({
-      if (isQueryable != null)
-        TenantAdminProfileTypeCapabilityKey.isQueryable.apiValue:
-            isQueryable.value,
-      if (isPubliclyNavigable != null)
-        TenantAdminProfileTypeCapabilityKey.isPubliclyNavigable.apiValue:
-            isPubliclyNavigable.value,
-      if (isPubliclyDiscoverable != null)
-        TenantAdminProfileTypeCapabilityKey.isPubliclyDiscoverable.apiValue:
-            isPubliclyDiscoverable.value,
-      if (isInviteable != null)
-        TenantAdminProfileTypeCapabilityKey.isInviteable.apiValue:
-            isInviteable.value,
-      TenantAdminProfileTypeCapabilityKey.isFavoritable.apiValue:
-          isFavoritable.value,
-      TenantAdminProfileTypeCapabilityKey.isPoiEnabled.apiValue:
-          isPoiEnabled.value,
-      if (isReferenceLocationEnabled != null)
-        TenantAdminProfileTypeCapabilityKey.isReferenceLocationEnabled.apiValue:
-            isReferenceLocationEnabled.value,
-      TenantAdminProfileTypeCapabilityKey.hasBio.apiValue: hasBio.value,
-      TenantAdminProfileTypeCapabilityKey.hasTaxonomies.apiValue:
-          hasTaxonomies.value,
-      TenantAdminProfileTypeCapabilityKey.hasAvatar.apiValue: hasAvatar.value,
-      TenantAdminProfileTypeCapabilityKey.hasCover.apiValue: hasCover.value,
-      TenantAdminProfileTypeCapabilityKey.hasEvents.apiValue: hasEvents.value,
-      if (hasGallery != null)
-        TenantAdminProfileTypeCapabilityKey.hasGallery.apiValue:
-            hasGallery.value,
-      if (hasNestedProfileGroups != null)
-        TenantAdminProfileTypeCapabilityKey.hasNestedProfileGroups.apiValue:
-            hasNestedProfileGroups.value,
-      if (hasContactChannels != null)
-        TenantAdminProfileTypeCapabilityKey.hasContactChannels.apiValue:
-            hasContactChannels.value,
-      if (hasExternalLinks != null)
-        TenantAdminProfileTypeCapabilityKey.hasExternalLinks.apiValue:
-            hasExternalLinks.value,
-    }).normalized();
+  static final TenantAdminRequiredTextValue _locationPolicyKey =
+      TenantAdminRequiredTextValue()..parse('location_policy');
+  static final TenantAdminRequiredTextValue _mapPoiKey =
+      TenantAdminRequiredTextValue()..parse('is_map_poi_enabled');
+  static final TenantAdminRequiredTextValue _physicalHostKey =
+      TenantAdminRequiredTextValue()..parse('is_physical_host_enabled');
+  static final TenantAdminRequiredTextValue _referenceLocationKey =
+      TenantAdminRequiredTextValue()..parse('is_reference_location_enabled');
 
-    return TenantAdminProfileTypeCapabilities._(
-      isQueryable: normalized.flagValue(
-        TenantAdminProfileTypeCapabilityKey.isQueryable,
-      ),
-      isPubliclyNavigable: normalized.flagValue(
-        TenantAdminProfileTypeCapabilityKey.isPubliclyNavigable,
-      ),
-      isPubliclyDiscoverable: normalized.flagValue(
-        TenantAdminProfileTypeCapabilityKey.isPubliclyDiscoverable,
-      ),
-      isInviteable: normalized.flagValue(
-        TenantAdminProfileTypeCapabilityKey.isInviteable,
-      ),
-      isFavoritable: normalized.flagValue(
-        TenantAdminProfileTypeCapabilityKey.isFavoritable,
-      ),
-      isPoiEnabled: normalized.flagValue(
-        TenantAdminProfileTypeCapabilityKey.isPoiEnabled,
-      ),
-      isReferenceLocationEnabled: normalized.flagValue(
-        TenantAdminProfileTypeCapabilityKey.isReferenceLocationEnabled,
-      ),
-      hasBio: normalized.flagValue(TenantAdminProfileTypeCapabilityKey.hasBio),
-      hasTaxonomies: normalized.flagValue(
-        TenantAdminProfileTypeCapabilityKey.hasTaxonomies,
-      ),
-      hasAvatar: normalized.flagValue(
-        TenantAdminProfileTypeCapabilityKey.hasAvatar,
-      ),
-      hasCover: normalized.flagValue(
-        TenantAdminProfileTypeCapabilityKey.hasCover,
-      ),
-      hasEvents: normalized.flagValue(
-        TenantAdminProfileTypeCapabilityKey.hasEvents,
-      ),
-      hasGallery: normalized.flagValue(
-        TenantAdminProfileTypeCapabilityKey.hasGallery,
-      ),
-      hasNestedProfileGroups: normalized.flagValue(
-        TenantAdminProfileTypeCapabilityKey.hasNestedProfileGroups,
-      ),
-      hasContactChannels: normalized.flagValue(
-        TenantAdminProfileTypeCapabilityKey.hasContactChannels,
-      ),
-      hasExternalLinks: normalized.flagValue(
-        TenantAdminProfileTypeCapabilityKey.hasExternalLinks,
-      ),
+  TenantAdminProfileTypeCapabilities(
+    Iterable<TenantAdminProfileTypeCapabilityEntry> entries,
+  ) : entries = List<TenantAdminProfileTypeCapabilityEntry>.unmodifiable(
+        entries,
+      );
+
+  const TenantAdminProfileTypeCapabilities.empty() : entries = const [];
+
+  final List<TenantAdminProfileTypeCapabilityEntry> entries;
+
+  bool get isEmpty => entries.isEmpty;
+
+  TenantAdminProfileTypeCapabilityValue? valueFor(
+    TenantAdminRequiredTextValue keyValue,
+  ) {
+    for (final entry in entries) {
+      if (entry.key == keyValue.value) {
+        return entry.configured;
+      }
+    }
+    return null;
+  }
+
+  TenantAdminProfileTypeCapabilityValue? effectiveValueFor(
+    TenantAdminRequiredTextValue keyValue,
+  ) {
+    for (final entry in entries) {
+      if (entry.key == keyValue.value) {
+        return entry.effective;
+      }
+    }
+    return null;
+  }
+
+  TenantAdminProfileTypeCapabilities withBooleanValue(
+    TenantAdminRequiredTextValue keyValue,
+    TenantAdminFlagValue value,
+  ) {
+    return _withScalar(
+      keyValue,
+      TenantAdminProfileTypeCapabilityScalar.boolean(value),
     );
   }
 
-  TenantAdminProfileTypeCapabilities._({
-    required TenantAdminFlagValue isQueryable,
-    required TenantAdminFlagValue isPubliclyNavigable,
-    required TenantAdminFlagValue isPubliclyDiscoverable,
-    required TenantAdminFlagValue isInviteable,
-    required TenantAdminFlagValue isFavoritable,
-    required TenantAdminFlagValue isPoiEnabled,
-    required TenantAdminFlagValue isReferenceLocationEnabled,
-    required TenantAdminFlagValue hasBio,
-    required TenantAdminFlagValue hasTaxonomies,
-    required TenantAdminFlagValue hasAvatar,
-    required TenantAdminFlagValue hasCover,
-    required TenantAdminFlagValue hasEvents,
-    required TenantAdminFlagValue hasGallery,
-    required TenantAdminFlagValue hasNestedProfileGroups,
-    required TenantAdminFlagValue hasContactChannels,
-    required TenantAdminFlagValue hasExternalLinks,
-  }) : isQueryableValue = isQueryable,
-       isPubliclyNavigableValue = isPubliclyNavigable,
-       isPubliclyDiscoverableValue = isPubliclyDiscoverable,
-       isInviteableValue = isInviteable,
-       isFavoritableValue = isFavoritable,
-       isPoiEnabledValue = isPoiEnabled,
-       isReferenceLocationEnabledValue = isReferenceLocationEnabled,
-       hasBioValue = hasBio,
-       hasTaxonomiesValue = hasTaxonomies,
-       hasAvatarValue = hasAvatar,
-       hasCoverValue = hasCover,
-       hasEventsValue = hasEvents,
-       hasGalleryValue = hasGallery,
-       hasNestedProfileGroupsValue = hasNestedProfileGroups,
-       hasContactChannelsValue = hasContactChannels,
-       hasExternalLinksValue = hasExternalLinks;
-
-  final TenantAdminFlagValue isQueryableValue;
-  final TenantAdminFlagValue isPubliclyNavigableValue;
-  final TenantAdminFlagValue isPubliclyDiscoverableValue;
-  final TenantAdminFlagValue isInviteableValue;
-  final TenantAdminFlagValue isFavoritableValue;
-  final TenantAdminFlagValue isPoiEnabledValue;
-  final TenantAdminFlagValue isReferenceLocationEnabledValue;
-  final TenantAdminFlagValue hasBioValue;
-  final TenantAdminFlagValue hasTaxonomiesValue;
-  final TenantAdminFlagValue hasAvatarValue;
-  final TenantAdminFlagValue hasCoverValue;
-  final TenantAdminFlagValue hasEventsValue;
-  final TenantAdminFlagValue hasGalleryValue;
-  final TenantAdminFlagValue hasNestedProfileGroupsValue;
-  final TenantAdminFlagValue hasContactChannelsValue;
-  final TenantAdminFlagValue hasExternalLinksValue;
-
-  bool get isQueryable => isQueryableValue.value;
-  bool get isPubliclyNavigable => isPubliclyNavigableValue.value;
-  bool get isPubliclyDiscoverable => isPubliclyDiscoverableValue.value;
-  bool get isInviteable => isInviteableValue.value;
-  bool get isFavoritable => isFavoritableValue.value;
-  bool get isPoiEnabled => isPoiEnabledValue.value;
-  bool get isReferenceLocationEnabled => isReferenceLocationEnabledValue.value;
-  bool get hasBio => hasBioValue.value;
-  bool get hasTaxonomies => hasTaxonomiesValue.value;
-  bool get hasAvatar => hasAvatarValue.value;
-  bool get hasCover => hasCoverValue.value;
-  bool get hasEvents => hasEventsValue.value;
-  bool get hasGallery => hasGalleryValue.value;
-  bool get hasNestedProfileGroups => hasNestedProfileGroupsValue.value;
-  bool get hasContactChannels => hasContactChannelsValue.value;
-  bool get hasExternalLinks => hasExternalLinksValue.value;
-
-  TenantAdminProfileTypeCapabilityStateValue toCapabilityMap() {
-    return TenantAdminProfileTypeCapabilityStateValue({
-      TenantAdminProfileTypeCapabilityKey.isQueryable.apiValue:
-          isQueryableValue.value,
-      TenantAdminProfileTypeCapabilityKey.isPubliclyNavigable.apiValue:
-          isPubliclyNavigableValue.value,
-      TenantAdminProfileTypeCapabilityKey.isPubliclyDiscoverable.apiValue:
-          isPubliclyDiscoverableValue.value,
-      TenantAdminProfileTypeCapabilityKey.isInviteable.apiValue:
-          isInviteableValue.value,
-      TenantAdminProfileTypeCapabilityKey.isFavoritable.apiValue:
-          isFavoritableValue.value,
-      TenantAdminProfileTypeCapabilityKey.isPoiEnabled.apiValue:
-          isPoiEnabledValue.value,
-      TenantAdminProfileTypeCapabilityKey.isReferenceLocationEnabled.apiValue:
-          isReferenceLocationEnabledValue.value,
-      TenantAdminProfileTypeCapabilityKey.hasBio.apiValue: hasBioValue.value,
-      TenantAdminProfileTypeCapabilityKey.hasTaxonomies.apiValue:
-          hasTaxonomiesValue.value,
-      TenantAdminProfileTypeCapabilityKey.hasAvatar.apiValue:
-          hasAvatarValue.value,
-      TenantAdminProfileTypeCapabilityKey.hasCover.apiValue:
-          hasCoverValue.value,
-      TenantAdminProfileTypeCapabilityKey.hasEvents.apiValue:
-          hasEventsValue.value,
-      TenantAdminProfileTypeCapabilityKey.hasGallery.apiValue:
-          hasGalleryValue.value,
-      TenantAdminProfileTypeCapabilityKey.hasNestedProfileGroups.apiValue:
-          hasNestedProfileGroupsValue.value,
-      TenantAdminProfileTypeCapabilityKey.hasContactChannels.apiValue:
-          hasContactChannelsValue.value,
-      TenantAdminProfileTypeCapabilityKey.hasExternalLinks.apiValue:
-          hasExternalLinksValue.value,
-    }).normalized();
+  TenantAdminProfileTypeCapabilities withEnumValue(
+    TenantAdminRequiredTextValue keyValue,
+    TenantAdminRequiredTextValue value,
+  ) {
+    return _withScalar(
+      keyValue,
+      TenantAdminProfileTypeCapabilityScalar.enumeration(value),
+    );
   }
+
+  TenantAdminProfileTypeCapabilities _withScalar(
+    TenantAdminRequiredTextValue keyValue,
+    TenantAdminProfileTypeCapabilityScalar nextValue,
+  ) {
+    var matched = false;
+    final nextEntries = entries
+        .map((entry) {
+          if (entry.key != keyValue.value) {
+            return entry;
+          }
+          matched = true;
+          return entry.withConfigured(entry.configured.withScalar(nextValue));
+        })
+        .toList(growable: false);
+    return matched ? TenantAdminProfileTypeCapabilities(nextEntries) : this;
+  }
+
+  bool isEnabled(TenantAdminRequiredTextValue keyValue) =>
+      valueFor(keyValue)?.booleanValue == true;
+
+  bool isEffectivelyEnabled(TenantAdminRequiredTextValue keyValue) =>
+      effectiveValueFor(keyValue)?.booleanValue == true;
+
+  int? parameterValue(
+    TenantAdminRequiredTextValue keyValue,
+    TenantAdminRequiredTextValue parameterKeyValue,
+  ) {
+    final configuration = valueFor(keyValue);
+    if (configuration == null) {
+      return null;
+    }
+    for (final parameter in configuration.parameters) {
+      if (parameter.key == parameterKeyValue.value) {
+        return parameter.value;
+      }
+    }
+    return null;
+  }
+
+  /// Server-resolved location policy from the latest backend read.
+  ///
+  /// It stays stale inside an editable draft until the server recomputes it,
+  /// so same-form dependency and validation logic must read
+  /// [configuredLocationPolicy] instead.
+  String get locationPolicy =>
+      effectiveValueFor(_locationPolicyKey)?.enumValue ?? '';
+
+  /// Server-resolved location admission; see [locationPolicy] for draft rules.
+  bool get allowsLocation =>
+      locationPolicy == 'optional' || locationPolicy == 'required';
+
+  /// Server-resolved location requirement; see [locationPolicy] for draft rules.
+  bool get requiresLocation => locationPolicy == 'required';
+
+  /// Authoring-time location policy from the configured value.
+  ///
+  /// This is the value the editable draft mutates through [withEnumValue],
+  /// so same-form dependency and validation logic observes in-flight edits
+  /// here, without waiting for a server round trip.
+  String get configuredLocationPolicy =>
+      valueFor(_locationPolicyKey)?.enumValue ?? '';
+
+  /// Authoring-time location admission; see [configuredLocationPolicy].
+  bool get configuredAllowsLocation =>
+      configuredLocationPolicy == 'optional' ||
+      configuredLocationPolicy == 'required';
+
+  /// Authoring-time location requirement; see [configuredLocationPolicy].
+  bool get configuredRequiresLocation =>
+      configuredLocationPolicy == 'required';
+
+  /// Authoring-time Map POI admission; see [configuredLocationPolicy].
+  bool get configuredIsMapPoiEnabled =>
+      valueFor(_mapPoiKey)?.booleanValue == true;
+
+  /// Server-resolved Map POI admission; draft consumers read
+  /// [configuredIsMapPoiEnabled].
+  bool get isMapPoiEnabled => isEffectivelyEnabled(_mapPoiKey);
+
+  /// Server-resolved physical-host admission; draft consumers read
+  /// [configuredIsPhysicalHostEnabled].
+  bool get isPhysicalHostEnabled => isEffectivelyEnabled(_physicalHostKey);
+
+  /// Server-resolved reference-location admission; draft consumers read
+  /// [configuredIsReferenceLocationEnabled].
+  bool get isReferenceLocationEnabled =>
+      isEffectivelyEnabled(_referenceLocationKey);
+
+  /// Authoring-time physical-host admission; see [configuredLocationPolicy].
+  bool get configuredIsPhysicalHostEnabled =>
+      valueFor(_physicalHostKey)?.booleanValue == true;
+
+  /// Authoring-time reference-location admission; see [configuredLocationPolicy].
+  bool get configuredIsReferenceLocationEnabled =>
+      valueFor(_referenceLocationKey)?.booleanValue == true;
 }

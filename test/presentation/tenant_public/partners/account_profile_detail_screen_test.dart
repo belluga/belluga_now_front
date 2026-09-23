@@ -29,11 +29,9 @@ import 'package:belluga_now/domain/repositories/account_profiles_repository_cont
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/proximity_preferences_repository_contract.dart';
-import 'package:belluga_now/domain/repositories/static_assets_repository_contract.dart';
 import 'package:belluga_now/domain/value_objects/domain_boolean_value.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
-import 'package:belluga_now/domain/static_assets/public_static_asset_model.dart';
 import 'package:belluga_now/presentation/tenant_public/partners/account_profile_detail_screen.dart';
 import 'package:belluga_now/presentation/tenant_public/partners/controllers/account_profile_detail_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/partners/controllers/account_profile_detail_state.dart';
@@ -2600,9 +2598,6 @@ void main() {
         profiles: [parentProfile, childProfile],
       );
       GetIt.I.registerSingleton<AccountProfilesRepositoryContract>(repository);
-      GetIt.I.registerSingleton<StaticAssetsRepositoryContract>(
-        _FakeStaticAssetsRepository(),
-      );
       GetIt.I.registerSingleton<DiscoveryModule>(DiscoveryModule());
 
       final router = RootStackRouter.build(
@@ -2726,9 +2721,6 @@ void main() {
       );
       final createdControllers = <_TrackingAccountProfileDetailController>[];
       GetIt.I.registerSingleton<AccountProfilesRepositoryContract>(repository);
-      GetIt.I.registerSingleton<StaticAssetsRepositoryContract>(
-        _FakeStaticAssetsRepository(),
-      );
       GetIt.I.registerFactory<AccountProfileDetailController>(() {
         final controller = _TrackingAccountProfileDetailController(
           id: createdControllers.length + 1,
@@ -3711,9 +3703,7 @@ class _LoadingAccountProfileDetailController
   }
 
   @override
-  Future<void> loadResolvedAccountProfile(
-    AccountProfileComplete accountProfile,
-  ) async {}
+  void loadResolvedAccountProfile(AccountProfileComplete accountProfile) {}
 }
 
 class _EmptyAccountProfileDetailController
@@ -3723,9 +3713,7 @@ class _EmptyAccountProfileDetailController
   });
 
   @override
-  Future<void> loadResolvedAccountProfile(
-    AccountProfileComplete accountProfile,
-  ) async {
+  void loadResolvedAccountProfile(AccountProfileComplete accountProfile) {
     detailStateStreamValue.addValue(AccountProfileDetailState.empty);
     profileConfigStreamValue.addValue(null);
   }
@@ -3738,9 +3726,7 @@ class _ErrorAccountProfileDetailController
   });
 
   @override
-  Future<void> loadResolvedAccountProfile(
-    AccountProfileComplete accountProfile,
-  ) async {
+  void loadResolvedAccountProfile(AccountProfileComplete accountProfile) {
     errorMessageStreamValue.addValue('Falha ao preparar o perfil');
   }
 }
@@ -3757,11 +3743,9 @@ class _TrackingAccountProfileDetailController
   bool disposed = false;
 
   @override
-  Future<void> loadResolvedAccountProfile(
-    AccountProfileComplete accountProfile,
-  ) {
+  void loadResolvedAccountProfile(AccountProfileComplete accountProfile) {
     loadedSlugs.add(accountProfile.slug);
-    return super.loadResolvedAccountProfile(accountProfile);
+    super.loadResolvedAccountProfile(accountProfile);
   }
 
   @override
@@ -3972,13 +3956,6 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
 
   @override
   List<AccountProfileComplete> getFavoriteAccountProfiles() => const [];
-}
-
-class _FakeStaticAssetsRepository implements StaticAssetsRepositoryContract {
-  @override
-  Future<PublicStaticAssetModel?> getStaticAssetByRef(
-    StaticAssetRepoText assetRef,
-  ) async => null;
 }
 
 AccountProfileComplete _buildArtistProfile() {
@@ -4613,13 +4590,46 @@ AppData _buildAppData({
           'icon_color': '#FFFFFF',
         },
         'capabilities': {
-          'is_favoritable': artistFavoritable,
-          'is_poi_enabled': false,
-          'has_events': true,
-          'has_bio': artistHasBio,
-          'has_gallery': true,
-          'has_contact_channels': artistContactChannelsEnabled,
-          'has_external_links': artistExternalLinksEnabled,
+          'is_favoritable': {
+            'configured': {'value': artistFavoritable, 'parameters': {}},
+            'effective': {'value': artistFavoritable, 'parameters': {}},
+          },
+          'location_policy': {
+            'configured': {'value': 'disabled', 'parameters': {}},
+            'effective': {'value': 'disabled', 'parameters': {}},
+          },
+          'is_map_poi_enabled': {
+            'configured': {'value': false, 'parameters': {}},
+            'effective': {'value': false, 'parameters': {}},
+          },
+          'is_physical_host_enabled': {
+            'configured': {'value': false, 'parameters': {}},
+            'effective': {'value': false, 'parameters': {}},
+          },
+          'is_reference_location_enabled': {
+            'configured': {'value': false, 'parameters': {}},
+            'effective': {'value': false, 'parameters': {}},
+          },
+          'has_events': {
+            'configured': {'value': true, 'parameters': {}},
+            'effective': {'value': true, 'parameters': {}},
+          },
+          'has_bio': {
+            'configured': {'value': artistHasBio, 'parameters': {}},
+            'effective': {'value': artistHasBio, 'parameters': {}},
+          },
+          'has_gallery': {
+            'configured': {'value': true, 'parameters': {}},
+            'effective': {'value': true, 'parameters': {}},
+          },
+          'has_contact_channels': {
+            'configured': {'value': artistContactChannelsEnabled, 'parameters': {}},
+            'effective': {'value': artistContactChannelsEnabled, 'parameters': {}},
+          },
+          'has_external_links': {
+            'configured': {'value': artistExternalLinksEnabled, 'parameters': {}},
+            'effective': {'value': artistExternalLinksEnabled, 'parameters': {}},
+          },
         },
       },
       {
@@ -4633,12 +4643,42 @@ AppData _buildAppData({
           'icon_color': '#FFFFFF',
         },
         'capabilities': {
-          'is_favoritable': true,
-          'is_poi_enabled': true,
-          'has_events': true,
-          'has_bio': true,
-          'has_gallery': true,
-          'has_contact_channels': venueContactChannelsEnabled,
+          'is_favoritable': {
+            'configured': {'value': true, 'parameters': {}},
+            'effective': {'value': true, 'parameters': {}},
+          },
+          'location_policy': {
+            'configured': {'value': 'required', 'parameters': {}},
+            'effective': {'value': 'required', 'parameters': {}},
+          },
+          'is_map_poi_enabled': {
+            'configured': {'value': true, 'parameters': {}},
+            'effective': {'value': true, 'parameters': {}},
+          },
+          'is_physical_host_enabled': {
+            'configured': {'value': true, 'parameters': {}},
+            'effective': {'value': true, 'parameters': {}},
+          },
+          'is_reference_location_enabled': {
+            'configured': {'value': true, 'parameters': {}},
+            'effective': {'value': true, 'parameters': {}},
+          },
+          'has_events': {
+            'configured': {'value': true, 'parameters': {}},
+            'effective': {'value': true, 'parameters': {}},
+          },
+          'has_bio': {
+            'configured': {'value': true, 'parameters': {}},
+            'effective': {'value': true, 'parameters': {}},
+          },
+          'has_gallery': {
+            'configured': {'value': true, 'parameters': {}},
+            'effective': {'value': true, 'parameters': {}},
+          },
+          'has_contact_channels': {
+            'configured': {'value': venueContactChannelsEnabled, 'parameters': {}},
+            'effective': {'value': venueContactChannelsEnabled, 'parameters': {}},
+          },
         },
       },
       {
@@ -4652,11 +4692,34 @@ AppData _buildAppData({
           'icon_color': '#FFFFFF',
         },
         'capabilities': {
-          'is_favoritable': true,
-          'is_poi_enabled': true,
-          'is_reference_location_enabled': restaurantReferenceLocationEnabled,
-          'has_events': false,
-          'has_bio': false,
+          'is_favoritable': {
+            'configured': {'value': true, 'parameters': {}},
+            'effective': {'value': true, 'parameters': {}},
+          },
+          'location_policy': {
+            'configured': {'value': 'required', 'parameters': {}},
+            'effective': {'value': 'required', 'parameters': {}},
+          },
+          'is_map_poi_enabled': {
+            'configured': {'value': true, 'parameters': {}},
+            'effective': {'value': true, 'parameters': {}},
+          },
+          'is_physical_host_enabled': {
+            'configured': {'value': true, 'parameters': {}},
+            'effective': {'value': true, 'parameters': {}},
+          },
+          'is_reference_location_enabled': {
+            'configured': {'value': restaurantReferenceLocationEnabled, 'parameters': {}},
+            'effective': {'value': restaurantReferenceLocationEnabled, 'parameters': {}},
+          },
+          'has_events': {
+            'configured': {'value': false, 'parameters': {}},
+            'effective': {'value': false, 'parameters': {}},
+          },
+          'has_bio': {
+            'configured': {'value': false, 'parameters': {}},
+            'effective': {'value': false, 'parameters': {}},
+          },
         },
       },
     ],

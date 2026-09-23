@@ -8162,16 +8162,41 @@ TenantAdminProfileTypeDefinition _fixtureProfileType({
     type: type,
     label: label,
     allowedTaxonomies: const <String>[],
-    capabilities: TenantAdminProfileTypeCapabilities(
-      isQueryable: TenantAdminFlagValue(false),
-      isFavoritable: TenantAdminFlagValue(false),
-      isPoiEnabled: TenantAdminFlagValue(false),
-      hasBio: TenantAdminFlagValue(false),
-      hasTaxonomies: TenantAdminFlagValue(false),
-      hasAvatar: TenantAdminFlagValue(false),
-      hasCover: TenantAdminFlagValue(false),
-      hasEvents: TenantAdminFlagValue(false),
-    ),
+    capabilities: tenantAdminProfileTypeCapabilitiesFromRaw(<
+      String,
+      TenantAdminProfileTypeCapabilityValue
+    >{
+      'is_queryable': tenantAdminProfileTypeCapabilityValueFromRaw(
+        value: false,
+      ),
+      'is_favoritable': tenantAdminProfileTypeCapabilityValueFromRaw(
+        value: false,
+      ),
+      'location_policy': tenantAdminProfileTypeCapabilityValueFromRaw(
+        value: 'disabled',
+      ),
+      'is_map_poi_enabled': tenantAdminProfileTypeCapabilityValueFromRaw(
+        value: false,
+      ),
+      'is_physical_host_enabled': tenantAdminProfileTypeCapabilityValueFromRaw(
+        value: false,
+      ),
+      'has_bio': tenantAdminProfileTypeCapabilityValueFromRaw(
+        value: false,
+      ),
+      'has_taxonomies': tenantAdminProfileTypeCapabilityValueFromRaw(
+        value: false,
+      ),
+      'has_avatar': tenantAdminProfileTypeCapabilityValueFromRaw(
+        value: false,
+      ),
+      'has_cover': tenantAdminProfileTypeCapabilityValueFromRaw(
+        value: false,
+      ),
+      'has_events': tenantAdminProfileTypeCapabilityValueFromRaw(
+        value: false,
+      ),
+    }),
   );
 }
 

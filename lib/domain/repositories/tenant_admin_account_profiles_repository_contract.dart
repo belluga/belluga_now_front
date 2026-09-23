@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:belluga_contact_channels/belluga_contact_channels.dart';
+import 'dart:typed_data';
 import 'package:belluga_now/domain/repositories/tenant_admin_account_profile_candidates_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/tenant_admin_account_profiles_repository_contract_values.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
@@ -20,6 +21,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_member
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type_catalog_metadata.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_taxonomy_terms_value.dart';
 import 'package:stream_value/core/stream_value.dart';
@@ -27,6 +29,8 @@ import 'package:stream_value/core/stream_value.dart';
 export 'package:belluga_now/domain/repositories/value_objects/tenant_admin_account_profiles_repository_contract_values.dart';
 export 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
 export 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_taxonomy_terms_value.dart';
+
+enum TenantAdminAccountProfileMediaKind { avatar, cover }
 
 typedef TenantAdminAccountProfilesRepoString =
     TenantAdminAccountProfilesRepositoryContractTextValue;
@@ -80,6 +84,14 @@ abstract class TenantAdminAccountProfilesRepositoryContract
   Future<TenantAdminAccountProfile> fetchAccountProfile(
     TenantAdminAccountProfilesRepoString accountProfileId,
   );
+
+  Future<Uint8List> fetchAccountProfileMedia({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required TenantAdminAccountProfileMediaKind kind,
+  }) => throw UnimplementedError(
+    'fetchAccountProfileMedia must be implemented by tenant-admin '
+    'account-profile repositories.',
+  );
   Future<TenantAdminAccountProfile> createAccountProfile({
     required TenantAdminAccountProfilesRepoString accountId,
     required TenantAdminAccountProfilesRepoString profileType,
@@ -108,6 +120,7 @@ abstract class TenantAdminAccountProfilesRepositoryContract
     TenantAdminAccountProfilesRepoString? slug,
     TenantAdminAccountProfilesRepoInt? aggregateRevision,
     TenantAdminLocation? location,
+    TenantAdminAccountProfilesRepoBool? includeLocation,
     TenantAdminTaxonomyTerms? taxonomyTerms,
     TenantAdminAccountProfilesRepoString? bio,
     TenantAdminAccountProfilesRepoString? avatarUrl,
@@ -276,6 +289,16 @@ abstract class TenantAdminAccountProfilesRepositoryContract
   get profileTypesStreamValue =>
       _profileTypesPaginationState.profileTypesStreamValue;
 
+  StreamValue<TenantAdminProfileTypeCatalogMetadata>
+  get profileTypeCatalogMetadataStreamValue =>
+      _profileTypesPaginationState.profileTypeCatalogMetadataStreamValue;
+
+  void publishProfileTypeCatalogMetadata(
+    TenantAdminProfileTypeCatalogMetadata metadata,
+  ) {
+    profileTypeCatalogMetadataStreamValue.addValue(metadata);
+  }
+
   StreamValue<TenantAdminAccountProfilesRepoBool>
   get hasMoreProfileTypesStreamValue =>
       _profileTypesPaginationState.hasMoreProfileTypesStreamValue;
@@ -401,6 +424,7 @@ abstract class TenantAdminAccountProfilesRepositoryContract
     TenantAdminAccountProfilesRepoString? pluralLabel,
     List<TenantAdminAccountProfilesRepoString>? allowedTaxonomies,
     TenantAdminProfileTypeCapabilities? capabilities,
+    TenantAdminAccountProfilesRepoInt? expectedCapabilityRevision,
   });
   Future<TenantAdminProfileTypeDefinition> updateProfileTypeWithVisual({
     required TenantAdminAccountProfilesRepoString type,
@@ -409,6 +433,7 @@ abstract class TenantAdminAccountProfilesRepositoryContract
     TenantAdminAccountProfilesRepoString? pluralLabel,
     List<TenantAdminAccountProfilesRepoString>? allowedTaxonomies,
     TenantAdminProfileTypeCapabilities? capabilities,
+    TenantAdminAccountProfilesRepoInt? expectedCapabilityRevision,
     TenantAdminPoiVisual? visual,
     TenantAdminMediaUpload? typeAssetUpload,
     TenantAdminAccountProfilesRepoBool? removeTypeAsset,
@@ -420,12 +445,14 @@ abstract class TenantAdminAccountProfilesRepositoryContract
       pluralLabel: pluralLabel,
       allowedTaxonomies: allowedTaxonomies,
       capabilities: capabilities,
+      expectedCapabilityRevision: expectedCapabilityRevision,
     );
   }
 
   Future<TenantAdminAccountProfilesRepoInt>
   fetchProfileTypeMapPoiProjectionImpact({
     required TenantAdminAccountProfilesRepoString type,
+    required TenantAdminProfileTypeCapabilities capabilities,
   }) async {
     return tenantAdminAccountProfilesRepoInt(0, defaultValue: 0);
   }
@@ -487,6 +514,9 @@ abstract class TenantAdminAccountProfilesRepositoryContract
         tenantAdminAccountProfilesRepoString(error.toString()),
       );
       if (page.value == 1) {
+        publishProfileTypeCatalogMetadata(
+          const TenantAdminProfileTypeCatalogMetadata.empty(),
+        );
         profileTypesStreamValue.addValue(
           const <TenantAdminProfileTypeDefinition>[],
         );
@@ -508,6 +538,9 @@ abstract class TenantAdminAccountProfilesRepositoryContract
         tenantAdminAccountProfilesRepoBool(true, defaultValue: true);
     _profileTypesPaginationState.isFetchingProfileTypesPage =
         tenantAdminAccountProfilesRepoBool(false, defaultValue: false);
+    publishProfileTypeCatalogMetadata(
+      const TenantAdminProfileTypeCatalogMetadata.empty(),
+    );
     hasMoreProfileTypesStreamValue.addValue(
       tenantAdminAccountProfilesRepoBool(true, defaultValue: true),
     );
@@ -531,6 +564,11 @@ mixin TenantAdminProfileTypesPaginationMixin
   StreamValue<List<TenantAdminProfileTypeDefinition>?>
   get profileTypesStreamValue =>
       _mixinProfileTypesState.profileTypesStreamValue;
+
+  @override
+  StreamValue<TenantAdminProfileTypeCatalogMetadata>
+  get profileTypeCatalogMetadataStreamValue =>
+      _mixinProfileTypesState.profileTypeCatalogMetadataStreamValue;
 
   @override
   StreamValue<TenantAdminAccountProfilesRepoBool>
@@ -629,6 +667,7 @@ mixin TenantAdminProfileTypesPaginationMixin
     TenantAdminAccountProfilesRepoString? pluralLabel,
     List<TenantAdminAccountProfilesRepoString>? allowedTaxonomies,
     TenantAdminProfileTypeCapabilities? capabilities,
+    TenantAdminAccountProfilesRepoInt? expectedCapabilityRevision,
     TenantAdminPoiVisual? visual,
     TenantAdminMediaUpload? typeAssetUpload,
     TenantAdminAccountProfilesRepoBool? removeTypeAsset,
@@ -640,6 +679,7 @@ mixin TenantAdminProfileTypesPaginationMixin
       pluralLabel: pluralLabel,
       allowedTaxonomies: allowedTaxonomies,
       capabilities: capabilities,
+      expectedCapabilityRevision: expectedCapabilityRevision,
     );
   }
 
@@ -647,6 +687,7 @@ mixin TenantAdminProfileTypesPaginationMixin
   Future<TenantAdminAccountProfilesRepoInt>
   fetchProfileTypeMapPoiProjectionImpact({
     required TenantAdminAccountProfilesRepoString type,
+    required TenantAdminProfileTypeCapabilities capabilities,
   }) async {
     return tenantAdminAccountProfilesRepoInt(0, defaultValue: 0);
   }
@@ -705,6 +746,9 @@ mixin TenantAdminProfileTypesPaginationMixin
         tenantAdminAccountProfilesRepoString(error.toString()),
       );
       if (page.value == 1) {
+        publishProfileTypeCatalogMetadata(
+          const TenantAdminProfileTypeCatalogMetadata.empty(),
+        );
         profileTypesStreamValue.addValue(
           const <TenantAdminProfileTypeDefinition>[],
         );
@@ -726,6 +770,9 @@ mixin TenantAdminProfileTypesPaginationMixin
         tenantAdminAccountProfilesRepoBool(true, defaultValue: true);
     _mixinProfileTypesState.isFetchingProfileTypesPage =
         tenantAdminAccountProfilesRepoBool(false, defaultValue: false);
+    publishProfileTypeCatalogMetadata(
+      const TenantAdminProfileTypeCatalogMetadata.empty(),
+    );
     hasMoreProfileTypesStreamValue.addValue(
       tenantAdminAccountProfilesRepoBool(true, defaultValue: true),
     );
@@ -741,6 +788,11 @@ class _TenantAdminProfileTypesPaginationState {
   final StreamValue<List<TenantAdminProfileTypeDefinition>?>
   profileTypesStreamValue =
       StreamValue<List<TenantAdminProfileTypeDefinition>?>();
+  final StreamValue<TenantAdminProfileTypeCatalogMetadata>
+  profileTypeCatalogMetadataStreamValue =
+      StreamValue<TenantAdminProfileTypeCatalogMetadata>(
+        defaultValue: const TenantAdminProfileTypeCatalogMetadata.empty(),
+      );
   final StreamValue<TenantAdminAccountProfilesRepoBool>
   hasMoreProfileTypesStreamValue =
       StreamValue<TenantAdminAccountProfilesRepoBool>(

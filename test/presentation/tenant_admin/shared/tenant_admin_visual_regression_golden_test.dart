@@ -61,7 +61,7 @@ void main() {
                     Card(
                       child: ListTile(
                         title: Text('Cozinha'),
-                        subtitle: Text('static_asset'),
+                        subtitle: Text('account_profile'),
                         trailing: Icon(Icons.more_vert),
                       ),
                     ),
@@ -81,9 +81,7 @@ void main() {
 
     await expectLater(
       find.byType(Scaffold),
-      matchesGoldenFile(
-        'goldens/tenant_admin_list_state.png',
-      ),
+      matchesGoldenFile('goldens/tenant_admin_list_state.png'),
     );
   });
 
@@ -101,9 +99,7 @@ void main() {
 
     await expectLater(
       find.byType(Scaffold),
-      matchesGoldenFile(
-        'goldens/tenant_admin_empty_state.png',
-      ),
+      matchesGoldenFile('goldens/tenant_admin_empty_state.png'),
     );
   });
 
@@ -124,9 +120,7 @@ void main() {
 
     await expectLater(
       find.byType(Scaffold),
-      matchesGoldenFile(
-        'goldens/tenant_admin_error_state.png',
-      ),
+      matchesGoldenFile('goldens/tenant_admin_error_state.png'),
     );
   });
 
@@ -145,17 +139,9 @@ void main() {
                     'Defina slug, nome e metadados visuais da taxonomia.',
                 child: Column(
                   children: const [
-                    TextField(
-                      decoration: InputDecoration(
-                        labelText: 'Slug',
-                      ),
-                    ),
+                    TextField(decoration: InputDecoration(labelText: 'Slug')),
                     SizedBox(height: 12),
-                    TextField(
-                      decoration: InputDecoration(
-                        labelText: 'Nome',
-                      ),
-                    ),
+                    TextField(decoration: InputDecoration(labelText: 'Nome')),
                   ],
                 ),
               ),
@@ -173,9 +159,7 @@ void main() {
 
     await expectLater(
       find.byType(Scaffold),
-      matchesGoldenFile(
-        'goldens/tenant_admin_form_state.png',
-      ),
+      matchesGoldenFile('goldens/tenant_admin_form_state.png'),
     );
   });
 }

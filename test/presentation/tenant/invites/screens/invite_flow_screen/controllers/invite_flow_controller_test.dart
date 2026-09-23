@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:belluga_now/testing/domain_factories.dart';
 import 'package:belluga_now/domain/invites/invite_accept_result.dart';
 import 'package:belluga_now/domain/invites/invite_contact_match.dart';
@@ -111,6 +113,8 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
     this.materializeStatus,
     this.throwOnRefresh = false,
     this.throwOnMaterialize = false,
+    this.acceptInviteCompleter,
+    this.acceptInviteStarted,
   }) : _invites = List<InviteModel>.from(initialInvites);
 
   final List<InviteModel> _invites;
@@ -119,6 +123,8 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   final String? materializeStatus;
   bool throwOnRefresh;
   final bool throwOnMaterialize;
+  final Completer<InviteAcceptResult>? acceptInviteCompleter;
+  final Completer<void>? acceptInviteStarted;
   final List<String> materializedShareCodes = <String>[];
   final List<String> previewedShareCodes = <String>[];
   final List<String> acceptedInviteIds = <String>[];
@@ -146,19 +152,26 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   @override
   Future<InviteAcceptResult> acceptInvite(
     InvitesRepositoryContractPrimString inviteId,
-  ) async => (() {
+  ) async {
     acceptedInviteIds.add(inviteId.value);
+    final started = acceptInviteStarted;
+    if (started != null && !started.isCompleted) {
+      started.complete();
+    }
+    final result = acceptInviteCompleter == null
+        ? buildInviteAcceptResult(
+            inviteId: inviteId.value,
+            status: 'accepted',
+            creditedAcceptance: true,
+            attendancePolicy: 'free_confirmation_only',
+            nextStep: InviteNextStep.freeConfirmationCreated,
+            supersededInviteIds: const [],
+          )
+        : await acceptInviteCompleter!.future;
     _removeInvite(inviteId.value);
     pendingInvitesStreamValue.addValue(List<InviteModel>.from(_invites));
-    return buildInviteAcceptResult(
-      inviteId: inviteId.value,
-      status: 'accepted',
-      creditedAcceptance: true,
-      attendancePolicy: 'free_confirmation_only',
-      nextStep: InviteNextStep.freeConfirmationCreated,
-      supersededInviteIds: const [],
-    );
-  })();
+    return result;
+  }
 
   @override
   Future<InviteAcceptResult> acceptInviteByCode(
@@ -674,6 +687,54 @@ void main() {
         containsPair('occurrence_id', 'occurrence-preview'),
       );
       await controller.onDispose();
+    },
+  );
+
+  test(
+    'accepted decision is single-flight across ten rapid triggers',
+    () async {
+      for (final repetition in List<int>.generate(3, (index) => index)) {
+        final acceptGate = Completer<InviteAcceptResult>();
+        final acceptStarted = Completer<void>();
+        final repository = _FakeInvitesRepository(
+          initialInvites: [_buildInvite('single-flight-$repetition')],
+          acceptInviteCompleter: acceptGate,
+          acceptInviteStarted: acceptStarted,
+        );
+        final controller = InviteFlowScreenController(
+          repository: repository,
+          userEventsRepository: _FakeUserEventsRepository(),
+          telemetryRepository: _FakeTelemetryRepository(),
+          authRepository: _FakeAuthRepository(authorized: true),
+        );
+
+        var decisions = <Future<void>>[];
+        try {
+          await controller.init();
+          decisions = List<Future<void>>.generate(
+            10,
+            (_) => controller.requestDecision(InviteDecision.accepted),
+          );
+          await acceptStarted.future;
+
+          expect(repository.acceptedInviteIds, hasLength(1));
+        } finally {
+          if (!acceptGate.isCompleted) {
+            acceptGate.complete(
+              buildInviteAcceptResult(
+                inviteId: 'single-flight-$repetition',
+                status: 'accepted',
+                creditedAcceptance: true,
+                attendancePolicy: 'free_confirmation_only',
+                nextStep: InviteNextStep.freeConfirmationCreated,
+                supersededInviteIds: const [],
+              ),
+            );
+          }
+          await Future.wait(decisions);
+          await controller.onDispose();
+        }
+      }
     },
   );
 

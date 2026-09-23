@@ -3,16 +3,19 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('Tenant admin routes path params', () {
-    test('event edit route encodes eventId path param and occurrence query', () {
-      final eventEdit = TenantAdminEventEditRoute(
-        eventId: 'evt-123',
-        occurrenceId: 'occ-7',
-      );
+    test(
+      'event edit route encodes eventId path param and occurrence query',
+      () {
+        final eventEdit = TenantAdminEventEditRoute(
+          eventId: 'evt-123',
+          occurrenceId: 'occ-7',
+        );
 
-      expect(eventEdit.rawPathParams, {'eventId': 'evt-123'});
-      expect(eventEdit.rawQueryParams['occurrence'], 'occ-7');
-      _expectResolvedRawParams(eventEdit.rawPathParams);
-    });
+        expect(eventEdit.rawPathParams, {'eventId': 'evt-123'});
+        expect(eventEdit.rawQueryParams['occurrence'], 'occ-7');
+        _expectResolvedRawParams(eventEdit.rawPathParams);
+      },
+    );
 
     test('account profile create/edit routes encode required path params', () {
       final create = TenantAdminAccountProfileCreateRoute(
@@ -32,22 +35,13 @@ void main() {
       _expectResolvedRawParams(edit.rawPathParams);
     });
 
-    test(
-        'organization and static asset detail/edit encode required path params',
-        () {
+    test('organization detail encodes required path params', () {
       final organization = TenantAdminOrganizationDetailRoute(
         organizationId: 'org-123',
       );
-      final assetDetail =
-          TenantAdminStaticAssetDetailRoute(assetId: 'asset-41');
-      final assetEdit = TenantAdminStaticAssetEditRoute(assetId: 'asset-42');
 
       expect(organization.rawPathParams, {'organizationId': 'org-123'});
-      expect(assetDetail.rawPathParams, {'assetId': 'asset-41'});
-      expect(assetEdit.rawPathParams, {'assetId': 'asset-42'});
       _expectResolvedRawParams(organization.rawPathParams);
-      _expectResolvedRawParams(assetDetail.rawPathParams);
-      _expectResolvedRawParams(assetEdit.rawPathParams);
     });
 
     test('profile type routes encode profileType path param', () {
@@ -57,30 +51,18 @@ void main() {
       final profileEditRoute = TenantAdminProfileTypeEditRoute(
         profileType: 'artist',
       );
-      final staticDetailRoute = TenantAdminStaticProfileTypeDetailRoute(
-        profileType: 'poi',
-      );
-      final staticRoute = TenantAdminStaticProfileTypeEditRoute(
-        profileType: 'poi',
-      );
 
       expect(profileRoute.rawPathParams, {'profileType': 'artist'});
       expect(profileEditRoute.rawPathParams, {'profileType': 'artist'});
-      expect(staticDetailRoute.rawPathParams, {'profileType': 'poi'});
-      expect(staticRoute.rawPathParams, {'profileType': 'poi'});
       _expectResolvedRawParams(profileRoute.rawPathParams);
       _expectResolvedRawParams(profileEditRoute.rawPathParams);
-      _expectResolvedRawParams(staticDetailRoute.rawPathParams);
-      _expectResolvedRawParams(staticRoute.rawPathParams);
     });
 
     test('taxonomy routes encode taxonomyId and termId path params', () {
       const taxonomyId = 'taxonomy-1';
       const termId = 'term-77';
 
-      final taxonomyEdit = TenantAdminTaxonomyEditRoute(
-        taxonomyId: taxonomyId,
-      );
+      final taxonomyEdit = TenantAdminTaxonomyEditRoute(taxonomyId: taxonomyId);
       final taxonomyTerms = TenantAdminTaxonomyTermsRoute(
         taxonomyId: taxonomyId,
       );
@@ -116,31 +98,28 @@ void main() {
   });
 
   group('Public route path params', () {
-    test('immersive event, partner, and static asset routes encode path params',
-        () {
+    test('immersive event and partner routes encode path params', () {
       final immersive = ImmersiveEventDetailRoute(
         eventSlug: 'show-immersive',
         occurrenceId: 'occ-2',
       );
       final partner = PartnerDetailRoute(slug: 'yuri-dias');
-      final asset = StaticAssetDetailRoute(assetRef: 'praia-das-virtudes');
 
       expect(immersive.rawPathParams, {'slug': 'show-immersive'});
       expect(immersive.rawQueryParams['occurrence'], 'occ-2');
       expect(immersive.rawQueryParams['tab'], isNull);
       expect(partner.rawPathParams, {'slug': 'yuri-dias'});
-      expect(asset.rawPathParams, {'assetRef': 'praia-das-virtudes'});
       _expectResolvedRawParams(immersive.rawPathParams);
       _expectResolvedRawParams(partner.rawPathParams);
-      _expectResolvedRawParams(asset.rawPathParams);
     });
   });
 
   group('Workspace route path params', () {
     test('workspace scoped route encodes account slug path param', () {
       const workspaceHome = AccountWorkspaceHomeRoute();
-      final workspaceScoped =
-          AccountWorkspaceScopedRoute(accountSlug: 'account-alpha');
+      final workspaceScoped = AccountWorkspaceScopedRoute(
+        accountSlug: 'account-alpha',
+      );
 
       expect(workspaceHome.rawPathParams, isEmpty);
       expect(workspaceScoped.rawPathParams, {'accountSlug': 'account-alpha'});

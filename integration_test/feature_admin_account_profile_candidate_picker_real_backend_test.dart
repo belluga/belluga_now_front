@@ -124,17 +124,46 @@ void main() {
           pluralLabel: tenantAdminAccountProfilesRepoString(
             'U03 Nested $unique',
           ),
-          capabilities: TenantAdminProfileTypeCapabilities(
-            isQueryable: TenantAdminFlagValue(true),
-            isFavoritable: TenantAdminFlagValue(false),
-            isPoiEnabled: TenantAdminFlagValue(false),
-            hasBio: TenantAdminFlagValue(false),
-            hasTaxonomies: TenantAdminFlagValue(false),
-            hasAvatar: TenantAdminFlagValue(false),
-            hasCover: TenantAdminFlagValue(false),
-            hasEvents: TenantAdminFlagValue(false),
-            hasNestedProfileGroups: TenantAdminFlagValue(true),
-          ),
+          capabilities: tenantAdminProfileTypeCapabilitiesFromRaw(<
+            String,
+            TenantAdminProfileTypeCapabilityValue
+          >{
+            'is_queryable': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: true,
+            ),
+            'is_favoritable': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: false,
+            ),
+            'location_policy': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: 'disabled',
+            ),
+            'is_map_poi_enabled': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: false,
+            ),
+            'is_physical_host_enabled':
+                tenantAdminProfileTypeCapabilityValueFromRaw(
+                  value: false,
+                ),
+            'has_bio': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: false,
+            ),
+            'has_taxonomies': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: false,
+            ),
+            'has_avatar': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: false,
+            ),
+            'has_cover': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: false,
+            ),
+            'has_events': tenantAdminProfileTypeCapabilityValueFromRaw(
+              value: false,
+            ),
+            'has_nested_profile_groups':
+                tenantAdminProfileTypeCapabilityValueFromRaw(
+                  value: true,
+                ),
+          }),
         );
         createdProfileTypes.add(nestedType.type);
 

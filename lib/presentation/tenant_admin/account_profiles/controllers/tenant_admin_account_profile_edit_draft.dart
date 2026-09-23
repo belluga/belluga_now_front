@@ -1,4 +1,5 @@
 import 'package:belluga_contact_channels/belluga_contact_channels.dart';
+import 'dart:typed_data';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profile_gallery_group_draft.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_capabilities.dart';
@@ -12,14 +13,10 @@ class TenantAdminAccountProfileEditDraft {
     required this.selectedProfileType,
     required this.avatarFile,
     required this.coverFile,
-    required this.avatarRemoteUrl,
-    required this.coverRemoteUrl,
-    required this.avatarRemoteReady,
-    required this.coverRemoteReady,
-    required this.avatarRemoteError,
-    required this.coverRemoteError,
-    required this.avatarPreloadUrl,
-    required this.coverPreloadUrl,
+    required this.avatarRemoteBytes,
+    required this.coverRemoteBytes,
+    required this.avatarRemoteLoadFailed,
+    required this.coverRemoteLoadFailed,
     required this.avatarBusy,
     required this.coverBusy,
     required this.contactMode,
@@ -38,14 +35,10 @@ class TenantAdminAccountProfileEditDraft {
         selectedProfileType: null,
         avatarFile: null,
         coverFile: null,
-        avatarRemoteUrl: null,
-        coverRemoteUrl: null,
-        avatarRemoteReady: false,
-        coverRemoteReady: false,
-        avatarRemoteError: false,
-        coverRemoteError: false,
-        avatarPreloadUrl: null,
-        coverPreloadUrl: null,
+        avatarRemoteBytes: null,
+        coverRemoteBytes: null,
+        avatarRemoteLoadFailed: false,
+        coverRemoteLoadFailed: false,
         avatarBusy: false,
         coverBusy: false,
         contactMode: BellugaContactSourceMode.own,
@@ -62,14 +55,10 @@ class TenantAdminAccountProfileEditDraft {
   final String? selectedProfileType;
   final XFile? avatarFile;
   final XFile? coverFile;
-  final String? avatarRemoteUrl;
-  final String? coverRemoteUrl;
-  final bool avatarRemoteReady;
-  final bool coverRemoteReady;
-  final bool avatarRemoteError;
-  final bool coverRemoteError;
-  final String? avatarPreloadUrl;
-  final String? coverPreloadUrl;
+  final Uint8List? avatarRemoteBytes;
+  final Uint8List? coverRemoteBytes;
+  final bool avatarRemoteLoadFailed;
+  final bool coverRemoteLoadFailed;
   final bool avatarBusy;
   final bool coverBusy;
   final BellugaContactSourceMode contactMode;
@@ -85,14 +74,10 @@ class TenantAdminAccountProfileEditDraft {
     Object? selectedProfileType = _unset,
     Object? avatarFile = _unset,
     Object? coverFile = _unset,
-    Object? avatarRemoteUrl = _unset,
-    Object? coverRemoteUrl = _unset,
-    bool? avatarRemoteReady,
-    bool? coverRemoteReady,
-    bool? avatarRemoteError,
-    bool? coverRemoteError,
-    Object? avatarPreloadUrl = _unset,
-    Object? coverPreloadUrl = _unset,
+    Object? avatarRemoteBytes = _unset,
+    Object? coverRemoteBytes = _unset,
+    bool? avatarRemoteLoadFailed,
+    bool? coverRemoteLoadFailed,
     bool? avatarBusy,
     bool? coverBusy,
     BellugaContactSourceMode? contactMode,
@@ -113,31 +98,23 @@ class TenantAdminAccountProfileEditDraft {
     final nextCoverFile = coverFile == _unset
         ? this.coverFile
         : coverFile as XFile?;
-    final nextAvatarRemoteUrl = avatarRemoteUrl == _unset
-        ? this.avatarRemoteUrl
-        : avatarRemoteUrl as String?;
-    final nextCoverRemoteUrl = coverRemoteUrl == _unset
-        ? this.coverRemoteUrl
-        : coverRemoteUrl as String?;
-    final nextAvatarPreloadUrl = avatarPreloadUrl == _unset
-        ? this.avatarPreloadUrl
-        : avatarPreloadUrl as String?;
-    final nextCoverPreloadUrl = coverPreloadUrl == _unset
-        ? this.coverPreloadUrl
-        : coverPreloadUrl as String?;
+    final nextAvatarRemoteBytes = avatarRemoteBytes == _unset
+        ? this.avatarRemoteBytes
+        : avatarRemoteBytes as Uint8List?;
+    final nextCoverRemoteBytes = coverRemoteBytes == _unset
+        ? this.coverRemoteBytes
+        : coverRemoteBytes as Uint8List?;
 
     return TenantAdminAccountProfileEditDraft(
       selectedProfileType: nextSelectedProfileType,
       avatarFile: nextAvatarFile,
       coverFile: nextCoverFile,
-      avatarRemoteUrl: nextAvatarRemoteUrl,
-      coverRemoteUrl: nextCoverRemoteUrl,
-      avatarRemoteReady: avatarRemoteReady ?? this.avatarRemoteReady,
-      coverRemoteReady: coverRemoteReady ?? this.coverRemoteReady,
-      avatarRemoteError: avatarRemoteError ?? this.avatarRemoteError,
-      coverRemoteError: coverRemoteError ?? this.coverRemoteError,
-      avatarPreloadUrl: nextAvatarPreloadUrl,
-      coverPreloadUrl: nextCoverPreloadUrl,
+      avatarRemoteBytes: nextAvatarRemoteBytes,
+      coverRemoteBytes: nextCoverRemoteBytes,
+      avatarRemoteLoadFailed:
+          avatarRemoteLoadFailed ?? this.avatarRemoteLoadFailed,
+      coverRemoteLoadFailed:
+          coverRemoteLoadFailed ?? this.coverRemoteLoadFailed,
       avatarBusy: avatarBusy ?? this.avatarBusy,
       coverBusy: coverBusy ?? this.coverBusy,
       contactMode: contactMode ?? this.contactMode,
@@ -159,20 +136,14 @@ class TenantAdminAccountProfileEditDraft {
   TenantAdminAccountProfileEditDraft syncRemoteState(
     TenantAdminAccountProfile updated,
   ) {
-    final avatarUrl = updated.avatarUrl;
-    final coverUrl = updated.coverUrl;
     final contactChannelDrafts = updated.contactChannels
         .map(BellugaContactChannelDraft.fromChannel)
         .toList(growable: false);
     return copyWith(
-      avatarRemoteUrl: avatarUrl,
-      coverRemoteUrl: coverUrl,
-      avatarRemoteReady: false,
-      coverRemoteReady: false,
-      avatarRemoteError: false,
-      coverRemoteError: false,
-      avatarPreloadUrl: null,
-      coverPreloadUrl: null,
+      avatarRemoteBytes: null,
+      coverRemoteBytes: null,
+      avatarRemoteLoadFailed: false,
+      coverRemoteLoadFailed: false,
       contactMode: updated.contactMode,
       contactSourceAccountProfileId: updated.contactSourceAccountProfileId,
       contactChannelDrafts: contactChannelDrafts,

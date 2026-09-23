@@ -2,23 +2,18 @@ import 'package:belluga_now/application/tenant_admin/discovery_filters/tenant_ad
 import 'package:belluga_now/application/tenant_admin/discovery_filters/tenant_admin_taxonomy_terms_by_slug.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/settings/tenant_admin_map_filter_source.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_count_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_trimmed_string_list_value.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   const builder = TenantAdminDiscoveryFilterRuleCatalogBuilder();
 
-  test('build hydrates event type options beside account and static types', () {
+  test('build hydrates event type options beside account types', () {
     final catalog = builder.build(
-      accountTypes: [
-        _accountType(type: 'restaurant', label: 'Restaurantes'),
-      ],
-      staticTypes: [
-        _staticType(type: 'beach', label: 'Praias'),
-      ],
+      accountTypes: [_accountType(type: 'restaurant', label: 'Restaurantes')],
       eventTypes: [
         _eventType(name: 'Workshop', slug: 'workshop'),
         _eventType(name: 'Show', slug: 'show'),
@@ -32,12 +27,6 @@ void main() {
           .typesForSource(TenantAdminMapFilterSource.accountProfile)
           .map((option) => option.slug),
       <String>['restaurant'],
-    );
-    expect(
-      catalog
-          .typesForSource(TenantAdminMapFilterSource.staticAsset)
-          .map((option) => option.slug),
-      <String>['beach'],
     );
     expect(
       catalog
@@ -55,65 +44,51 @@ void main() {
 
   test('build keeps event type options empty when registry is empty', () {
     final catalog = builder.build(
-      accountTypes: [
-        _accountType(type: 'restaurant', label: 'Restaurantes'),
-      ],
-      staticTypes: [
-        _staticType(type: 'beach', label: 'Praias'),
-      ],
+      accountTypes: [_accountType(type: 'restaurant', label: 'Restaurantes')],
       eventTypes: const [],
       taxonomies: const [],
       termsBySlug: TenantAdminTaxonomyTermsBySlug.fromMap(const {}),
     );
 
-    expect(
-      catalog.typesForSource(TenantAdminMapFilterSource.event),
-      isEmpty,
-    );
+    expect(catalog.typesForSource(TenantAdminMapFilterSource.event), isEmpty);
     expect(
       catalog.typesForSource(TenantAdminMapFilterSource.accountProfile),
       isNotEmpty,
     );
-    expect(
-      catalog.typesForSource(TenantAdminMapFilterSource.staticAsset),
-      isNotEmpty,
-    );
   });
 
-  test('build exposes only poi enabled account profile types for map filters',
-      () {
-    final catalog = builder.build(
-      accountTypes: [
-        _accountType(
-          type: 'restaurant',
-          label: 'Restaurantes',
-          isPoiEnabled: true,
-        ),
-        _accountType(
-          type: 'sponsor',
-          label: 'Patrocinadores',
-          isPoiEnabled: false,
-        ),
-      ],
-      staticTypes: const [],
-      eventTypes: const [],
-      taxonomies: const [],
-      termsBySlug: TenantAdminTaxonomyTermsBySlug.fromMap(const {}),
-    );
+  test(
+    'build exposes only poi enabled account profile types for map filters',
+    () {
+      final catalog = builder.build(
+        accountTypes: [
+          _accountType(
+            type: 'restaurant',
+            label: 'Restaurantes',
+            isMapPoiEnabled: true,
+          ),
+          _accountType(
+            type: 'sponsor',
+            label: 'Patrocinadores',
+            isMapPoiEnabled: false,
+          ),
+        ],
+        eventTypes: const [],
+        taxonomies: const [],
+        termsBySlug: TenantAdminTaxonomyTermsBySlug.fromMap(const {}),
+      );
 
-    expect(
-      catalog
-          .typesForSource(TenantAdminMapFilterSource.accountProfile)
-          .map((option) => option.slug),
-      <String>['restaurant'],
-    );
-  });
+      expect(
+        catalog
+            .typesForSource(TenantAdminMapFilterSource.accountProfile)
+            .map((option) => option.slug),
+        <String>['restaurant'],
+      );
+    },
+  );
 }
 
-TenantAdminEventType _eventType({
-  required String name,
-  required String slug,
-}) {
+TenantAdminEventType _eventType({required String name, required String slug}) {
   return TenantAdminEventType(
     nameValue: _requiredText(name),
     slugValue: _requiredText(slug),
@@ -123,40 +98,41 @@ TenantAdminEventType _eventType({
 TenantAdminProfileTypeDefinition _accountType({
   required String type,
   required String label,
-  bool isPoiEnabled = true,
+  bool isMapPoiEnabled = true,
 }) {
   return TenantAdminProfileTypeDefinition(
     typeValue: _requiredText(type),
     labelValue: _requiredText(label),
     allowedTaxonomiesValue: TenantAdminTrimmedStringListValue(),
-    capabilities: TenantAdminProfileTypeCapabilities(
-      isFavoritable: TenantAdminFlagValue(true),
-      isPoiEnabled: TenantAdminFlagValue(isPoiEnabled),
-      hasBio: TenantAdminFlagValue(false),
-      hasTaxonomies: TenantAdminFlagValue(false),
-      hasAvatar: TenantAdminFlagValue(false),
-      hasCover: TenantAdminFlagValue(false),
-      hasEvents: TenantAdminFlagValue(false),
+    capabilities: tenantAdminProfileTypeCapabilitiesFromRaw(
+      <String, TenantAdminProfileTypeCapabilityValue>{
+        'is_favoritable': tenantAdminProfileTypeCapabilityValueFromRaw(
+          value: true,
+        ),
+        'location_policy': tenantAdminProfileTypeCapabilityValueFromRaw(
+          value: isMapPoiEnabled ? 'required' : 'disabled',
+        ),
+        'is_map_poi_enabled': tenantAdminProfileTypeCapabilityValueFromRaw(
+          value: (TenantAdminFlagValue(isMapPoiEnabled)).value,
+        ),
+        'has_bio': tenantAdminProfileTypeCapabilityValueFromRaw(
+          value: false,
+        ),
+        'has_taxonomies': tenantAdminProfileTypeCapabilityValueFromRaw(
+          value: false,
+        ),
+        'has_avatar': tenantAdminProfileTypeCapabilityValueFromRaw(
+          value: false,
+        ),
+        'has_cover': tenantAdminProfileTypeCapabilityValueFromRaw(
+          value: false,
+        ),
+        'has_events': tenantAdminProfileTypeCapabilityValueFromRaw(
+          value: false,
+        ),
+      },
     ),
-  );
-}
-
-TenantAdminStaticProfileTypeDefinition _staticType({
-  required String type,
-  required String label,
-}) {
-  return TenantAdminStaticProfileTypeDefinition(
-    typeValue: _requiredText(type),
-    labelValue: _requiredText(label),
-    allowedTaxonomiesValue: TenantAdminTrimmedStringListValue(),
-    capabilities: TenantAdminStaticProfileTypeCapabilities(
-      isPoiEnabled: TenantAdminFlagValue(true),
-      hasBio: TenantAdminFlagValue(false),
-      hasTaxonomies: TenantAdminFlagValue(false),
-      hasAvatar: TenantAdminFlagValue(false),
-      hasCover: TenantAdminFlagValue(false),
-      hasContent: TenantAdminFlagValue(false),
-    ),
+    capabilityRevisionValue: TenantAdminCountValue(),
   );
 }
 

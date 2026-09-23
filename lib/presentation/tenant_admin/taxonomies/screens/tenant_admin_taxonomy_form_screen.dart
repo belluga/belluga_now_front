@@ -10,10 +10,7 @@ import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
 class TenantAdminTaxonomyFormScreen extends StatefulWidget {
-  const TenantAdminTaxonomyFormScreen({
-    super.key,
-    this.taxonomy,
-  });
+  const TenantAdminTaxonomyFormScreen({super.key, this.taxonomy});
 
   final TenantAdminTaxonomyDefinition? taxonomy;
 
@@ -33,14 +30,10 @@ class _TenantAdminTaxonomyFormScreenState
     'location_on': Icons.location_on_outlined,
   };
 
-  static const _appliesToOptions = <String>[
-    'account_profile',
-    'static_asset',
-    'event',
-  ];
+  static const _appliesToOptions = <String>['account_profile', 'event'];
 
-  final TenantAdminTaxonomiesController _controller =
-      GetIt.I.get<TenantAdminTaxonomiesController>();
+  final TenantAdminTaxonomiesController _controller = GetIt.I
+      .get<TenantAdminTaxonomiesController>();
 
   bool get _isEdit => widget.taxonomy != null;
 
@@ -71,12 +64,12 @@ class _TenantAdminTaxonomyFormScreenState
     if (_controller.slugController.text == generated) {
       return;
     }
-    _controller.slugController.value =
-        _controller.slugController.value.copyWith(
-      text: generated,
-      selection: TextSelection.collapsed(offset: generated.length),
-      composing: TextRange.empty,
-    );
+    _controller.slugController.value = _controller.slugController.value
+        .copyWith(
+          text: generated,
+          selection: TextSelection.collapsed(offset: generated.length),
+          composing: TextRange.empty,
+        );
   }
 
   Color? _parseHexColor(String raw) {
@@ -96,9 +89,7 @@ class _TenantAdminTaxonomyFormScreenState
     }
     if (_controller.selectedAppliesToTargets.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Selecione ao menos um alvo.'),
-        ),
+        const SnackBar(content: Text('Selecione ao menos um alvo.')),
       );
       return;
     }
@@ -254,34 +245,39 @@ class _TenantAdminTaxonomyFormScreenState
                                 final previewColor = _parseHexColor(
                                   _controller.colorController.text,
                                 );
-                                final previewIcon = _iconSuggestions[
-                                    _controller.iconController.text];
+                                final previewIcon =
+                                    _iconSuggestions[_controller
+                                        .iconController
+                                        .text];
                                 return Row(
                                   children: [
                                     Container(
                                       width: 28,
                                       height: 28,
                                       decoration: BoxDecoration(
-                                        color: previewColor ??
+                                        color:
+                                            previewColor ??
                                             Theme.of(context)
                                                 .colorScheme
                                                 .surfaceContainerHighest,
-                                        borderRadius:
-                                            BorderRadius.circular(999),
+                                        borderRadius: BorderRadius.circular(
+                                          999,
+                                        ),
                                       ),
                                       child: Icon(
                                         previewIcon ?? Icons.label_outline,
                                         size: 16,
-                                        color: Theme.of(context)
-                                            .colorScheme
-                                            .onSurface,
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.onSurface,
                                       ),
                                     ),
                                     const SizedBox(width: 8),
                                     Text(
                                       'Pré-visualização',
-                                      style:
-                                          Theme.of(context).textTheme.bodySmall,
+                                      style: Theme.of(
+                                        context,
+                                      ).textTheme.bodySmall,
                                     ),
                                   ],
                                 );
@@ -306,14 +302,15 @@ class _TenantAdminTaxonomyFormScreenState
                                   .map(
                                     (option) => FilterChip(
                                       label: Text(option),
-                                      selected:
-                                          selectedTargets.contains(option),
+                                      selected: selectedTargets.contains(
+                                        option,
+                                      ),
                                       onSelected: (selected) {
                                         _controller
                                             .toggleTaxonomyAppliesToTarget(
-                                          option,
-                                          selected,
-                                        );
+                                              option,
+                                              selected,
+                                            );
                                       },
                                     ),
                                   )
@@ -324,10 +321,12 @@ class _TenantAdminTaxonomyFormScreenState
                       ),
                       const SizedBox(height: 24),
                       TenantAdminPrimaryFormAction(
-                        buttonKey:
-                            const ValueKey('taxonomy-form-submit-button'),
-                        label:
-                            _isEdit ? 'Salvar alteracoes' : 'Criar taxonomia',
+                        buttonKey: const ValueKey(
+                          'taxonomy-form-submit-button',
+                        ),
+                        label: _isEdit
+                            ? 'Salvar alteracoes'
+                            : 'Criar taxonomia',
                         icon: _isEdit ? Icons.save_outlined : Icons.add,
                         onPressed: _save,
                       ),
@@ -362,9 +361,9 @@ class _TenantAdminTaxonomyFormScreenState
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
       _controller.clearActionErrorMessage();
     });
   }

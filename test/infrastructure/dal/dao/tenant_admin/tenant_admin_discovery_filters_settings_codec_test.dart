@@ -9,52 +9,43 @@ void main() {
   const encoder = TenantAdminSettingsRequestEncoder();
 
   test('decoder ignores legacy map_ui filters after map filter cutoff', () {
-    final settings = decoder.decodeDiscoveryFiltersSettings(
-      {
-        'data': {
-          'map_ui': {
-            'filters': [
-              {
-                'key': 'events',
-                'label': 'Eventos',
-                'query': {
-                  'source': 'event',
-                  'types': ['show'],
-                  'taxonomy': ['music_genre:rock'],
-                },
+    final settings = decoder.decodeDiscoveryFiltersSettings({
+      'data': {
+        'map_ui': {
+          'filters': [
+            {
+              'key': 'events',
+              'label': 'Eventos',
+              'query': {
+                'source': 'event',
+                'types': ['show'],
+                'taxonomy': ['music_genre:rock'],
               },
-            ],
-          },
-          'discovery_filters': const <String, dynamic>{},
+            },
+          ],
         },
+        'discovery_filters': const <String, dynamic>{},
       },
-      tenantOrigin: Uri.parse('https://tenant.test'),
-    );
+    }, tenantOrigin: Uri.parse('https://tenant.test'));
 
     expect(settings.rawDiscoveryFilters.value['surfaces'], isNull);
   });
 
   test('decoder preserves explicit empty canonical map filters', () {
-    final settings = decoder.decodeDiscoveryFiltersSettings(
-      {
-        'data': {
-          'map_ui': {
-            'filters': [
-              {'key': 'legacy', 'label': 'Legacy'},
-            ],
-          },
-          'discovery_filters': {
-            'surfaces': {
-              'public_map.primary': {
-                'target': 'map_poi',
-                'filters': const [],
-              },
-            },
+    final settings = decoder.decodeDiscoveryFiltersSettings({
+      'data': {
+        'map_ui': {
+          'filters': [
+            {'key': 'legacy', 'label': 'Legacy'},
+          ],
+        },
+        'discovery_filters': {
+          'surfaces': {
+            'public_map.primary': {'target': 'map_poi', 'filters': const []},
           },
         },
       },
-      tenantOrigin: Uri.parse('https://tenant.test'),
-    );
+    }, tenantOrigin: Uri.parse('https://tenant.test'));
 
     final surfaces = settings.rawDiscoveryFilters.value['surfaces'] as Map;
     final publicMap = surfaces['public_map.primary'] as Map;
@@ -62,25 +53,22 @@ void main() {
   });
 
   test('decoder canonicalizes flat discovery filter surface response', () {
-    final settings = decoder.decodeDiscoveryFiltersSettings(
-      {
-        'data': {
-          'surfaces.public_map.primary.target': 'map_poi',
-          'surfaces.public_map.primary.primary_selection_mode': 'single',
-          'surfaces.public_map.primary.filters': [
-            {
-              'key': 'assets',
-              'label': 'Assets',
-              'image_uri': 'https://tenant.test/filter.png',
-              'query': {
-                'entities': ['static_asset'],
-              },
+    final settings = decoder.decodeDiscoveryFiltersSettings({
+      'data': {
+        'surfaces.public_map.primary.target': 'map_poi',
+        'surfaces.public_map.primary.primary_selection_mode': 'single',
+        'surfaces.public_map.primary.filters': [
+          {
+            'key': 'places',
+            'label': 'Locais',
+            'image_uri': 'https://tenant.test/filter.png',
+            'query': {
+              'entities': ['account_profile'],
             },
-          ],
-        },
+          },
+        ],
       },
-      tenantOrigin: Uri.parse('https://tenant.test'),
-    );
+    }, tenantOrigin: Uri.parse('https://tenant.test'));
 
     final surfaces = settings.rawDiscoveryFilters.value['surfaces'] as Map;
     final publicMap = surfaces['public_map.primary'] as Map;
@@ -90,27 +78,24 @@ void main() {
   });
 
   test('decoder canonicalizes nested discovery filter surface response', () {
-    final settings = decoder.decodeDiscoveryFiltersSettings(
-      {
-        'data': {
-          'surfaces': {
-            'public_map': {
-              'primary': {
-                'target': 'map_poi',
-                'filters': [
-                  {
-                    'key': 'assets',
-                    'label': 'Assets',
-                    'image_uri': 'https://tenant.test/filter.png',
-                  },
-                ],
-              },
+    final settings = decoder.decodeDiscoveryFiltersSettings({
+      'data': {
+        'surfaces': {
+          'public_map': {
+            'primary': {
+              'target': 'map_poi',
+              'filters': [
+                {
+                  'key': 'assets',
+                  'label': 'Assets',
+                  'image_uri': 'https://tenant.test/filter.png',
+                },
+              ],
             },
           },
         },
       },
-      tenantOrigin: Uri.parse('https://tenant.test'),
-    );
+    }, tenantOrigin: Uri.parse('https://tenant.test'));
 
     final surfaces = settings.rawDiscoveryFilters.value['surfaces'] as Map;
     final publicMap = surfaces['public_map.primary'] as Map;

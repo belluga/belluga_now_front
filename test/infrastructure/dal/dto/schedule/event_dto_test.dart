@@ -457,8 +457,8 @@ void main() {
             'public_detail_path': '/parceiro/perfil-clicavel',
           },
           {
-            'id': 'profile-static',
-            'display_name': 'Perfil estático',
+            'id': 'profile-private',
+            'display_name': 'Perfil privado',
             'profile_type': 'artist',
             'can_open_public_detail': false,
           },
@@ -466,14 +466,14 @@ void main() {
       });
 
       final clickable = dto.counterpartPreview.first;
-      final staticProfile = dto.counterpartPreview.last;
+      final privateProfile = dto.counterpartPreview.last;
 
       expect(clickable.canOpenPublicDetail, isTrue);
       expect(clickable.publicDetailPath, '/parceiro/perfil-clicavel');
       expect(clickable.slug, 'perfil-clicavel');
-      expect(staticProfile.canOpenPublicDetail, isFalse);
-      expect(staticProfile.publicDetailPath, isNull);
-      expect(staticProfile.slug, isEmpty);
+      expect(privateProfile.canOpenPublicDetail, isFalse);
+      expect(privateProfile.publicDetailPath, isNull);
+      expect(privateProfile.slug, isEmpty);
     },
   );
 
@@ -1786,7 +1786,16 @@ AppData _buildAppData() {
           'type': 'artist',
           'label': 'Artist',
           'labels': {'singular': 'Artist', 'plural': 'Artists'},
-          'capabilities': {'has_events': true, 'is_favoritable': true},
+          'capabilities': {
+            'has_events': {
+              'configured': {'value': true, 'parameters': {}},
+              'effective': {'value': true, 'parameters': {}},
+            },
+            'is_favoritable': {
+              'configured': {'value': true, 'parameters': {}},
+              'effective': {'value': true, 'parameters': {}},
+            },
+          },
         },
       ],
       'theme_data_settings': const {

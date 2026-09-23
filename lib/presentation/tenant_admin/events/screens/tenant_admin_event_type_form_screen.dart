@@ -5,6 +5,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_admin_events_controller.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_ordered_taxonomy_selector.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_form_value_utils.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_canonical_image_upload_field.dart';
@@ -20,10 +21,7 @@ import 'package:image_picker/image_picker.dart' show XFile;
 import 'package:stream_value/core/stream_value_builder.dart';
 
 class TenantAdminEventTypeFormScreen extends StatefulWidget {
-  const TenantAdminEventTypeFormScreen({
-    super.key,
-    this.existingType,
-  });
+  const TenantAdminEventTypeFormScreen({super.key, this.existingType});
 
   final TenantAdminEventType? existingType;
 
@@ -34,8 +32,8 @@ class TenantAdminEventTypeFormScreen extends StatefulWidget {
 
 class _TenantAdminEventTypeFormScreenState
     extends State<TenantAdminEventTypeFormScreen> {
-  final TenantAdminEventsController _controller =
-      GetIt.I.get<TenantAdminEventsController>();
+  final TenantAdminEventsController _controller = GetIt.I
+      .get<TenantAdminEventsController>();
 
   bool get _isEdit => widget.existingType != null;
 
@@ -76,7 +74,8 @@ class _TenantAdminEventTypeFormScreenState
         _controller.setEventTypeFormSaving(false);
         return;
       }
-      final requiresTypeAsset = visual.mode == TenantAdminPoiVisualMode.image &&
+      final requiresTypeAsset =
+          visual.mode == TenantAdminPoiVisualMode.image &&
           visual.imageSource == TenantAdminPoiVisualImageSource.typeAsset;
       final typeAssetUpload = requiresTypeAsset
           ? await _controller.buildEventTypeAssetUpload()
@@ -97,26 +96,28 @@ class _TenantAdminEventTypeFormScreenState
 
       _controller
           .saveEventType(
-        name: name,
-        slug: slug,
-        description: description,
-        allowedTaxonomies: _controller.selectedEventTypeAllowedTaxonomies,
-        visual: visual,
-        typeAssetUpload: typeAssetUpload,
-        removeTypeAsset: _controller.isEventTypeTypeAssetMarkedForRemoval,
-        includeVisual: true,
-        existingType: widget.existingType,
-      )
+            name: name,
+            slug: slug,
+            description: description,
+            allowedTaxonomies: _controller.selectedEventTypeAllowedTaxonomies,
+            visual: visual,
+            typeAssetUpload: typeAssetUpload,
+            removeTypeAsset: _controller.isEventTypeTypeAssetMarkedForRemoval,
+            includeVisual: true,
+            existingType: widget.existingType,
+          )
           .then((type) {
-        if (!mounted) {
-          return;
-        }
-        router.maybePop(type);
-      }).catchError((error) {
-        _controller.setEventTypeFormError(error.toString());
-      }).whenComplete(() {
-        _controller.setEventTypeFormSaving(false);
-      });
+            if (!mounted) {
+              return;
+            }
+            router.maybePop(type);
+          })
+          .catchError((error) {
+            _controller.setEventTypeFormError(error.toString());
+          })
+          .whenComplete(() {
+            _controller.setEventTypeFormSaving(false);
+          });
     } catch (error) {
       _controller.setEventTypeFormError(error.toString());
       _controller.setEventTypeFormSaving(false);
@@ -236,15 +237,11 @@ class _TenantAdminEventTypeFormScreenState
             const SizedBox(height: 8),
             DropdownButtonFormField<TenantAdminPoiVisualMode>(
               initialValue: mode,
-              decoration: const InputDecoration(
-                labelText: 'Modo visual',
-              ),
+              decoration: const InputDecoration(labelText: 'Modo visual'),
               items: TenantAdminPoiVisualMode.values
                   .map(
-                    (item) => DropdownMenuItem(
-                      value: item,
-                      child: Text(item.label),
-                    ),
+                    (item) =>
+                        DropdownMenuItem(value: item, child: Text(item.label)),
                   )
                   .toList(growable: false),
               onChanged: (value) {
@@ -348,6 +345,10 @@ class _TenantAdminEventTypeFormScreenState
                         _controller.eventTypeAllowedTaxonomiesStreamValue,
                     builder: (context, selectedTaxonomies) {
                       final selected = selectedTaxonomies.toSet();
+                      final taxonomyLabels = {
+                        for (final taxonomy in availableTaxonomies)
+                          taxonomy.slug: '${taxonomy.name} (${taxonomy.slug})',
+                      };
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -372,40 +373,47 @@ class _TenantAdminEventTypeFormScreenState
                             Wrap(
                               spacing: 8,
                               runSpacing: 8,
-                              children: availableTaxonomies.map(
-                                (taxonomy) {
-                                  final label =
-                                      '${taxonomy.name} (${taxonomy.slug})';
-                                  final isSelected =
-                                      selected.contains(taxonomy.slug);
-                                  return Semantics(
-                                    key: ValueKey<String>(
-                                      'tenantAdminEventTypeAllowedTaxonomySemantics_${taxonomy.slug}',
-                                    ),
-                                    container: true,
-                                    label: label,
-                                    button: true,
-                                    focusable: true,
-                                    toggled: isSelected,
-                                    selected: isSelected,
-                                    onTap: () => _controller
-                                        .toggleEventTypeAllowedTaxonomy(
+                              children: availableTaxonomies
+                                  .map((taxonomy) {
+                                    final label =
+                                        '${taxonomy.name} (${taxonomy.slug})';
+                                    final isSelected = selected.contains(
                                       taxonomy.slug,
-                                    ),
-                                    child: ExcludeSemantics(
-                                      child: FilterChip(
-                                        label: Text(label),
-                                        selected: isSelected,
-                                        onSelected: (_) => _controller
-                                            .toggleEventTypeAllowedTaxonomy(
-                                          taxonomy.slug,
+                                    );
+                                    return Semantics(
+                                      key: ValueKey<String>(
+                                        'tenantAdminEventTypeAllowedTaxonomySemantics_${taxonomy.slug}',
+                                      ),
+                                      container: true,
+                                      label: label,
+                                      button: true,
+                                      focusable: true,
+                                      toggled: isSelected,
+                                      selected: isSelected,
+                                      onTap: () => _controller
+                                          .toggleEventTypeAllowedTaxonomy(
+                                            taxonomy.slug,
+                                          ),
+                                      child: ExcludeSemantics(
+                                        child: FilterChip(
+                                          label: Text(label),
+                                          selected: isSelected,
+                                          onSelected: (_) => _controller
+                                              .toggleEventTypeAllowedTaxonomy(
+                                                taxonomy.slug,
+                                              ),
                                         ),
                                       ),
-                                    ),
-                                  );
-                                },
-                              ).toList(growable: false),
+                                    );
+                                  })
+                                  .toList(growable: false),
                             ),
+                          TenantAdminOrderedTaxonomySelector(
+                            selectedSlugs: selectedTaxonomies,
+                            labelForSlug: (slug) =>
+                                taxonomyLabels[slug] ?? slug,
+                            onMove: _controller.moveEventTypeAllowedTaxonomy,
+                          ),
                         ],
                       );
                     },
@@ -434,10 +442,12 @@ class _TenantAdminEventTypeFormScreenState
                 final hasExistingUrl =
                     !isMarkedForRemoval && trimmedUrl.isNotEmpty;
                 final normalizedUrl = hasExistingUrl ? trimmedUrl : null;
-                final canRemove = selectedFile != null ||
+                final canRemove =
+                    selectedFile != null ||
                     hasExistingUrl ||
                     isMarkedForRemoval;
-                final selectedLabel = selectedFile?.name ??
+                final selectedLabel =
+                    selectedFile?.name ??
                     (isMarkedForRemoval
                         ? 'Imagem canônica será removida ao salvar.'
                         : normalizedUrl ?? 'Nenhuma imagem selecionada');
@@ -454,8 +464,9 @@ class _TenantAdminEventTypeFormScreenState
                   addLabel: 'Enviar imagem canônica',
                   sourceSheetTitle: 'Adicionar imagem canônica do tipo',
                   urlPromptTitle: 'URL da imagem canônica do tipo',
-                  removeLabel:
-                      isMarkedForRemoval ? 'Desfazer remoção' : 'Remover',
+                  removeLabel: isMarkedForRemoval
+                      ? 'Desfazer remoção'
+                      : 'Remover',
                   busy: false,
                   canRemove: canRemove,
                   onRemove: _controller.clearEventTypeTypeAssetSelection,
@@ -497,10 +508,7 @@ class _TenantAdminEventTypeFormScreenState
     }
 
     if (isMarkedForRemoval) {
-      return _buildTypeAssetPlaceholder(
-        context,
-        icon: Icons.delete_outline,
-      );
+      return _buildTypeAssetPlaceholder(context, icon: Icons.delete_outline);
     }
 
     if (existingUrl != null && existingUrl.isNotEmpty) {
@@ -513,10 +521,7 @@ class _TenantAdminEventTypeFormScreenState
       );
     }
 
-    return _buildTypeAssetPlaceholder(
-      context,
-      icon: Icons.photo_outlined,
-    );
+    return _buildTypeAssetPlaceholder(context, icon: Icons.photo_outlined);
   }
 
   Widget _buildTypeAssetPlaceholder(

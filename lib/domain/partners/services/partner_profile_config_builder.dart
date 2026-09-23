@@ -26,7 +26,7 @@ class PartnerProfileConfigBuilder {
           ),
         );
       }
-      if (capabilities.isPoiEnabled) {
+      if (capabilities.allowsLocation) {
         tabs.add(
           ProfileTabConfig(
             titleValue: partnerProjectionRequiredText('Como Chegar'),

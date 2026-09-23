@@ -19,6 +19,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value_parsers.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profiles_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/screens/tenant_admin_account_profile_group_members_screen.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_form_value_utils.dart';
@@ -67,8 +68,6 @@ class _TenantAdminAccountProfileEditScreenState
   TenantAdminAccountProfile? _activeProfile;
   String? _syncedProfileId;
   bool _initialTaxonomiesSynced = false;
-  String? _lastAvatarPreloadUrl;
-  String? _lastCoverPreloadUrl;
   bool _routeParamNormalized = false;
   String? _pendingAccountSlugRouteReplacement;
   TenantAdminOwnershipState? _selectedOwnershipState;
@@ -129,49 +128,78 @@ class _TenantAdminAccountProfileEditScreenState
     return seen.values.toList(growable: false);
   }
 
+  bool _allowsLocation(String? selectedType) {
+    final definition = _selectedProfileTypeDefinition(selectedType);
+    return definition?.capabilities.allowsLocation ?? false;
+  }
+
   bool _requiresLocation(String? selectedType) {
     final definition = _selectedProfileTypeDefinition(selectedType);
-    return definition?.capabilities.isPoiEnabled ?? false;
+    return definition?.capabilities.requiresLocation ?? false;
   }
 
   bool _hasBio(String? selectedType) {
     final definition = _selectedProfileTypeDefinition(selectedType);
-    return definition?.capabilities.hasBio ?? false;
+    return definition?.capabilities.isEffectivelyEnabled(
+          tenantAdminRequiredText('has_bio'),
+        ) ??
+        false;
   }
 
   bool _hasTaxonomies(String? selectedType) {
     final definition = _selectedProfileTypeDefinition(selectedType);
-    return definition?.capabilities.hasTaxonomies ?? false;
+    return definition?.capabilities.isEffectivelyEnabled(
+          tenantAdminRequiredText('has_taxonomies'),
+        ) ??
+        false;
   }
 
   bool _hasAvatar(String? selectedType) {
     final definition = _selectedProfileTypeDefinition(selectedType);
-    return definition?.capabilities.hasAvatar ?? false;
+    return definition?.capabilities.isEffectivelyEnabled(
+          tenantAdminRequiredText('has_avatar'),
+        ) ??
+        false;
   }
 
   bool _hasCover(String? selectedType) {
     final definition = _selectedProfileTypeDefinition(selectedType);
-    return definition?.capabilities.hasCover ?? false;
+    return definition?.capabilities.isEffectivelyEnabled(
+          tenantAdminRequiredText('has_cover'),
+        ) ??
+        false;
   }
 
   bool _hasGallery(String? selectedType) {
     final definition = _selectedProfileTypeDefinition(selectedType);
-    return definition?.capabilities.hasGallery ?? false;
+    return definition?.capabilities.isEffectivelyEnabled(
+          tenantAdminRequiredText('has_gallery'),
+        ) ??
+        false;
   }
 
   bool _hasNestedProfileGroups(String? selectedType) {
     final definition = _selectedProfileTypeDefinition(selectedType);
-    return definition?.capabilities.hasNestedProfileGroups ?? false;
+    return definition?.capabilities.isEffectivelyEnabled(
+          tenantAdminRequiredText('has_nested_profile_groups'),
+        ) ??
+        false;
   }
 
   bool _hasContactChannels(String? selectedType) {
     final definition = _selectedProfileTypeDefinition(selectedType);
-    return definition?.capabilities.hasContactChannels ?? false;
+    return definition?.capabilities.isEffectivelyEnabled(
+          tenantAdminRequiredText('has_contact_channels'),
+        ) ??
+        false;
   }
 
   bool _hasExternalLinks(String? selectedType) {
     final definition = _selectedProfileTypeDefinition(selectedType);
-    return definition?.capabilities.hasExternalLinks ?? false;
+    return definition?.capabilities.isEffectivelyEnabled(
+          tenantAdminRequiredText('has_external_links'),
+        ) ??
+        false;
   }
 
   List<String> _allowedTaxonomies(String? selectedType) {
@@ -202,7 +230,7 @@ class _TenantAdminAccountProfileEditScreenState
     _controller.loadTermsForTaxonomies(slugs);
   }
 
-  void _handleEditStateChange(TenantAdminAccountProfileEditDraft state) {
+  void _handleEditStateChange(TenantAdminAccountProfileEditDraft _) {
     final profile = _controller.accountProfileStreamValue.value;
     if (profile == null) return;
     _activeProfile = profile;
@@ -212,7 +240,6 @@ class _TenantAdminAccountProfileEditScreenState
       _syncFormControllers(profile);
       _attemptTaxonomySync(profile: profile);
     }
-    _maybePreloadRemoteImages(state);
   }
 
   void _syncOwnershipSelection(TenantAdminOwnershipState? accountOwnership) {
@@ -372,27 +399,6 @@ class _TenantAdminAccountProfileEditScreenState
     _initialTaxonomiesSynced = true;
   }
 
-  void _maybePreloadRemoteImages(TenantAdminAccountProfileEditDraft state) {
-    final avatarUrl = state.avatarRemoteUrl;
-    if (avatarUrl != null &&
-        avatarUrl.isNotEmpty &&
-        state.avatarFile != null &&
-        !state.avatarRemoteReady &&
-        _lastAvatarPreloadUrl != avatarUrl) {
-      _lastAvatarPreloadUrl = avatarUrl;
-      _preloadRemoteImage(url: avatarUrl, isAvatar: true);
-    }
-    final coverUrl = state.coverRemoteUrl;
-    if (coverUrl != null &&
-        coverUrl.isNotEmpty &&
-        state.coverFile != null &&
-        !state.coverRemoteReady &&
-        _lastCoverPreloadUrl != coverUrl) {
-      _lastCoverPreloadUrl = coverUrl;
-      _preloadRemoteImage(url: coverUrl, isAvatar: false);
-    }
-  }
-
   TenantAdminTaxonomyTerms _buildTaxonomyTerms(String? selectedType) {
     if (!_hasTaxonomies(selectedType)) {
       return const TenantAdminTaxonomyTerms.empty();
@@ -528,6 +534,28 @@ class _TenantAdminAccountProfileEditScreenState
 
   String _accountPublicationLabel(String status) =>
       status.trim() == 'published' ? 'Publicado' : 'Rascunho';
+
+  String _profileVisibilityLabel(String? visibility) {
+    switch (visibility?.trim()) {
+      case 'private':
+        return 'Privado';
+      case 'public':
+        return 'Publico';
+      default:
+        return 'Desconhecido';
+    }
+  }
+
+  String _parentAccountPublicationLabel(String? status) {
+    switch (status?.trim()) {
+      case 'draft':
+        return 'Rascunho';
+      case 'published':
+        return 'Publicado';
+      default:
+        return 'Desconhecido';
+    }
+  }
 
   Future<void> _editAccountName(TenantAdminAccount account) async {
     final result = await showTenantAdminFieldEditSheet(
@@ -775,10 +803,8 @@ class _TenantAdminAccountProfileEditScreenState
   void _clearImage({required bool isAvatar}) {
     if (isAvatar) {
       _controller.clearAvatarSelection(markForRemoval: true);
-      _controller.updateAvatarRemoteError(false);
     } else {
       _controller.clearCoverSelection(markForRemoval: true);
-      _controller.updateCoverRemoteError(false);
     }
   }
 
@@ -923,43 +949,6 @@ class _TenantAdminAccountProfileEditScreenState
     );
   }
 
-  void _preloadRemoteImage({required String url, required bool isAvatar}) {
-    final state = _controller.editStateStreamValue.value;
-    if (isAvatar) {
-      if (state.avatarPreloadUrl == url) return;
-      _controller.updateAvatarPreloadUrl(url);
-    } else {
-      if (state.coverPreloadUrl == url) return;
-      _controller.updateCoverPreloadUrl(url);
-    }
-
-    final stream = NetworkImage(url).resolve(const ImageConfiguration());
-    late final ImageStreamListener listener;
-    listener = ImageStreamListener(
-      (_, _) {
-        if (isAvatar) {
-          _controller.updateAvatarRemoteError(false);
-          _controller.updateAvatarFile(null);
-          _controller.markAvatarRemoteReady(true);
-        } else {
-          _controller.updateCoverRemoteError(false);
-          _controller.updateCoverFile(null);
-          _controller.markCoverRemoteReady(true);
-        }
-        stream.removeListener(listener);
-      },
-      onError: (_, _) {
-        if (isAvatar) {
-          _controller.updateAvatarRemoteError(true);
-        } else {
-          _controller.updateCoverRemoteError(true);
-        }
-        stream.removeListener(listener);
-      },
-    );
-    stream.addListener(listener);
-  }
-
   @override
   Widget build(BuildContext context) {
     return StreamValueBuilder<List<TenantAdminTaxonomyDefinition>>(
@@ -991,7 +980,7 @@ class _TenantAdminAccountProfileEditScreenState
                               builder: (context, state) {
                                 _handleEditStateChange(state);
                                 _attemptTaxonomySync(profile: profile);
-                                final requiresLocation = _requiresLocation(
+                                final allowsLocation = _allowsLocation(
                                   state.selectedProfileType,
                                 );
                                 final hasMedia =
@@ -1071,6 +1060,7 @@ class _TenantAdminAccountProfileEditScreenState
                                             onNullWidget: _buildProfileSection(
                                               context,
                                               state,
+                                              profile,
                                             ),
                                             builder: (context, account) {
                                               _syncOwnershipSelection(
@@ -1085,6 +1075,7 @@ class _TenantAdminAccountProfileEditScreenState
                                                   _buildProfileSection(
                                                     context,
                                                     state,
+                                                    profile,
                                                   ),
                                                 ],
                                               );
@@ -1124,9 +1115,15 @@ class _TenantAdminAccountProfileEditScreenState
                                               state,
                                             ),
                                           ],
-                                          if (requiresLocation) ...[
+                                          if (allowsLocation) ...[
                                             const SizedBox(height: 16),
                                             _buildLocationSection(context),
+                                          ] else if (profile?.location !=
+                                              null) ...[
+                                            const SizedBox(height: 16),
+                                            _buildDormantLocationSection(
+                                              profile!,
+                                            ),
                                           ],
                                           if (hasNestedProfileGroups) ...[
                                             const SizedBox(height: 16),
@@ -1394,9 +1391,11 @@ class _TenantAdminAccountProfileEditScreenState
                                                               selectedType,
                                                             )
                                                           : null,
-                                                      location: requiresLocation
+                                                      location: allowsLocation
                                                           ? _currentLocation()
                                                           : null,
+                                                      includeLocation:
+                                                          allowsLocation,
                                                       avatarUpload:
                                                           avatarUpload,
                                                       coverUpload: coverUpload,
@@ -1695,12 +1694,33 @@ class _TenantAdminAccountProfileEditScreenState
   Widget _buildProfileSection(
     BuildContext context,
     TenantAdminAccountProfileEditDraft state,
+    TenantAdminAccountProfile? profile,
   ) {
     return TenantAdminFormSectionCard(
       title: 'Dados do perfil',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (profile != null) ...[
+            Text(
+              'Visibilidade: ${_profileVisibilityLabel(profile.visibility)}',
+            ),
+            const SizedBox(height: 8),
+            Text('Atividade: ${profile.isActive ? 'Ativo' : 'Inativo'}'),
+            const SizedBox(height: 8),
+            if (profile.deletedAt == null)
+              const Text('Exclusao: Nao excluido')
+            else if (profile.deletedAt!.trim().isEmpty)
+              const Text('Exclusao: Desconhecido')
+            else
+              Text('Excluido em: ${profile.deletedAt}'),
+            const SizedBox(height: 8),
+            Text(
+              'Publicacao da conta: '
+              '${_parentAccountPublicationLabel(profile.parentAccountPublicationStatus)}',
+            ),
+            const SizedBox(height: 16),
+          ],
           StreamValueBuilder(
             streamValue: _controller.profileTypesStreamValue,
             builder: (context, types) {
@@ -1726,7 +1746,7 @@ class _TenantAdminAccountProfileEditScreenState
                     .toList(growable: false),
                 onChanged: (value) {
                   _controller.updateSelectedProfileType(value);
-                  if (!_requiresLocation(value)) {
+                  if (!_allowsLocation(value)) {
                     _controller.latitudeController.clear();
                     _controller.longitudeController.clear();
                   }
@@ -2231,10 +2251,8 @@ class _TenantAdminAccountProfileEditScreenState
     BuildContext context,
     TenantAdminAccountProfileEditDraft state,
   ) {
-    final avatarUrl = state.avatarRemoteUrl;
-    final hasAvatarUrl = avatarUrl != null && avatarUrl.isNotEmpty;
-    final coverUrl = state.coverRemoteUrl;
-    final hasCoverUrl = coverUrl != null && coverUrl.isNotEmpty;
+    final avatarBytes = state.avatarRemoteBytes;
+    final coverBytes = state.coverRemoteBytes;
     final hasAvatar = _hasAvatar(state.selectedProfileType);
     final hasCover = _hasCover(state.selectedProfileType);
 
@@ -2259,57 +2277,19 @@ class _TenantAdminAccountProfileEditScreenState
                             fit: BoxFit.cover,
                           ),
                         ),
-                        if (state.avatarRemoteError)
-                          Container(
-                            margin: const EdgeInsets.all(2),
-                            decoration: BoxDecoration(
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.errorContainer,
-                              shape: BoxShape.circle,
-                            ),
-                            padding: const EdgeInsets.all(4),
-                            child: Icon(
-                              Icons.warning_amber_rounded,
-                              size: 16,
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.onErrorContainer,
-                            ),
-                          ),
                       ],
                     )
-                  : hasAvatarUrl
+                  : avatarBytes != null
                   ? ClipRRect(
                       borderRadius: BorderRadius.circular(36),
-                      child: Image.network(
-                        avatarUrl,
+                      child: Image.memory(
+                        avatarBytes,
                         width: 72,
                         height: 72,
                         fit: BoxFit.cover,
-                        loadingBuilder: (context, child, loadingProgress) {
-                          if (loadingProgress == null) return child;
-                          return Container(
-                            width: 72,
-                            height: 72,
-                            decoration: BoxDecoration(
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.surfaceContainerHighest,
-                              borderRadius: BorderRadius.circular(36),
-                            ),
-                            child: const Icon(Icons.person_outline),
-                          );
-                        },
-                        errorBuilder: (context, error, stackTrace) {
-                          if (!state.avatarRemoteError) {
-                            _controller.updateAvatarRemoteError(true);
-                          }
-                          return _buildAvatarError(context);
-                        },
                       ),
                     )
-                  : state.avatarRemoteError
+                  : state.avatarRemoteLoadFailed
                   ? _buildAvatarError(context)
                   : Container(
                       width: 72,
@@ -2324,17 +2304,22 @@ class _TenantAdminAccountProfileEditScreenState
                     ),
               selectedLabel:
                   state.avatarFile?.name ??
-                  (hasAvatarUrl ? avatarUrl : 'Nenhuma imagem selecionada'),
+                  (avatarBytes != null
+                      ? 'Avatar salvo'
+                      : state.avatarRemoteLoadFailed
+                      ? 'Não foi possível carregar o avatar'
+                      : 'Nenhuma imagem selecionada'),
               addLabel: 'Adicionar avatar',
               sourceSheetTitle: 'Adicionar avatar',
               urlPromptTitle: 'URL do avatar',
               busy: state.avatarBusy,
-              canRemove: state.avatarFile != null || hasAvatarUrl,
+              canRemove:
+                  state.avatarFile != null || _controller.hasStoredEditAvatar,
               removeButtonKey: const ValueKey(
                 'accountProfileEditAvatarRemoveButton',
               ),
               onRemove: () => _clearImage(isAvatar: true),
-              initialWebUrl: avatarUrl,
+              initialWebUrl: null,
               slot: TenantAdminImageSlot.avatar,
               pickFromDevice: () => _controller.pickImageFromDevice(
                 slot: TenantAdminImageSlot.avatar,
@@ -2367,57 +2352,19 @@ class _TenantAdminAccountProfileEditScreenState
                             fit: BoxFit.cover,
                           ),
                         ),
-                        if (state.coverRemoteError)
-                          Container(
-                            margin: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.errorContainer,
-                              shape: BoxShape.circle,
-                            ),
-                            padding: const EdgeInsets.all(6),
-                            child: Icon(
-                              Icons.warning_amber_rounded,
-                              size: 18,
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.onErrorContainer,
-                            ),
-                          ),
                       ],
                     )
-                  : hasCoverUrl
+                  : coverBytes != null
                   ? ClipRRect(
                       borderRadius: BorderRadius.circular(12),
-                      child: Image.network(
-                        coverUrl,
+                      child: Image.memory(
+                        coverBytes,
                         width: double.infinity,
                         height: 140,
                         fit: BoxFit.cover,
-                        loadingBuilder: (context, child, loadingProgress) {
-                          if (loadingProgress == null) return child;
-                          return Container(
-                            width: double.infinity,
-                            height: 140,
-                            decoration: BoxDecoration(
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.surfaceContainerHighest,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Icon(Icons.image_outlined),
-                          );
-                        },
-                        errorBuilder: (context, error, stackTrace) {
-                          if (!state.coverRemoteError) {
-                            _controller.updateCoverRemoteError(true);
-                          }
-                          return _buildCoverError(context);
-                        },
                       ),
                     )
-                  : state.coverRemoteError
+                  : state.coverRemoteLoadFailed
                   ? _buildCoverError(context)
                   : Container(
                       width: double.infinity,
@@ -2432,17 +2379,22 @@ class _TenantAdminAccountProfileEditScreenState
                     ),
               selectedLabel:
                   state.coverFile?.name ??
-                  (hasCoverUrl ? coverUrl : 'Nenhuma imagem selecionada'),
+                  (coverBytes != null
+                      ? 'Capa salva'
+                      : state.coverRemoteLoadFailed
+                      ? 'Não foi possível carregar a capa'
+                      : 'Nenhuma imagem selecionada'),
               addLabel: 'Adicionar capa',
               sourceSheetTitle: 'Adicionar capa',
               urlPromptTitle: 'URL da capa',
               busy: state.coverBusy,
-              canRemove: state.coverFile != null || hasCoverUrl,
+              canRemove:
+                  state.coverFile != null || _controller.hasStoredEditCover,
               removeButtonKey: const ValueKey(
                 'accountProfileEditCoverRemoveButton',
               ),
               onRemove: () => _clearImage(isAvatar: false),
-              initialWebUrl: coverUrl,
+              initialWebUrl: null,
               slot: TenantAdminImageSlot.accountProfileHeroCover,
               pickFromDevice: () => _controller.pickImageFromDevice(
                 slot: TenantAdminImageSlot.accountProfileHeroCover,
@@ -2468,47 +2420,57 @@ class _TenantAdminAccountProfileEditScreenState
       streamValue: _controller.editGalleryMutationBusyStreamValue,
       builder: (context, busy) => StreamValueBuilder<Map<String, String>>(
         streamValue: _controller.editGalleryFieldErrorsStreamValue,
-        builder: (context, fieldErrors) => StreamValueBuilder<String?>(
-          streamValue: _controller.editGalleryOperationErrorStreamValue,
-          builder: (context, operationError) =>
-              TenantAdminAccountProfileGalleryEditor(
-                groups: state.galleryGroups,
-                maxGroups: state.galleryCapabilities.maxGalleries,
-                maxItemsPerGallery:
-                    state.galleryCapabilities.maxItemsPerGallery,
-                busy: busy,
-                fieldErrors: fieldErrors,
-                operationError: operationError,
-                resolveInputValue: _controller.editGalleryInputValue,
-                onInputChanged: _controller.updateEditGalleryInputValue,
-                onAddGroup: _addGalleryGroup,
-                onRenameGroup: _controller.renameEditGalleryGroup,
-                onMoveGroup: _controller.moveEditGalleryGroup,
-                onRemoveGroup: _controller.removeEditGalleryGroup,
-                onAddPhotoRequested: _addGalleryPhoto,
-                onAddYoutubeRequested: _addGalleryYoutube,
-                onReplaceItemRequested: _replaceGalleryItem,
-                onMoveItem: (groupId, itemId, delta) =>
-                    _controller.moveEditGalleryItem(
-                      groupId: groupId,
-                      itemId: itemId,
-                      delta: delta,
-                    ),
-                onRemoveItem: (groupId, itemId) => _controller
-                    .removeEditGalleryItem(groupId: groupId, itemId: itemId),
-                onTitleChanged: (groupId, itemId, title) =>
-                    _controller.updateEditGalleryItemTitle(
-                      groupId: groupId,
-                      itemId: itemId,
-                      title: title,
-                    ),
-                onDescriptionChanged: (groupId, itemId, description) =>
-                    _controller.updateEditGalleryItemDescription(
-                      groupId: groupId,
-                      itemId: itemId,
-                      description: description,
-                    ),
-              ),
+        builder: (context, fieldErrors) => StreamValueBuilder<int>(
+          streamValue: _controller.editGalleryInputRevisionStreamValue,
+          builder: (context, _) => StreamValueBuilder<String?>(
+            streamValue: _controller.editGallerySavingFieldPathStreamValue,
+            builder: (context, savingFieldPath) => StreamValueBuilder<String?>(
+              streamValue: _controller.editGalleryOperationErrorStreamValue,
+              builder: (context, operationError) =>
+                  TenantAdminAccountProfileGalleryEditor(
+                    groups: state.galleryGroups,
+                    maxGroups: state.galleryCapabilities.maxGalleries,
+                    maxItemsPerGallery:
+                        state.galleryCapabilities.maxItemsPerGallery,
+                    busy: busy,
+                    savingFieldPath: savingFieldPath,
+                    fieldErrors: fieldErrors,
+                    operationError: operationError,
+                    resolveInputValue: _controller.editGalleryInputValue,
+                    onInputChanged: _controller.updateEditGalleryInputValue,
+                    onAddGroup: _addGalleryGroup,
+                    onRenameGroup: _controller.renameEditGalleryGroup,
+                    onMoveGroup: _controller.moveEditGalleryGroup,
+                    onRemoveGroup: _controller.removeEditGalleryGroup,
+                    onAddPhotoRequested: _addGalleryPhoto,
+                    onAddYoutubeRequested: _addGalleryYoutube,
+                    onReplaceItemRequested: _replaceGalleryItem,
+                    onMoveItem: (groupId, itemId, delta) =>
+                        _controller.moveEditGalleryItem(
+                          groupId: groupId,
+                          itemId: itemId,
+                          delta: delta,
+                        ),
+                    onRemoveItem: (groupId, itemId) =>
+                        _controller.removeEditGalleryItem(
+                          groupId: groupId,
+                          itemId: itemId,
+                        ),
+                    onTitleChanged: (groupId, itemId, title) =>
+                        _controller.updateEditGalleryItemTitle(
+                          groupId: groupId,
+                          itemId: itemId,
+                          title: title,
+                        ),
+                    onDescriptionChanged: (groupId, itemId, description) =>
+                        _controller.updateEditGalleryItemDescription(
+                          groupId: groupId,
+                          itemId: itemId,
+                          description: description,
+                        ),
+                  ),
+            ),
+          ),
         ),
       ),
     );
@@ -2581,6 +2543,36 @@ class _TenantAdminAccountProfileEditScreenState
             onPressed: _openMapPicker,
             icon: const Icon(Icons.map_outlined),
             label: const Text('Selecionar no mapa'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDormantLocationSection(TenantAdminAccountProfile profile) {
+    final location = profile.location!;
+    return TenantAdminFormSectionCard(
+      title: 'Localização inativa',
+      description:
+          'Este tipo não permite usar localização. As coordenadas existentes permanecem armazenadas, mas não são usadas no mapa, em referências ou como local de evento.',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '${location.latitude.toStringAsFixed(6)}, '
+            '${location.longitude.toStringAsFixed(6)}',
+          ),
+          const SizedBox(height: 8),
+          FilledButton.tonalIcon(
+            key: const ValueKey<String>('removeDormantProfileLocation'),
+            onPressed: () => _controller.submitRemoveProfileLocation(
+              accountProfileId: _currentAccountProfileIdForRequests(),
+              profileType:
+                  _controller.editStateStreamValue.value.selectedProfileType ??
+                  profile.profileType,
+            ),
+            icon: const Icon(Icons.location_off_outlined),
+            label: const Text('Remover localização armazenada'),
           ),
         ],
       ),

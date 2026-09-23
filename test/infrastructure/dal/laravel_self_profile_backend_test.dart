@@ -160,7 +160,10 @@ void main() {
       expect(adapter.requests, hasLength(2));
       expect(adapter.requests.first.method, 'POST');
       expect(adapter.requests.last.method, 'POST');
-      expect(adapter.requests.first.headers['Authorization'], 'Bearer test-token');
+      expect(
+        adapter.requests.first.headers['Authorization'],
+        'Bearer test-token',
+      );
       expect(
         adapter.requests.last.headers['Authorization'],
         'Bearer refreshed-token',
@@ -168,7 +171,10 @@ void main() {
       expect(authRepository.recoverCalls, 1);
       expect(adapter.requests.first.data, isA<FormData>());
       expect(adapter.requests.last.data, isA<FormData>());
-      expect(identical(adapter.requests.first.data, adapter.requests.last.data), isFalse);
+      expect(
+        identical(adapter.requests.first.data, adapter.requests.last.data),
+        isFalse,
+      );
 
       final retriedBody = adapter.requests.last.data as FormData;
       expect(
@@ -177,10 +183,7 @@ void main() {
         ),
         isTrue,
       );
-      expect(
-        retriedBody.files.any((entry) => entry.key == 'avatar'),
-        isTrue,
-      );
+      expect(retriedBody.files.any((entry) => entry.key == 'avatar'), isTrue);
     },
   );
 }
@@ -221,7 +224,8 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
   }
 
   @override
-  Future<void> recoverTenantPublicIdentityAfterUnauthorizedPublicRequest() async {
+  Future<void>
+  recoverTenantPublicIdentityAfterUnauthorizedPublicRequest() async {
     recoverCalls += 1;
     _token = 'refreshed-token';
   }
@@ -337,7 +341,28 @@ AppData _buildAppData() {
         'type': 'artist',
         'label': 'Artist',
         'allowed_taxonomies': [],
-        'capabilities': {'is_favoritable': true, 'is_poi_enabled': false},
+        'capabilities': {
+          'is_favoritable': {
+            'configured': {'value': true, 'parameters': {}},
+            'effective': {'value': true, 'parameters': {}},
+          },
+          'location_policy': {
+            'configured': {'value': 'disabled', 'parameters': {}},
+            'effective': {'value': 'disabled', 'parameters': {}},
+          },
+          'is_map_poi_enabled': {
+            'configured': {'value': false, 'parameters': {}},
+            'effective': {'value': false, 'parameters': {}},
+          },
+          'is_physical_host_enabled': {
+            'configured': {'value': false, 'parameters': {}},
+            'effective': {'value': false, 'parameters': {}},
+          },
+          'is_reference_location_enabled': {
+            'configured': {'value': false, 'parameters': {}},
+            'effective': {'value': false, 'parameters': {}},
+          },
+        },
       },
     ],
     'domains': const ['https://tenant.test'],

@@ -10,6 +10,7 @@ import 'package:belluga_now/domain/app_data/location_origin_reason.dart';
 import 'package:belluga_now/domain/app_data/location_origin_settings.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_location_repository_contract_bool_value.dart';
@@ -21,6 +22,7 @@ import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dar
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
+import 'package:mockito/mockito.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 void main() {
@@ -183,12 +185,16 @@ TenantHomeController _buildTenantHomeController({
     userEventsRepository: userEventsRepository,
     userLocationRepository: userLocationRepository,
     appDataRepository: appDataRepository,
+    invitesRepository: _MockInvitesRepository(),
     locationOriginService: LocationOriginService(
       appDataRepository: appDataRepository,
       userLocationRepository: userLocationRepository,
     ),
   );
 }
+
+class _MockInvitesRepository extends Mock
+    implements InvitesRepositoryContract {}
 
 AppData _buildAppData() {
   final remoteData = {
@@ -200,7 +206,28 @@ AppData _buildAppData() {
         'type': 'artist',
         'label': 'Artist',
         'allowed_taxonomies': [],
-        'capabilities': {'is_favoritable': true, 'is_poi_enabled': false},
+        'capabilities': {
+          'is_favoritable': {
+            'configured': {'value': true, 'parameters': {}},
+            'effective': {'value': true, 'parameters': {}},
+          },
+          'location_policy': {
+            'configured': {'value': 'disabled', 'parameters': {}},
+            'effective': {'value': 'disabled', 'parameters': {}},
+          },
+          'is_map_poi_enabled': {
+            'configured': {'value': false, 'parameters': {}},
+            'effective': {'value': false, 'parameters': {}},
+          },
+          'is_physical_host_enabled': {
+            'configured': {'value': false, 'parameters': {}},
+            'effective': {'value': false, 'parameters': {}},
+          },
+          'is_reference_location_enabled': {
+            'configured': {'value': false, 'parameters': {}},
+            'effective': {'value': false, 'parameters': {}},
+          },
+        },
       },
     ],
     'domains': const ['https://tenant.test'],

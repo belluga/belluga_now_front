@@ -54,7 +54,6 @@ import 'package:belluga_now/domain/repositories/telemetry_repository_contract.da
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
-import 'package:belluga_now/domain/static_assets/public_static_asset_model.dart';
 import 'package:belluga_now/domain/upcoming_ocurrence/projections/upcoming_ocurrence_resume.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_location_repository_contract_duration_value.dart';
 import 'package:belluga_now/domain/services/location_origin_service_contract.dart';
@@ -456,10 +455,6 @@ class MapScreenController implements Disposable {
 
   EventModel? hydratedEventForPoi(CityPoiModel poi) {
     return _poiRepository.hydratedEventForPoi(poi);
-  }
-
-  PublicStaticAssetModel? hydratedStaticAssetForPoi(CityPoiModel poi) {
-    return _poiRepository.hydratedStaticAssetForPoi(poi);
   }
 
   Uri? buildTenantPublicUriFromPath(String? rawPath) {
@@ -1763,10 +1758,6 @@ class MapScreenController implements Disposable {
     if (event != null) {
       return _mergeEventIntoPoi(poi, event);
     }
-    final asset = hydratedStaticAssetForPoi(poi);
-    if (asset != null) {
-      return _mergeStaticAssetIntoPoi(poi, asset);
-    }
     return null;
   }
 
@@ -1881,41 +1872,6 @@ class MapScreenController implements Disposable {
     );
   }
 
-  CityPoiModel _mergeStaticAssetIntoPoi(
-    CityPoiModel poi,
-    PublicStaticAssetModel asset,
-  ) {
-    final coverImageUrl = _normalizeExternalImageUrl(asset.coverUrl);
-    final description = _resolveStaticAssetDescription(asset);
-    final canonicalPath = asset.slug.trim().isEmpty
-        ? null
-        : '/static/${asset.slug}';
-
-    return poi.copyWith(
-      descriptionValue: description == null
-          ? null
-          : _parsePoiDescriptionValue(description),
-      categoryLabelValue: asset.profileType.trim().isEmpty
-          ? null
-          : _parseTypeLabelValue(asset.profileType),
-      coverImageUriValue: coverImageUrl == null
-          ? null
-          : _parseImageUriValue(coverImageUrl),
-      visual: coverImageUrl == null
-          ? poi.visual
-          : CityPoiVisual.image(
-              imageUriValue: _parseImageUriValue(coverImageUrl),
-            ),
-      refSlugValue: poi.refSlug == null && asset.slug.trim().isNotEmpty
-          ? _parseReferenceSlugValue(asset.slug)
-          : null,
-      refPathValue:
-          canonicalPath == null || poi.refPath?.trim() == canonicalPath
-          ? null
-          : _parseReferencePathValue(canonicalPath),
-    );
-  }
-
   String? _resolveEventCoverImageUrl(EventModel event) {
     final eventImageUri = UpcomingOcurrenceResume.resolvePreferredImageUri(
       event,
@@ -1932,22 +1888,6 @@ class MapScreenController implements Disposable {
 
   String? _resolveEventDescriptionExcerpt(EventModel event) {
     final rawContent = event.content.value?.trim() ?? '';
-    if (rawContent.isEmpty) {
-      return null;
-    }
-    final excerpt = rawContent
-        .replaceAll(RegExp(r'<[^>]+>'), ' ')
-        .replaceAll('&nbsp;', ' ')
-        .replaceAll(RegExp(r'\s+'), ' ')
-        .trim();
-    if (excerpt.length < 3) {
-      return null;
-    }
-    return excerpt;
-  }
-
-  String? _resolveStaticAssetDescription(PublicStaticAssetModel asset) {
-    final rawContent = asset.resolvedDescription?.trim() ?? '';
     if (rawContent.isEmpty) {
       return null;
     }

@@ -183,6 +183,7 @@ class TenantAdminAccountProfilesRequestEncoder {
     String? slug,
     int? aggregateRevision,
     TenantAdminLocation? location,
+    bool includeLocation = false,
     TenantAdminTaxonomyTerms? taxonomyTerms,
     String? bio,
     String? avatarUrl,
@@ -203,11 +204,13 @@ class TenantAdminAccountProfilesRequestEncoder {
     if (aggregateRevision != null) {
       payload['aggregate_revision'] = aggregateRevision;
     }
-    if (location != null) {
-      payload['location'] = {
-        'lat': location.latitude,
-        'lng': location.longitude,
-      };
+    if (includeLocation) {
+      payload['location'] = location == null
+          ? null
+          : <String, double>{
+              'lat': location.latitude,
+              'lng': location.longitude,
+            };
     }
     if (taxonomyTerms != null) {
       payload['taxonomy_terms'] = taxonomyTerms
@@ -267,6 +270,7 @@ class TenantAdminAccountProfilesRequestEncoder {
     String? pluralLabel,
     List<String>? allowedTaxonomies,
     TenantAdminProfileTypeCapabilities? capabilities,
+    int? expectedCapabilityRevision,
     TenantAdminPoiVisual? visual,
     bool includeVisual = false,
     bool? removeTypeAsset,
@@ -291,6 +295,9 @@ class TenantAdminAccountProfilesRequestEncoder {
     }
     if (capabilities != null) {
       payload['capabilities'] = _encodeCapabilities(capabilities);
+      if (expectedCapabilityRevision != null) {
+        payload['expected_capability_revision'] = expectedCapabilityRevision;
+      }
     }
     if (includeVisual) {
       payload['visual'] = visual?.toJson();
@@ -302,10 +309,25 @@ class TenantAdminAccountProfilesRequestEncoder {
     return payload;
   }
 
+  Map<String, dynamic> encodeProfileTypeChangeImpact({
+    required TenantAdminProfileTypeCapabilities capabilities,
+  }) => <String, dynamic>{'capabilities': _encodeCapabilities(capabilities)};
+
   Map<String, dynamic> _encodeCapabilities(
     TenantAdminProfileTypeCapabilities capabilities,
   ) {
-    return Map<String, dynamic>.from(capabilities.toCapabilityMap().toJson());
+    return <String, dynamic>{
+      for (final entry in capabilities.entries)
+        entry.key: <String, dynamic>{
+          'value': entry.configured.scalarValue.isBoolean
+              ? entry.configured.booleanValue
+              : entry.configured.enumValue,
+          'parameters': <String, int>{
+            for (final parameter in entry.configured.parameters)
+              parameter.key: parameter.value,
+          },
+        },
+    };
   }
 }
 

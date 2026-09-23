@@ -6,11 +6,10 @@ import 'package:belluga_now/infrastructure/dal/dao/auth_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_context.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/favorite_backend_contract.dart';
-import 'package:belluga_now/infrastructure/dal/dao/static_assets_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/tenant_backend_contract.dart';
-import 'package:belluga_now/infrastructure/dal/dao/unsupported_static_assets_backend.dart';
 import 'package:belluga_now/infrastructure/dal/dao/event_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dto/favorite/favorite_preview_dto.dart';
+import 'package:belluga_now/infrastructure/dal/dto/favorite/favorite_preview_page_dto.dart';
 import 'package:belluga_now/infrastructure/repositories/favorite_repository.dart';
 import 'package:belluga_now/infrastructure/services/schedule_backend_contract.dart';
 import 'package:belluga_now/testing/app_data_test_factory.dart';
@@ -103,6 +102,98 @@ void main() {
     },
   );
 
+  test(
+    'paged Favorites preserve backend attribution, order and a separate pin',
+    () async {
+      FavoritePreviewDTO preview(
+        String id, {
+        bool live = false,
+        bool upcoming = false,
+      }) {
+        final occurrence = live ? 'live-$id' : (upcoming ? 'next-$id' : null);
+        final path = occurrence == null
+            ? null
+            : '/agenda/evento/show-$id?occurrence=$occurrence';
+        return FavoritePreviewDTO.fromJson({
+          'registry_key': 'account_profile',
+          'target_type': 'account_profile',
+          'target_id': id,
+          'target': {
+            'id': id,
+            'slug': id,
+            'display_name': id,
+            'profile_type': 'artist',
+            'can_open_public_detail': true,
+            'public_detail_path': '/parceiro/$id',
+          },
+          'occurrence_state': {
+            'live_now_event_occurrence_id': live ? 'live-$id' : null,
+            'live_now_event_occurrence_at': live
+                ? '2026-03-20T11:00:00Z'
+                : null,
+            'next_event_occurrence_id': upcoming ? 'next-$id' : null,
+            'next_event_occurrence_at': upcoming
+                ? '2026-03-21T12:00:00Z'
+                : null,
+          },
+          'navigation': {
+            'kind': path == null ? 'account_profile' : 'event',
+            'target_path': path ?? '/parceiro/$id',
+            'profile_target_path': '/parceiro/$id',
+            'event_target_path': path,
+            'event_target_slug': occurrence == null ? null : 'show-$id',
+            'event_occurrence_id': occurrence,
+            'can_open_public_detail': true,
+          },
+        });
+      }
+
+      final live = preview('z-member', live: true, upcoming: true);
+      final upcoming = preview('a-member', upcoming: true);
+      final fallback = preview('fallback');
+      GetIt.I.registerSingleton<BackendContract>(
+        _StubBackend(
+          favoritesBackend: _StubFavoriteBackend(
+            favorites: [live, upcoming, fallback],
+            pinned: live,
+          ),
+        ),
+      );
+      final repository = FavoriteRepository();
+      final first = await repository.fetchFavoriteResumesPage(
+        page: 1,
+        pageSize: 2,
+      );
+      expect(first.items.map((item) => item.targetId), [
+        'z-member',
+        'a-member',
+      ]);
+      expect(first.items.first.liveNowEventOccurrenceId, 'live-z-member');
+      expect(
+        first.items.first.nextEventOccurrenceAt,
+        DateTime.parse('2026-03-21T12:00:00Z'),
+      );
+      expect(
+        first.items[1].eventTargetPath,
+        '/agenda/evento/show-a-member?occurrence=next-a-member',
+      );
+      expect(first.pinned?.targetId, 'z-member');
+      expect(
+        first.pinned?.eventTargetPath,
+        '/agenda/evento/show-z-member?occurrence=live-z-member',
+      );
+      expect(first.hasMore, isTrue);
+      final second = await repository.fetchFavoriteResumesPage(
+        page: 2,
+        pageSize: 2,
+      );
+      expect(second.items.single.targetId, 'fallback');
+      expect(second.items.single.eventTargetPath, isNull);
+      expect(second.pinned, isNull);
+      expect(second.hasMore, isFalse);
+    },
+  );
+
   test('account-profile favorite without profile type fails closed', () {
     final favorite = FavoritePreviewDTO.fromJson({
       'favorite_id': 'fav-invalid',
@@ -138,7 +229,28 @@ AppData _buildAppData() {
         'type': 'artist',
         'label': 'Artist',
         'allowed_taxonomies': [],
-        'capabilities': {'is_favoritable': true, 'is_poi_enabled': false},
+        'capabilities': {
+          'is_favoritable': {
+            'configured': {'value': true, 'parameters': {}},
+            'effective': {'value': true, 'parameters': {}},
+          },
+          'location_policy': {
+            'configured': {'value': 'disabled', 'parameters': {}},
+            'effective': {'value': 'disabled', 'parameters': {}},
+          },
+          'is_map_poi_enabled': {
+            'configured': {'value': false, 'parameters': {}},
+            'effective': {'value': false, 'parameters': {}},
+          },
+          'is_physical_host_enabled': {
+            'configured': {'value': false, 'parameters': {}},
+            'effective': {'value': false, 'parameters': {}},
+          },
+          'is_reference_location_enabled': {
+            'configured': {'value': false, 'parameters': {}},
+            'effective': {'value': false, 'parameters': {}},
+          },
+        },
       },
     ],
     'domains': ['https://tenant.test'],
@@ -196,10 +308,6 @@ class _StubBackend extends BackendContract {
       throw UnimplementedError();
 
   @override
-  StaticAssetsBackendContract get staticAssets =>
-      const UnsupportedStaticAssetsBackend();
-
-  @override
   FavoriteBackendContract get favorites => _favoritesBackend;
 
   @override
@@ -210,9 +318,20 @@ class _StubBackend extends BackendContract {
 }
 
 class _StubFavoriteBackend extends FavoriteBackendContract {
-  _StubFavoriteBackend({required this.favorites});
+  _StubFavoriteBackend({required this.favorites, this.pinned});
 
   final List<FavoritePreviewDTO> favorites;
+  final FavoritePreviewDTO? pinned;
+
+  @override
+  Future<FavoritePreviewPageDTO> fetchFavoritesPage({
+    required int page,
+    required int pageSize,
+  }) async => FavoritePreviewPageDTO(
+    items: favorites.skip((page - 1) * pageSize).take(pageSize).toList(),
+    pinned: page == 1 ? pinned : null,
+    hasMore: page * pageSize < favorites.length,
+  );
 
   @override
   Future<List<FavoritePreviewDTO>> fetchFavorites() async => favorites;

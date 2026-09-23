@@ -7,10 +7,8 @@ import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/app_data_back
 import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/auth_backend/auth_backend.dart';
 import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/favorite_backend/laravel_favorite_backend.dart';
 import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/partners_backend/laravel_account_profiles_backend.dart';
-import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/static_assets_backend/laravel_static_assets_backend.dart';
 import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/schedule_backend/laravel_schedule_backend.dart';
 import 'package:belluga_now/infrastructure/dal/dao/account_profiles_backend_contract.dart';
-import 'package:belluga_now/infrastructure/dal/dao/static_assets_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/tenant_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/event_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/production_backend/live_only_unsupported_backends.dart';
@@ -39,9 +37,6 @@ class LaravelBackend extends BackendContract {
   @override
   final AccountProfilesBackendContract accountProfiles =
       LaravelAccountProfilesBackend();
-
-  @override
-  final StaticAssetsBackendContract staticAssets = LaravelStaticAssetsBackend();
 
   @override
   final FavoriteBackendContract favorites = LaravelFavoriteBackend();

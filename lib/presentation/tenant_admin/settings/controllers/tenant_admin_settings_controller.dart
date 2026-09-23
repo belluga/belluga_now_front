@@ -14,7 +14,6 @@ import 'package:belluga_now/domain/repositories/app_data_repository_contract.dar
 import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_settings_repository_contract.dart';
-import 'package:belluga_now/domain/repositories/tenant_admin_static_assets_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_location_selection_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
@@ -23,7 +22,6 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_settings.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_app_link_path_value.dart';
@@ -54,7 +52,6 @@ class TenantAdminSettingsController implements Disposable {
     AppDataRepositoryContract? appDataRepository,
     TenantAdminSettingsRepositoryContract? settingsRepository,
     TenantAdminAccountProfilesRepositoryContract? accountProfilesRepository,
-    TenantAdminStaticAssetsRepositoryContract? staticAssetsRepository,
     TenantAdminTaxonomiesRepositoryContract? taxonomiesRepository,
     TenantAdminEventsRepositoryContract? eventsRepository,
     TenantAdminTenantScopeContract? tenantScope,
@@ -70,11 +67,6 @@ class TenantAdminSettingsController implements Disposable {
            accountProfilesRepository ??
            (GetIt.I.isRegistered<TenantAdminAccountProfilesRepositoryContract>()
                ? GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
-               : null),
-       _staticAssetsRepository =
-           staticAssetsRepository ??
-           (GetIt.I.isRegistered<TenantAdminStaticAssetsRepositoryContract>()
-               ? GetIt.I.get<TenantAdminStaticAssetsRepositoryContract>()
                : null),
        _taxonomiesRepository =
            taxonomiesRepository ??
@@ -111,7 +103,6 @@ class TenantAdminSettingsController implements Disposable {
   final TenantAdminSettingsRepositoryContract _settingsRepository;
   final TenantAdminAccountProfilesRepositoryContract?
   _accountProfilesRepository;
-  final TenantAdminStaticAssetsRepositoryContract? _staticAssetsRepository;
   final TenantAdminTaxonomiesRepositoryContract? _taxonomiesRepository;
   final TenantAdminEventsRepositoryContract? _eventsRepository;
   final TenantAdminTenantScopeContract? _tenantScope;
@@ -715,9 +706,8 @@ class TenantAdminSettingsController implements Disposable {
     mapFilterRuleCatalogLoadingStreamValue.addValue(true);
     try {
       final accountRepo = _accountProfilesRepository;
-      final staticRepo = _staticAssetsRepository;
       final taxonomyRepo = _taxonomiesRepository;
-      if (accountRepo == null || staticRepo == null || taxonomyRepo == null) {
+      if (accountRepo == null || taxonomyRepo == null) {
         mapFilterRuleCatalogStreamValue.addValue(
           const TenantAdminMapFilterRuleCatalog.empty(),
         );
@@ -726,16 +716,12 @@ class TenantAdminSettingsController implements Disposable {
 
       await Future.wait<void>([
         accountRepo.loadAllProfileTypes(),
-        staticRepo.loadAllStaticProfileTypes(),
         taxonomyRepo.loadAllTaxonomies(),
       ]);
 
       final accountTypes =
           accountRepo.profileTypesStreamValue.value ??
           const <TenantAdminProfileTypeDefinition>[];
-      final staticTypes =
-          staticRepo.staticProfileTypesStreamValue.value ??
-          const <TenantAdminStaticProfileTypeDefinition>[];
       final eventTypes = await _loadEventTypes();
       final taxonomies =
           taxonomyRepo.taxonomiesStreamValue.value ??
@@ -746,7 +732,6 @@ class TenantAdminSettingsController implements Disposable {
       );
       final catalog = _buildMapFilterRuleCatalog(
         accountTypes: accountTypes,
-        staticTypes: staticTypes,
         eventTypes: eventTypes,
         taxonomies: taxonomies,
         termsByTaxonomySlug: termsByTaxonomySlug,
@@ -2356,7 +2341,6 @@ class TenantAdminSettingsController implements Disposable {
 
   TenantAdminMapFilterRuleCatalog _buildMapFilterRuleCatalog({
     required List<TenantAdminProfileTypeDefinition> accountTypes,
-    required List<TenantAdminStaticProfileTypeDefinition> staticTypes,
     required List<TenantAdminEventType> eventTypes,
     required List<TenantAdminTaxonomyDefinition> taxonomies,
     required Map<String, List<TenantAdminTaxonomyTermDefinition>>
@@ -2364,7 +2348,6 @@ class TenantAdminSettingsController implements Disposable {
   }) {
     return const TenantAdminDiscoveryFilterRuleCatalogBuilder().build(
       accountTypes: accountTypes,
-      staticTypes: staticTypes,
       eventTypes: eventTypes,
       taxonomies: taxonomies,
       termsBySlug: TenantAdminTaxonomyTermsBySlug.fromMap(termsByTaxonomySlug),
