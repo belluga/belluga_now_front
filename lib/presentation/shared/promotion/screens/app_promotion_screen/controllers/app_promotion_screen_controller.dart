@@ -21,7 +21,6 @@ typedef AppPromotionTelemetryTracker =
     Future<void> Function(String platformTarget);
 typedef AppPromotionIosDeferredPayloadSeeder =
     Future<bool> Function(String payload);
-typedef AppPromotionUriSupportChecker = Future<bool> Function(Uri uri);
 typedef AppPromotionUriLauncher = Future<bool> Function(Uri uri);
 
 class AppPromotionScreenController implements Disposable {
@@ -31,7 +30,6 @@ class AppPromotionScreenController implements Disposable {
     AppPromotionExperienceResolver? experienceResolver,
     AppPromotionTelemetryTracker? telemetryTracker,
     AppPromotionIosDeferredPayloadSeeder? iosDeferredPayloadSeeder,
-    AppPromotionUriSupportChecker? uriSupportChecker,
     AppPromotionUriLauncher? uriLauncher,
   }) : _appDataRepository =
            appDataRepository ?? GetIt.I.get<AppDataRepositoryContract>(),
@@ -42,7 +40,6 @@ class AppPromotionScreenController implements Disposable {
        _iosDeferredPayloadSeeder =
            iosDeferredPayloadSeeder ??
            ios_deferred_payload_seeder.seedIosDeferredPayloadToClipboard,
-       _uriSupportChecker = uriSupportChecker ?? canLaunchUrl,
        _uriLauncher = uriLauncher ?? _launchExternalApplication,
        _experienceResolver =
            experienceResolver ?? _resolveHardcodedPromotionExperience;
@@ -51,7 +48,6 @@ class AppPromotionScreenController implements Disposable {
   final AppPromotionStorePlatformResolver _preferredStorePlatformResolver;
   final AppPromotionTelemetryTracker _telemetryTracker;
   final AppPromotionIosDeferredPayloadSeeder _iosDeferredPayloadSeeder;
-  final AppPromotionUriSupportChecker _uriSupportChecker;
   final AppPromotionUriLauncher _uriLauncher;
   final AppPromotionExperienceResolver _experienceResolver;
 
@@ -118,18 +114,20 @@ class AppPromotionScreenController implements Disposable {
     required Uri uri,
     required AppPromotionStorePlatform platform,
   }) async {
-    if (platform == AppPromotionStorePlatform.ios) {
-      await _seedIosDeferredPayloadIfPossible(uri);
-    }
+    final deferredPayloadSeed = platform == AppPromotionStorePlatform.ios
+        ? _seedIosDeferredPayloadIfPossible(uri)
+        : null;
+    final launchFuture = _uriLauncher(uri);
+
     try {
       await _telemetryTracker(platform.platformTarget);
     } catch (_) {
       // expected_control_flow: telemetry failure must not block store handoff.
     }
-    if (!await _uriSupportChecker(uri)) {
-      return;
+    if (deferredPayloadSeed != null) {
+      await deferredPayloadSeed;
     }
-    await _uriLauncher(uri);
+    await launchFuture;
   }
 
   @override
