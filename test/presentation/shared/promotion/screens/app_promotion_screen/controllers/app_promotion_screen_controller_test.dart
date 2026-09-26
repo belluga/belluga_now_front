@@ -17,13 +17,21 @@ import 'package:stream_value/core/stream_value.dart';
 
 void main() {
   test(
-    'launchPromotionUri seeds iOS deferred payload before async telemetry and capability checks',
+    'launchPromotionUri invokes the iOS handoff before pending async work completes',
     () async {
       final steps = <String>[];
+      final seedCompleter = Completer<bool>();
       final telemetryCompleter = Completer<void>();
-      final supportCompleter = Completer<bool>();
       final launchedUris = <Uri>[];
       String? seededPayload;
+      addTearDown(() {
+        if (!seedCompleter.isCompleted) {
+          seedCompleter.complete(true);
+        }
+        if (!telemetryCompleter.isCompleted) {
+          telemetryCompleter.complete();
+        }
+      });
       final controller = AppPromotionScreenController(
         appDataRepository: _FakeAppDataRepository(
           publicationSettings: _publicationSettings(
@@ -39,11 +47,7 @@ void main() {
         iosDeferredPayloadSeeder: (payload) async {
           steps.add('seed');
           seededPayload = payload;
-          return true;
-        },
-        uriSupportChecker: (uri) async {
-          steps.add('support');
-          return supportCompleter.future;
+          return seedCompleter.future;
         },
         uriLauncher: (uri) async {
           steps.add('launch');
@@ -61,22 +65,18 @@ void main() {
       );
       await Future<void>.delayed(Duration.zero);
 
-      expect(steps, <String>['seed', 'telemetry']);
+      expect(steps, <String>['seed', 'launch', 'telemetry']);
       expect(seededPayload, isNotNull);
       final query = Uri.splitQueryString(seededPayload!);
       expect(query['store_channel'], 'web');
       expect(query['code'], 'ABCD1234');
       expect(query['target_path'], '/invite?code=ABCD1234');
 
+      seedCompleter.complete(true);
       telemetryCompleter.complete();
-      await Future<void>.delayed(Duration.zero);
-
-      expect(steps, <String>['seed', 'telemetry', 'support']);
-
-      supportCompleter.complete(true);
       await launchFuture;
 
-      expect(steps, <String>['seed', 'telemetry', 'support', 'launch']);
+      expect(steps, <String>['seed', 'launch', 'telemetry']);
       expect(launchedUris, hasLength(1));
     },
   );
@@ -96,7 +96,6 @@ void main() {
         seeded = true;
         return true;
       },
-      uriSupportChecker: (uri) async => true,
       uriLauncher: (uri) async {
         launchedUris.add(uri);
         return true;
@@ -129,7 +128,6 @@ void main() {
         throw StateError('telemetry unavailable');
       },
       iosDeferredPayloadSeeder: (payload) async => true,
-      uriSupportChecker: (uri) async => true,
       uriLauncher: (uri) async {
         launchedUris.add(uri);
         return true;
